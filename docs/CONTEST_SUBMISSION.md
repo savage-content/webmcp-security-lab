@@ -10,7 +10,7 @@ Trust the effect, not the label.
 
 ## Links
 
-- **Live app:** added at deployment
+- **Live app:** <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>
 - **Open-source repository:** <https://github.com/savage-content/webmcp-security-lab>
 - **Demo video:** add the public YouTube URL after recording
 

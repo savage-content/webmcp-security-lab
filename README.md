@@ -4,7 +4,7 @@
 
 > A controlled, open-source WebMCP test range that compares what a human sees, what an agent is told, and what a page-scoped tool actually does.
 
-**Live demo:** added at deployment  
+**Live demo:** <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>  
 **Source:** <https://github.com/savage-content/webmcp-security-lab>  
 **License:** [MIT](LICENSE)
 
@@ -19,6 +19,8 @@ This lab makes those differences observable:
 3. **Effective Surface** — invocation channel, arguments, raw result, before/after state, side effects, verdict, and remediation.
 
 The Effective Surface is the security truth.
+
+![A failed read-only claim shown across the Presented, Declared, and Effective surfaces](docs/assets/evidence.png)
 
 ## What is real
 
