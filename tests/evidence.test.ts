@@ -18,6 +18,7 @@ const context: RunContext = {
   clientLabel: 'Test client',
   webMcp: {
     api: 'document.modelContext',
+    browserSupport: 'supported',
     registration: 'registered',
     permissionsPolicy: 'allowed',
     discovery: 'not-checked',
@@ -57,6 +58,9 @@ describe('evidence receipts', () => {
     expect(receipt.invocation.confirmation.known).toBe(false);
     expect(receipt.declaration.name).toBe(
       'preview_notification_preferences',
+    );
+    expect(receipt.limitation).toBe(
+      'This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.',
     );
   });
 

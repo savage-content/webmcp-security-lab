@@ -21,6 +21,19 @@ The GitHub repository `savage-content/webmcp-security-lab` was confirmed public 
 - verification report, Devpost copy, and sub-three-minute demo script; and
 - deployment configuration for a public Sites-hosted app.
 
+## Version 1.0 guided experience
+
+- automatic, non-invoking WebMCP heads-up in the first viewport;
+- distinct browser-support, registration, policy, discovery, and invocation facts;
+- registration truth fix that attempts `registerTool()` even when experimental policy enumeration is inconsistent;
+- calm rule explanations (`WMC-001` through `WMC-005`) and allow/warn/ask policy decisions;
+- discovery-only inspection that proves no invocation occurred;
+- Presented → Declared → Predicted Risk preflight before approval;
+- builder remediation with vulnerable/secure implementation contrast and tests to add;
+- passing secure retests for all five fixtures;
+- downloadable extension-ready policy artifacts; and
+- required self-reported-readiness limitation on generated receipts and artifacts.
+
 ## Not represented as completed by software alone
 
 - Certification of an external WebMCP client requires a direct run in that named client/version.

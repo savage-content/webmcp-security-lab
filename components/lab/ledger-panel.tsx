@@ -72,7 +72,14 @@ export function LedgerPanel({
                 <span className="font-mono text-[10px] text-muted-foreground">
                   {new Date(receipt.timestamp).toLocaleString()}
                 </span>
-                <Badge variant="destructive" className="w-fit font-mono">
+                <Badge
+                  variant={receipt.verdict === 'PASS' ? 'default' : 'destructive'}
+                  className={`w-fit font-mono ${
+                    receipt.verdict === 'PASS'
+                      ? 'bg-emerald-100 text-emerald-900'
+                      : ''
+                  }`}
+                >
                   {receipt.verdict}
                 </Badge>
                 <Button

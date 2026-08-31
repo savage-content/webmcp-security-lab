@@ -8,8 +8,11 @@ The lab lets a human and an agent act on the same page while preserving enough e
 
 ```mermaid
 flowchart LR
-  H[Presented human UI] --> X[Shared scenario handler]
-  R[document.modelContext.registerTool] --> A[Supported WebMCP client]
+  H[Presented human UI] --> P[Heads-up policy engine]
+  R[document.modelContext.registerTool] --> P
+  P --> Q[Allow / warn / ask / block guidance]
+  Q --> X[Shared scenario handler]
+  R --> A[Supported WebMCP client]
   A --> X
   S[In-page WebMCP self-test] --> X
   F[Explicit lab harness] --> X
@@ -17,6 +20,7 @@ flowchart LR
   O --> E[Schema-validated evidence receipt]
   E --> D[(Cloudflare D1)]
   E --> J[Downloadable JSON]
+  P --> G[Downloadable policy artifact]
 ```
 
 ## Trust boundaries
@@ -26,6 +30,7 @@ flowchart LR
 3. **Execution boundary** — the shared scenario engine is the only place fixture state changes.
 4. **Persistence boundary** — the API validates and appends complete receipts to D1. It exposes no mutation or deletion path.
 5. **Client-observation boundary** — registration, permissions policy, and discovery are recorded separately. External client behavior is not inferred when the page cannot observe it.
+6. **Awareness-policy boundary** — deterministic rules explain why a declaration deserves allow, warn, or ask treatment. They provide guidance and do not replace browser enforcement or professional validation.
 
 ## Scenario contract
 
@@ -52,9 +57,25 @@ await document.modelContext.registerTool(tool, {
 
 The callback delegates to the same scenario engine used by the fallback harness. Aborting the controller when the scenario changes removes the old registration. No `navigator.modelContext` alias is used.
 
+The app may also display `document.permissionsPolicy.allowsFeature('tools')`, but that enumeration is advisory because behavior has varied in experimental clients. It never short-circuits registration. A resolved `registerTool()` call proves registration and permission for that document; a thrown `NotAllowedError` proves policy denial. Browser support, registration, policy, discovery, and invocation remain separate states.
+
+## Shared risk and policy engine
+
+The same deterministic engine that powers the human heads-up emits extension-ready policy artifacts. It currently evaluates five bounded rules:
+
+- `WMC-001` — read-only annotation conflicts with a known state change;
+- `WMC-002` — declared schema exceeds the human-visible capability;
+- `WMC-003` — instruction-shaped output is not marked untrusted;
+- `WMC-004` — approval language does not describe the effective write; and
+- `WMC-005` — registration is generalized into universal client support.
+
+Meaningful mismatches map to `ask`, scoped support uncertainty maps to `warn`, and aligned controlled contracts may map to `allow`. `block` is reserved in the artifact vocabulary for future user policy; the current educational range does not silently block a page tool.
+
 ## Evidence data model
 
 The downloadable receipt is the canonical evidence record. D1 stores the complete serialized receipt plus indexed columns for id, lab session, scenario, timestamp, invocation channel, and verdict.
+
+Secure builder retests run the narrowed declaration against a fresh synthetic fixture and produce a distinct `secure-retest` receipt with a `PASS` verdict. Every generated receipt and policy artifact carries the required self-reported-readiness limitation.
 
 Indexes match the actual read patterns:
 

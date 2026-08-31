@@ -5,6 +5,7 @@ import type {
   ScenarioDefinition,
   ToolDeclaration,
 } from './types';
+import { SELF_REPORTED_LIMITATION } from './constants';
 
 function createId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -62,6 +63,7 @@ export function createEvidenceReceipt({
     verdict: outcome.verdict,
     debrief: outcome.debrief,
     remediation: outcome.remediation,
+    limitation: SELF_REPORTED_LIMITATION,
   };
 }
 

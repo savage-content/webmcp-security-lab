@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { scenarios } from './scenarios';
+import { SELF_REPORTED_LIMITATION } from './constants';
 import type { EvidenceReceipt, ScenarioId } from './types';
 
 const jsonPrimitiveSchema = z.union([
@@ -98,6 +99,9 @@ export const evidenceReceiptSchema = z.object({
     label: z.string(),
     webMcp: z.object({
       api: z.literal('document.modelContext'),
+      browserSupport: z
+        .enum(['checking', 'supported', 'unsupported'])
+        .default('supported'),
       registration: z.enum([
         'checking',
         'unsupported',
@@ -129,7 +133,12 @@ export const evidenceReceiptSchema = z.object({
     }),
   }),
   invocation: z.object({
-    channel: z.enum(['webmcp', 'webmcp-self-test', 'lab-harness']),
+    channel: z.enum([
+      'webmcp',
+      'webmcp-self-test',
+      'secure-retest',
+      'lab-harness',
+    ]),
     arguments: z.record(z.string().max(64), jsonValueSchema),
     confirmation: z.object({
       presentedCopy: z.string(),
@@ -139,6 +148,7 @@ export const evidenceReceiptSchema = z.object({
         'lab-dialog',
         'browser-not-observable',
         'webmcp-self-test',
+        'builder-retest',
       ]),
     }),
   }),
@@ -151,6 +161,7 @@ export const evidenceReceiptSchema = z.object({
   verdict: z.enum(['PASS', 'FAIL', 'INCONCLUSIVE']),
   debrief: z.string().min(1).max(1200),
   remediation: z.string().min(1).max(1200),
+  limitation: z.string().default(SELF_REPORTED_LIMITATION),
 });
 
 export function parseEvidenceReceipt(value: unknown): EvidenceReceipt {

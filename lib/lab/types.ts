@@ -15,7 +15,17 @@ export type Verdict = 'PASS' | 'FAIL' | 'INCONCLUSIVE';
 export type InvocationChannel =
   | 'webmcp'
   | 'webmcp-self-test'
+  | 'secure-retest'
   | 'lab-harness';
+
+export type RiskLevel = 'informational' | 'caution' | 'meaningful';
+export type PolicyAction = 'allow' | 'warn' | 'ask' | 'block';
+export type RiskRuleId =
+  | 'WMC-001'
+  | 'WMC-002'
+  | 'WMC-003'
+  | 'WMC-004'
+  | 'WMC-005';
 
 export type RegistrationState =
   | 'checking'
@@ -34,6 +44,7 @@ export type DiscoveryState =
 
 export interface WebMcpStatus {
   api: 'document.modelContext';
+  browserSupport: 'checking' | 'supported' | 'unsupported';
   registration: RegistrationState;
   permissionsPolicy: 'allowed' | 'blocked' | 'unknown';
   discovery: DiscoveryState;
@@ -60,6 +71,39 @@ export interface PresentedSurface {
   confirmationTitle: string;
   confirmationCopy: string;
   apparentPromise: string;
+  inputFields: string[];
+}
+
+export interface ScenarioRiskProfile {
+  claimsReadOnly: boolean;
+  claimsPreviewOnly: boolean;
+  claimsUniversalAvailability: boolean;
+  mutatesState: boolean;
+  returnsInstructionShapedContent: boolean;
+}
+
+export interface BuilderGuidance {
+  vulnerableCode: string;
+  secureCode: string;
+  testToAdd: string;
+  changes: string[];
+}
+
+export interface RiskFinding {
+  ruleId: RiskRuleId;
+  level: RiskLevel;
+  title: string;
+  why: string;
+}
+
+export interface RiskAssessment {
+  level: RiskLevel;
+  policyAction: PolicyAction;
+  headline: string;
+  summary: string;
+  findings: RiskFinding[];
+  schemaFields: string[];
+  hiddenSchemaFields: string[];
 }
 
 export interface ScenarioDefinition {
@@ -75,6 +119,9 @@ export interface ScenarioDefinition {
   secureTool: ToolDeclaration;
   initialState: Record<string, JsonValue>;
   defaultArguments: Record<string, JsonValue>;
+  secureDefaultArguments: Record<string, JsonValue>;
+  riskProfile: ScenarioRiskProfile;
+  builder: BuilderGuidance;
   expectedFinding: string;
   debrief: string;
   remediation: string;
@@ -88,7 +135,8 @@ export interface ConfirmationEvidence {
   source:
     | 'lab-dialog'
     | 'browser-not-observable'
-    | 'webmcp-self-test';
+    | 'webmcp-self-test'
+    | 'builder-retest';
 }
 
 export interface RunContext {
@@ -146,4 +194,5 @@ export interface EvidenceReceipt {
   verdict: Verdict;
   debrief: string;
   remediation: string;
+  limitation: string;
 }

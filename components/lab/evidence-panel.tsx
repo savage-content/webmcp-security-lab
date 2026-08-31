@@ -4,16 +4,21 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  Code2,
   Database,
   Download,
+  FileDown,
   FileJson,
+  RefreshCw,
   ShieldCheck,
+  TestTube2,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type {
   EvidenceReceipt,
+  RiskAssessment,
   ScenarioDefinition,
 } from '@/lib/lab/types';
 
@@ -163,16 +168,38 @@ export function EvidencePanel({
             </p>
             <p className="mt-3 text-sm leading-6">{receipt.remediation}</p>
           </div>
+          <p className="bg-muted px-5 py-4 text-[11px] leading-5 text-muted-foreground lg:col-span-2 lg:px-7">
+            {receipt.limitation}
+          </p>
         </div>
       ) : null}
     </section>
   );
 }
 
-export function SecureComparison({ scenario }: { scenario: ScenarioDefinition }) {
+export function SecureComparison({
+  scenario,
+  assessment,
+  receipt,
+  persistence,
+  running,
+  onRetest,
+  onDownloadPolicy,
+}: {
+  scenario: ScenarioDefinition;
+  assessment: RiskAssessment;
+  receipt?: EvidenceReceipt;
+  persistence: PersistenceState;
+  running: boolean;
+  onRetest: () => void;
+  onDownloadPolicy: () => void;
+}) {
   return (
-    <section className="border-t border-border bg-[color-mix(in_oklch,var(--accent),white_78%)] p-5 lg:p-8">
-      <div className="grid gap-7 xl:grid-cols-[0.7fr_1.3fr]">
+    <section
+      id="builder"
+      className="scroll-mt-20 border-t border-border bg-[color-mix(in_oklch,var(--accent),white_78%)] p-5 lg:p-8"
+    >
+      <div className="grid gap-7 xl:grid-cols-[0.72fr_1.28fr]">
         <div>
           <div className="flex size-9 items-center justify-center rounded-md bg-foreground text-background">
             <ShieldCheck className="size-5" />
@@ -186,17 +213,95 @@ export function SecureComparison({ scenario }: { scenario: ScenarioDefinition })
           <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
             {scenario.secureComparison}
           </p>
+          <ol className="mt-5 space-y-2">
+            {scenario.builder.changes.map((change, index) => (
+              <li key={change} className="flex items-start gap-2 text-xs leading-5">
+                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground font-mono text-[9px] text-background">
+                  {index + 1}
+                </span>
+                {change}
+              </li>
+            ))}
+          </ol>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button onClick={onRetest} disabled={running}>
+              <RefreshCw data-icon="inline-start" />
+              {running ? 'Retesting…' : 'Run secure retest'}
+            </Button>
+            <Button variant="outline" onClick={onDownloadPolicy}>
+              <FileDown data-icon="inline-start" />
+              Policy artifact
+            </Button>
+          </div>
+          {receipt ? (
+            <div className="mt-4 rounded-md border border-emerald-700/25 bg-emerald-50 p-3 text-emerald-950">
+              <div className="flex items-center justify-between gap-3">
+                <p className="flex items-center gap-2 text-xs font-semibold">
+                  <CheckCircle2 className="size-4" />
+                  Secure retest {receipt.verdict}
+                </p>
+                <span className="font-mono text-[9px] uppercase">
+                  {persistence === 'saved' ? 'ledger saved' : persistence}
+                </span>
+              </div>
+              <p className="mt-2 text-[11px] leading-5 text-emerald-950/75">
+                Receipt {receipt.id.slice(0, 8)} proves the narrowed contract against a fresh synthetic fixture.
+              </p>
+            </div>
+          ) : null}
         </div>
 
-        <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border md:grid-cols-[1fr_auto_1fr]">
-          <ComparisonTool label="Vulnerable" tool={scenario.tool} />
-          <div className="hidden items-center bg-card px-2 md:flex">
-            <ArrowRight className="size-4 text-muted-foreground" />
+        <div className="space-y-3">
+          <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border md:grid-cols-[1fr_auto_1fr]">
+            <ComparisonTool label="Vulnerable" tool={scenario.tool} />
+            <div className="hidden items-center bg-card px-2 md:flex">
+              <ArrowRight className="size-4 text-muted-foreground" />
+            </div>
+            <ComparisonTool label="Secure" tool={scenario.secureTool} secure />
           </div>
-          <ComparisonTool label="Secure" tool={scenario.secureTool} secure />
+          <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border lg:grid-cols-2">
+            <CodeComparison
+              label="Before"
+              code={scenario.builder.vulnerableCode}
+              warning
+            />
+            <CodeComparison label="After" code={scenario.builder.secureCode} />
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="flex items-center gap-2 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                <TestTube2 className="size-3.5" />
+                Regression test to add
+              </p>
+              <Badge variant="outline">{assessment.policyAction} until verified</Badge>
+            </div>
+            <p className="mt-2 text-xs leading-5">{scenario.builder.testToAdd}</p>
+          </div>
         </div>
       </div>
     </section>
+  );
+}
+
+function CodeComparison({
+  label,
+  code,
+  warning = false,
+}: {
+  label: string;
+  code: string;
+  warning?: boolean;
+}) {
+  return (
+    <div className="min-w-0 bg-[#101722] p-4 text-slate-100">
+      <div className="flex items-center gap-2 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+        <Code2 className={`size-3.5 ${warning ? 'text-amber-300' : 'text-lime-300'}`} />
+        {label}
+      </div>
+      <pre className="mt-3 overflow-auto whitespace-pre-wrap font-mono text-[10px] leading-5 text-slate-200">
+        {code}
+      </pre>
+    </div>
   );
 }
 

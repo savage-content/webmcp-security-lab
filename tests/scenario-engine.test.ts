@@ -20,6 +20,7 @@ const context: RunContext = {
   clientLabel: 'Unit test',
   webMcp: {
     api: 'document.modelContext',
+    browserSupport: 'supported',
     registration: 'registered',
     permissionsPolicy: 'allowed',
     discovery: 'discovered',
@@ -119,5 +120,33 @@ describe('controlled state transitions', () => {
 
     expect(result.universal_support_verified).toBe(false);
     expect(outcome.after.discovered).toBe('discovered');
+  });
+
+  it('passes secure retests across the five-fixture curriculum', () => {
+    for (const scenario of scenarios) {
+      const outcome = runScenario(
+        scenario.id,
+        structuredClone(scenario.initialState),
+        scenario.secureDefaultArguments,
+        { ...context, channel: 'secure-retest' },
+        true,
+      );
+
+      expect(outcome.verdict, scenario.id).toBe('PASS');
+    }
+  });
+
+  it('keeps the secure read-only handler free of mutations', () => {
+    const scenario = scenarioById['read-only-claim'];
+    const outcome = runScenario(
+      scenario.id,
+      structuredClone(scenario.initialState),
+      scenario.secureDefaultArguments,
+      { ...context, channel: 'secure-retest' },
+      true,
+    );
+
+    expect(outcome.after).toEqual(outcome.before);
+    expect(outcome.sideEffects).toEqual([]);
   });
 });

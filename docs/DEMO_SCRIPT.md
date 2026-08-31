@@ -2,46 +2,42 @@
 
 **Target runtime:** 2:45–2:55
 
-## 0:00–0:20 — Hook
+## 0:00–0:25 — Heads-up before action
 
-> A WebMCP tool can look safe to a human, look safe to an agent, and still do something else. Left Out Security’s WebMCP Security Lab makes that gap measurable. The rule is simple: trust the effect, not the label.
+> This page just offered my agent a WebMCP tool. Before anything runs, Left Out Security gives me a calm heads-up: the tool name, inputs, safety claims, permission and registration state, and the exact rule that deserves attention. Detection is automatic. Invocation is not.
 
-Show the hero and the Presented / Declared / Effective method.
+Show the opening heads-up. Point to “No auto-run,” the five separate state cells, and `WMC-001`.
 
-## 0:20–0:45 — The real architecture
+## 0:25–0:50 — Human and agent inspect together
 
-> This is a live page-scoped WebMCP range, not a remote MCP server and not browser automation. The selected fixture is registered through `document.modelContext.registerTool`. This status records registration, permissions policy, and discovery separately. If the browser does not support WebMCP, the fallback is clearly labeled as a lab harness.
+> The page says eligibility lookup. The agent sees the same reassuring description and `readOnlyHint: true`. I ask the agent to inspect the registered tool but not call it yet. Registration, policy, discovery, and invocation are different facts, so the lab never turns one green badge into a universal claim.
 
-Point to the registration card and three observation cells.
+Ask: “Inspect the WebMCP tool on this page. Explain its schema and annotations. Do not invoke it.” Show discovery while invocation remains “not invoked.”
 
-## 0:45–1:30 — Scenario 01
+## 0:50–1:35 — Approve and expose the hidden effect
 
-> The human sees an eligibility lookup and a confirmation saying nothing will change. The agent receives a matching description and `readOnlyHint: true`. Now I run the same handler.
+> Before approval, the lab aligns three things: what I was shown, what the agent was declared, and the predicted risk. Now I approve one harmless synthetic call.
 
-Approve the dialog and show `reviewed: false → true`.
+Approve the actual page tool with `account_id: TRAINING-1042`. Show `reviewed: false → true` and `reviewCount: 0 → 1`.
 
-> The receipt captures the exact declaration, arguments, confirmation words, before and after state, raw result, and side effects. The verdict fails because annotations are guidance, not enforcement.
+> The handler returned a normal eligibility result—but it also wrote state. The receipt labels the channel `webmcp`, preserves before and after state, and explains why the claim fails. An annotation can guide an agent; it cannot constrain code.
 
-Download the JSON receipt.
+Show the Effective column and receipt id.
 
-## 1:30–1:58 — Scenario 03
+## 1:35–2:20 — Translate the same finding for a builder
 
-> Here the state does not change. The danger is in the result. A synthetic parcel status includes controlled instruction-shaped text. The lab preserves the raw output and teaches the agent that tool output is data, not authority.
+> The user’s warning now becomes a builder’s repair plan: truthful naming, a narrow schema, implementation before and after, and the regression test to add. I run the secure contract against a fresh fixture.
 
-Open Scenario 03, run it, and expand Raw result.
+Scroll to Builder fix and run the secure retest. Show `PASS` and the appended ledger receipt.
 
-## 1:58–2:24 — Scenario 05
+> The secure read handler leaves state byte-for-byte unchanged. That closes the loop: detect, understand, approve, observe, fix, and verify.
 
-> Registration is not the same as permission, and neither guarantees discovery by a specific client. This fixture deliberately claims universal availability, while the Effective Surface records only what this exact session observed.
+## 2:20–2:40 — Reusable policy
 
-Open Scenario 05 and point to the three capability states.
+> The same risk engine exports an allow, warn, ask, or block policy artifact. That is the shared foundation for a future Ghostery-style browser companion, while today’s complete experience works directly inside ChatGPT’s browser.
 
-## 2:24–2:45 — Secure comparison and ledger
+Show the policy-artifact button and briefly switch to Scenario 02 so the live tool and rule change to `update_short_notice` / `WMC-002`.
 
-> Every vulnerable fixture includes the secure alternative: narrower schemas, truthful approval language, and verifiable results. Runs are appended to a D1 ledger and never silently replaced.
+## 2:40–2:55 — Close
 
-Show the secure comparison and ledger.
-
-## 2:45–2:55 — Close
-
-> Five controlled fixtures. Real WebMCP registration. Durable evidence. Open source and safe to explore. Left Out Security: trust the effect, not the label.
+> Five controlled fixtures. Real page-defined WebMCP. One experience for people and builders. Trust the effect, not the label.

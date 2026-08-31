@@ -15,7 +15,6 @@ import {
   RefreshCw,
   ScanSearch,
   ShieldAlert,
-  TerminalSquare,
 } from 'lucide-react';
 import {
   useCallback,
@@ -40,6 +39,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { createEvidenceReceipt, downloadEvidenceReceipt } from '@/lib/lab/evidence';
 import { runScenario } from '@/lib/lab/engine';
+import { assessScenarioRisk, downloadPolicyArtifact } from '@/lib/lab/risk';
 import {
   defaultScenarioId,
   scenarioById,
@@ -51,9 +51,13 @@ import type {
   InvocationChannel,
   JsonValue,
   ScenarioId,
-  ToolDeclaration,
   WebMcpStatus,
 } from '@/lib/lab/types';
+import {
+  getModelContext,
+  observeToolsPermission,
+  registerPageTool,
+} from '@/lib/lab/webmcp';
 
 import {
   EvidencePanel,
@@ -62,35 +66,12 @@ import {
 } from './evidence-panel';
 import { LedgerPanel } from './ledger-panel';
 import { PresentedFixture } from './presented-fixture';
-
-interface RegisteredWebMcpTool {
-  name: string;
-  title?: string;
-  description: string;
-  inputSchema?: Record<string, unknown>;
-  annotations?: {
-    readOnlyHint?: boolean;
-    untrustedContentHint?: boolean;
-  };
-}
-
-interface ModelContextApi {
-  registerTool: (
-    tool: ToolDeclaration & {
-      execute: (input: unknown, client?: { signal?: AbortSignal }) => Promise<string>;
-    },
-    options?: { signal?: AbortSignal },
-  ) => Promise<void> | void;
-  getTools?: () => Promise<RegisteredWebMcpTool[]>;
-  executeTool?: (
-    tool: RegisteredWebMcpTool,
-    input: string,
-    options?: { signal?: AbortSignal },
-  ) => Promise<string | null>;
-}
+import { HeadsUpPanel } from './heads-up-panel';
+import { PreflightComparison, RiskRules } from './risk-panel';
 
 type StateMap = Record<ScenarioId, Record<string, JsonValue>>;
 type ReceiptMap = Partial<Record<ScenarioId, EvidenceReceipt>>;
+type ConfirmationMode = 'lab-harness' | 'webmcp-self-test';
 const SESSION_STORAGE_KEY = 'left-out-webmcp-lab-session';
 
 const surfaceDefinitions = [
@@ -116,6 +97,7 @@ const surfaceDefinitions = [
 
 const initialWebMcpStatus: WebMcpStatus = {
   api: 'document.modelContext',
+  browserSupport: 'checking',
   registration: 'checking',
   permissionsPolicy: 'unknown',
   discovery: 'not-checked',
@@ -130,34 +112,6 @@ function buildInitialStateMap(): StateMap {
       structuredClone(scenario.initialState),
     ]),
   ) as StateMap;
-}
-
-function getModelContext(): ModelContextApi | undefined {
-  if (typeof document === 'undefined') return undefined;
-  return (document as Document & { modelContext?: ModelContextApi }).modelContext;
-}
-
-function getPermissionState(): WebMcpStatus['permissionsPolicy'] {
-  if (typeof document === 'undefined') return 'unknown';
-  const policy = (
-    document as Document & {
-      permissionsPolicy?: { allowsFeature: (feature: string) => boolean };
-      featurePolicy?: { allowsFeature: (feature: string) => boolean };
-    }
-  ).permissionsPolicy ??
-    (
-      document as Document & {
-        featurePolicy?: { allowsFeature: (feature: string) => boolean };
-      }
-    ).featurePolicy;
-
-  if (!policy?.allowsFeature) return 'unknown';
-
-  try {
-    return policy.allowsFeature('tools') ? 'allowed' : 'blocked';
-  } catch {
-    return 'unknown';
-  }
 }
 
 function normalizeArguments(input: unknown): Record<string, JsonValue> {
@@ -206,7 +160,10 @@ export function LabApp() {
   const [stateMap, setStateMap] = useState<StateMap>(buildInitialStateMap);
   const stateMapRef = useRef(stateMap);
   const [receiptMap, setReceiptMap] = useState<ReceiptMap>({});
+  const [secureReceiptMap, setSecureReceiptMap] = useState<ReceiptMap>({});
   const [persistence, setPersistence] = useState<PersistenceState>('idle');
+  const [securePersistence, setSecurePersistence] =
+    useState<PersistenceState>('idle');
   const [ledger, setLedger] = useState<EvidenceReceipt[]>([]);
   const [ledgerLoading, setLedgerLoading] = useState(true);
   const [ledgerUnavailable, setLedgerUnavailable] = useState(false);
@@ -217,7 +174,10 @@ export function LabApp() {
     stateText(scenarioById['over-broad-schema'].initialState.notice),
   );
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmationMode, setConfirmationMode] =
+    useState<ConfirmationMode>('lab-harness');
   const [running, setRunning] = useState(false);
+  const [secureRunning, setSecureRunning] = useState(false);
   const [executionMessage, setExecutionMessage] = useState('');
   const selfTestPendingRef = useRef(false);
   const [sessionId, setSessionId] = useState('');
@@ -226,6 +186,8 @@ export function LabApp() {
   const scenario = scenarioById[selectedId];
   const scenarioState = stateMap[selectedId];
   const latestReceipt = receiptMap[selectedId];
+  const latestSecureReceipt = secureReceiptMap[selectedId];
+  const riskAssessment = useMemo(() => assessScenarioRisk(scenario), [scenario]);
 
   const commitWebMcp = useCallback(
     (
@@ -233,11 +195,10 @@ export function LabApp() {
         | WebMcpStatus
         | ((previous: WebMcpStatus) => WebMcpStatus),
     ) => {
-      setWebMcp((previous) => {
-        const next = typeof update === 'function' ? update(previous) : update;
-        webMcpRef.current = next;
-        return next;
-      });
+      const previous = webMcpRef.current;
+      const next = typeof update === 'function' ? update(previous) : update;
+      webMcpRef.current = next;
+      setWebMcp(next);
     },
     [],
   );
@@ -415,7 +376,7 @@ export function LabApp() {
           ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 80);
 
-      return JSON.stringify({
+      return {
         lab: 'Left Out Security WebMCP Security Lab',
         scenario: scenario.id,
         result: outcome.rawResult,
@@ -424,7 +385,7 @@ export function LabApp() {
           persisted,
           verdict: outcome.verdict,
         },
-      });
+      };
     },
     [clientLabel, scenario],
   );
@@ -437,37 +398,13 @@ export function LabApp() {
   useEffect(() => {
     const controller = new AbortController();
     const modelContext = getModelContext();
-    const permissionsPolicy = getPermissionState();
-
-    if (!modelContext?.registerTool) {
-      commitWebMcp({
-        api: 'document.modelContext',
-        registration: 'unsupported',
-        permissionsPolicy,
-        discovery: 'unsupported',
-        detail:
-          'document.modelContext is not exposed in this browser. The lab harness remains available, but is not represented as WebMCP.',
-        discoveredToolNames: [],
-      });
-      return () => controller.abort();
-    }
-
-    if (permissionsPolicy === 'blocked') {
-      commitWebMcp({
-        api: 'document.modelContext',
-        registration: 'denied',
-        permissionsPolicy,
-        discovery: 'not-checked',
-        detail: 'The browser exposes WebMCP, but the tools permissions policy blocks registration.',
-        discoveredToolNames: [],
-      });
-      return () => controller.abort();
-    }
+    const permissionObservation = observeToolsPermission();
 
     commitWebMcp({
       api: 'document.modelContext',
+      browserSupport: modelContext?.registerTool ? 'supported' : 'unsupported',
       registration: 'registering',
-      permissionsPolicy,
+      permissionsPolicy: permissionObservation,
       discovery: 'not-checked',
       detail: `Registering ${scenario.tool.name} on this document.`,
       discoveredToolNames: [],
@@ -477,6 +414,16 @@ export function LabApp() {
       ...scenario.tool,
       execute: async (input: unknown) => {
         const selfTest = selfTestPendingRef.current;
+        if (!selfTest) {
+          commitWebMcp((current) => ({
+            ...current,
+            discovery: 'discovered',
+            detail: `${scenario.tool.name} was invoked through WebMCP. That proves this client discovered this tool for this call.`,
+            discoveredToolNames: Array.from(
+              new Set([...current.discoveredToolNames, scenario.tool.name]),
+            ),
+          }));
+        }
         return invokeRef.current(
           input,
           selfTest ? 'webmcp-self-test' : 'webmcp',
@@ -497,29 +444,14 @@ export function LabApp() {
       },
     };
 
-    Promise.resolve(
-      modelContext.registerTool(registeredTool, { signal: controller.signal }),
-    )
-      .then(() => {
-        if (controller.signal.aborted) return;
-        commitWebMcp((current) => ({
-          ...current,
-          registration: 'registered',
-          detail: `${scenario.tool.name} is registered on document.modelContext. Client discovery is still a separate observation.`,
-        }));
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) return;
-        const denied =
-          error instanceof DOMException && error.name === 'NotAllowedError';
-        commitWebMcp((current) => ({
-          ...current,
-          registration: denied ? 'denied' : 'error',
-          detail: denied
-            ? 'Registration was denied by browser policy.'
-            : `Registration failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        }));
-      });
+    void registerPageTool({
+      modelContext,
+      tool: registeredTool,
+      signal: controller.signal,
+      permissionObservation,
+    }).then((status) => {
+      if (!controller.signal.aborted) commitWebMcp(status);
+    });
 
     return () => controller.abort();
   }, [commitWebMcp, scenario]);
@@ -543,14 +475,143 @@ export function LabApp() {
     }
   }, [buildArguments, invokeScenario, scenario.presented.confirmationCopy]);
 
-  const discoverAndInvoke = useCallback(async () => {
+  const runWebMcpSelfTest = useCallback(async () => {
+    setConfirmOpen(false);
     const modelContext = getModelContext();
     if (!modelContext?.getTools || !modelContext.executeTool) {
+      setExecutionMessage(
+        'This browser does not expose the optional in-page WebMCP self-test. Ask the browser agent to invoke the registered tool, or use the clearly labeled harness.',
+      );
+      return;
+    }
+
+    setRunning(true);
+    try {
+      const tools = await modelContext.getTools();
+      const names = tools.map((tool) => tool.name);
+      const selectedTool = tools.find((tool) => tool.name === scenario.tool.name);
+      commitWebMcp((current) => ({
+        ...current,
+        discovery: selectedTool ? 'discovered' : 'not-discovered',
+        detail: selectedTool
+          ? `${scenario.tool.name} was discovered by the same-origin in-page API. Invocation still requires this explicit approval.`
+          : `${scenario.tool.name} was registered but not returned to this in-page caller.`,
+        discoveredToolNames: names,
+      }));
+
+      if (!selectedTool) return;
+      selfTestPendingRef.current = true;
+      await modelContext.executeTool(
+        selectedTool,
+        JSON.stringify(buildArguments()),
+      );
+    } catch (error) {
+      setExecutionMessage(
+        `WebMCP self-test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    } finally {
+      selfTestPendingRef.current = false;
+      setRunning(false);
+    }
+  }, [buildArguments, commitWebMcp, scenario.tool.name]);
+
+  async function runSecureRetest() {
+    setSecureRunning(true);
+    setSecurePersistence('saving');
+    try {
+      const now = new Date().toISOString();
+      const context = {
+        channel: 'secure-retest' as const,
+        now,
+        origin: window.location.origin,
+        browser: {
+          userAgent: navigator.userAgent ?? '',
+          language: navigator.language ?? '',
+          platform:
+            (
+              navigator as Navigator & {
+                userAgentData?: { platform?: string };
+              }
+            ).userAgentData?.platform ?? navigator.platform ?? '',
+        },
+        clientLabel,
+        webMcp: webMcpRef.current,
+        confirmation: {
+          presentedCopy: `Run the narrowed ${scenario.secureTool.name} contract against a fresh synthetic fixture.`,
+          known: true,
+          approved: true,
+          source: 'builder-retest' as const,
+        },
+      };
+      const outcome = runScenario(
+        scenario.id,
+        structuredClone(scenario.initialState),
+        scenario.secureDefaultArguments,
+        context,
+        true,
+      );
+      const receipt = createEvidenceReceipt({
+        scenario,
+        declaration: scenario.secureTool,
+        argumentsValue: scenario.secureDefaultArguments,
+        sessionId: sessionIdRef.current || getOrCreateSessionId(),
+        context,
+        outcome,
+      });
+      setSecureReceiptMap((current) => ({
+        ...current,
+        [scenario.id]: receipt,
+      }));
+
+      let persisted = false;
+      try {
+        const response = await fetch('/api/evidence', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Lab-Session': receipt.sessionId,
+          },
+          body: JSON.stringify(receipt),
+        });
+        if (!response.ok) throw new Error('Evidence append failed.');
+        const body = (await response.json()) as {
+          receipt: EvidenceReceipt;
+          persisted: boolean;
+        };
+        persisted = body.persisted;
+        setSecurePersistence('saved');
+        setLedgerUnavailable(false);
+        setLedger((current) => [
+          body.receipt,
+          ...current.filter((item) => item.id !== body.receipt.id),
+        ]);
+      } catch {
+        setSecurePersistence('error');
+      }
+
+      setExecutionMessage(
+        persisted
+          ? `Secure retest ${receipt.id.slice(0, 8)} passed and was appended to the ledger.`
+          : `Secure retest ${receipt.id.slice(0, 8)} passed locally; durable storage was unavailable.`,
+      );
+      window.setTimeout(() => {
+        document
+          .getElementById('builder')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 80);
+    } finally {
+      setSecureRunning(false);
+    }
+  }
+
+  const checkDiscovery = useCallback(async () => {
+    const modelContext = getModelContext();
+    if (!modelContext?.getTools) {
       commitWebMcp((current) => ({
         ...current,
         discovery: 'unsupported',
         detail:
-          'This browser does not expose the in-page getTools/executeTool path. No client support is inferred.',
+          'This browser does not expose the optional in-page getTools() check. External client discovery is not inferred.',
       }));
       return;
     }
@@ -569,24 +630,16 @@ export function LabApp() {
         discoveredToolNames: names,
       };
       commitWebMcp(nextStatus);
-
-      if (!selectedTool) return;
-      selfTestPendingRef.current = true;
-      await modelContext.executeTool(
-        selectedTool,
-        JSON.stringify(buildArguments()),
-      );
     } catch (error) {
       commitWebMcp((current) => ({
         ...current,
         discovery: 'error',
-        detail: `Discovery or self-test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        detail: `Discovery check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       }));
     } finally {
-      selfTestPendingRef.current = false;
       setRunning(false);
     }
-  }, [buildArguments, commitWebMcp, scenario.tool.name]);
+  }, [commitWebMcp, scenario.tool.name]);
 
   const resetScenario = useCallback(() => {
     const nextStateMap = {
@@ -600,7 +653,13 @@ export function LabApp() {
       delete next[scenario.id];
       return next;
     });
+    setSecureReceiptMap((current) => {
+      const next = { ...current };
+      delete next[scenario.id];
+      return next;
+    });
     setPersistence('idle');
+    setSecurePersistence('idle');
     setExecutionMessage(
       'Fixture state reset. Existing evidence receipts were preserved.',
     );
@@ -608,17 +667,6 @@ export function LabApp() {
       setNoticeDraft(stateText(scenario.initialState.notice));
     }
   }, [scenario]);
-
-  const registrationTone = useMemo(() => {
-    if (webMcp.registration === 'registered') return 'good';
-    if (
-      webMcp.registration === 'unsupported' ||
-      webMcp.registration === 'denied' ||
-      webMcp.registration === 'error'
-    )
-      return 'warn';
-    return 'muted';
-  }, [webMcp.registration]);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -636,9 +684,10 @@ export function LabApp() {
             </div>
           </a>
           <nav className="hidden items-center gap-6 md:flex" aria-label="Primary navigation">
-            <a className="nav-link" href="#range">Run the range</a>
+            <a className="nav-link" href="#top">Heads-up</a>
+            <a className="nav-link" href="#range">Guided test</a>
+            <a className="nav-link" href="#builder">Builder fix</a>
             <a className="nav-link" href="#ledger">Evidence ledger</a>
-            <a className="nav-link" href="#safety">Safety</a>
           </nav>
           <div className="flex items-center gap-3">
             <Badge
@@ -676,9 +725,9 @@ export function LabApp() {
               <span className="block text-muted-foreground">not the label.</span>
             </h1>
             <p className="mt-7 max-w-2xl text-pretty text-base leading-7 text-muted-foreground lg:text-lg">
-              A controlled test range for proving whether the interface a human
-              sees, the capability an agent receives, and the behavior a tool
-              performs actually match.
+              A calm heads-up before an agent acts: see the tool a page offered,
+              the authority its schema grants, the safety claims it makes, and
+              the rule that deserves your attention.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Button
@@ -687,7 +736,7 @@ export function LabApp() {
                 onClick={() => document.getElementById('range')?.scrollIntoView({ behavior: 'smooth' })}
               >
                 <FlaskConical data-icon="inline-start" />
-                Enter the range
+                Inspect the detected tool
                 <ArrowRight data-icon="inline-end" />
               </Button>
               <span className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -697,30 +746,18 @@ export function LabApp() {
             </div>
           </div>
 
-          <div className="self-end rounded-xl border border-foreground bg-card p-3 shadow-[6px_6px_0_0_var(--foreground)]">
-            <div className="flex items-center justify-between border-b border-border px-3 py-2">
-              <div className="flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                <TerminalSquare className="size-3.5" aria-hidden="true" />
-                Range status
-              </div>
-              <span className="font-mono text-[9px] text-muted-foreground">SESSION / LIVE</span>
-            </div>
-            <div className="grid gap-2 p-3 sm:grid-cols-3">
-              <StatusMetric value="05" label="Fixtures" />
-              <StatusMetric value="ON" label="Safe mode" tone="good" />
-              <StatusMetric
-                value={
-                  webMcp.registration === 'registered'
-                    ? 'READY'
-                    : webMcp.registration === 'unsupported'
-                      ? 'N/A'
-                      : '…'
-                }
-                label="WebMCP"
-                tone={registrationTone}
-              />
-            </div>
-          </div>
+          <HeadsUpPanel
+            scenario={scenario}
+            assessment={riskAssessment}
+            webMcp={webMcp}
+            receipt={latestReceipt}
+            secureReceipt={latestSecureReceipt}
+            onInspect={() =>
+              document
+                .getElementById('range')
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }
+          />
         </div>
       </section>
 
@@ -778,6 +815,9 @@ export function LabApp() {
                     onClick={() => {
                       setSelectedId(item.id);
                       setPersistence(receiptMap[item.id] ? 'saved' : 'idle');
+                      setSecurePersistence(
+                        secureReceiptMap[item.id] ? 'saved' : 'idle',
+                      );
                       setExecutionMessage('');
                     }}
                   >
@@ -841,6 +881,35 @@ export function LabApp() {
                   </div>
                 </div>
 
+                <div className="mt-8 rounded-xl border border-border bg-background p-4 md:p-5">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                    <div>
+                      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Guided human + agent flow
+                      </p>
+                      <h3 className="mt-1 text-lg font-semibold tracking-tight">
+                        Know what is offered before anything runs.
+                      </h3>
+                    </div>
+                    <p className="max-w-lg text-xs leading-5 text-muted-foreground">
+                      Detection and registration are automatic. Invocation is not. Ask the agent to inspect first, then approve only this harmless synthetic fixture.
+                    </p>
+                  </div>
+                  <div className="mt-4 grid gap-1.5 sm:grid-cols-5">
+                    <JourneyStep number="1" label="Browser support" done={webMcp.browserSupport === 'supported'} />
+                    <JourneyStep number="2" label="Tool registered" done={webMcp.registration === 'registered'} />
+                    <JourneyStep number="3" label="Client discovers" done={webMcp.discovery === 'discovered'} />
+                    <JourneyStep number="4" label="Effect observed" done={Boolean(latestReceipt)} />
+                    <JourneyStep number="5" label="Fix verified" done={latestSecureReceipt?.verdict === 'PASS'} />
+                  </div>
+                  <div className="mt-4">
+                    <PreflightComparison scenario={scenario} assessment={riskAssessment} />
+                  </div>
+                  <div className="mt-3">
+                    <RiskRules assessment={riskAssessment} />
+                  </div>
+                </div>
+
                 <div className="mt-8 grid gap-5 xl:grid-cols-2">
                   <div>
                     <SurfaceHeader number="01" label="Presented surface" icon={<Activity />} />
@@ -891,10 +960,10 @@ export function LabApp() {
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                     <div className="max-w-2xl">
                       <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Invoke the same scenario handler
+                        Choose how to verify
                       </p>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        The WebMCP path uses the tool registered above. The lab harness is an explicit fallback for unsupported browsers and is never presented as agent discovery.
+                        Discovery checks never execute the tool. A genuine WebMCP self-test and the fallback harness both require explicit approval and are labeled separately in evidence.
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -904,22 +973,41 @@ export function LabApp() {
                       </Button>
                       <Button
                         variant="secondary"
-                        onClick={() => void discoverAndInvoke()}
+                        onClick={() => void checkDiscovery()}
                         disabled={running || webMcp.registration !== 'registered'}
                       >
                         <ScanSearch data-icon="inline-start" />
-                        Discover & invoke
+                        Check discovery only
                       </Button>
-                      <Button onClick={() => setConfirmOpen(true)} disabled={running}>
+                      <Button
+                        onClick={() => {
+                          setConfirmationMode('webmcp-self-test');
+                          setConfirmOpen(true);
+                        }}
+                        disabled={running || webMcp.registration !== 'registered'}
+                      >
+                        <Radio data-icon="inline-start" />
+                        WebMCP self-test
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setConfirmationMode('lab-harness');
+                          setConfirmOpen(true);
+                        }}
+                        disabled={running}
+                      >
                         <FlaskConical data-icon="inline-start" />
-                        {running ? 'Running…' : 'Run via lab harness'}
+                        {running ? 'Running…' : 'Fallback harness'}
                       </Button>
                     </div>
                   </div>
-                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                    <ObservationCell label="Browser API" value={webMcp.browserSupport} />
                     <ObservationCell label="Registration" value={webMcp.registration} />
                     <ObservationCell label="Policy" value={webMcp.permissionsPolicy} />
                     <ObservationCell label="Discovery" value={webMcp.discovery} />
+                    <ObservationCell label="Invocation" value={latestReceipt ? 'observed' : 'not invoked'} />
                   </div>
                   {executionMessage ? (
                     <output aria-live="polite" className="mt-4 flex items-start gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground">
@@ -936,7 +1024,17 @@ export function LabApp() {
                 persistence={persistence}
                 onDownload={downloadEvidenceReceipt}
               />
-              <SecureComparison scenario={scenario} />
+              <SecureComparison
+                scenario={scenario}
+                assessment={riskAssessment}
+                receipt={latestSecureReceipt}
+                persistence={securePersistence}
+                running={secureRunning}
+                onRetest={() => void runSecureRetest()}
+                onDownloadPolicy={() =>
+                  downloadPolicyArtifact(scenario, riskAssessment)
+                }
+              />
             </div>
           </div>
         </div>
@@ -994,23 +1092,42 @@ export function LabApp() {
       </footer>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="sm:max-w-3xl">
           <AlertDialogHeader>
             <AlertDialogMedia className="bg-amber-100 text-amber-900">
               <AlertTriangle />
             </AlertDialogMedia>
-            <AlertDialogTitle>{scenario.presented.confirmationTitle}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {confirmationMode === 'webmcp-self-test'
+                ? `Approve WebMCP self-test: ${scenario.presented.confirmationTitle}`
+                : scenario.presented.confirmationTitle}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {scenario.presented.confirmationCopy}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <PreflightComparison
+            scenario={scenario}
+            assessment={riskAssessment}
+            compact
+          />
           <div className="rounded-md border border-dashed border-border bg-muted/50 p-3 text-xs leading-5 text-muted-foreground">
-            Lab note: this approval copy is evidence. The handler’s actual effect may differ.
+            {confirmationMode === 'webmcp-self-test'
+              ? 'This calls the selected tool through document.modelContext.executeTool() only after approval. It is recorded as a WebMCP self-test.'
+              : 'This uses the explicit fallback harness. It is useful for education, but it is never reported as WebMCP discovery or invocation.'}
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void runManualHarness()}>
-              {scenario.presented.actionLabel}
+            <AlertDialogAction
+              onClick={() =>
+                void (confirmationMode === 'webmcp-self-test'
+                  ? runWebMcpSelfTest()
+                  : runManualHarness())
+              }
+            >
+              {confirmationMode === 'webmcp-self-test'
+                ? 'Approve WebMCP run'
+                : scenario.presented.actionLabel}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1031,12 +1148,30 @@ function SurfaceHeader({ number, label, icon }: { number: string; label: string;
   );
 }
 
-function StatusMetric({ value, label, tone = 'muted' }: { value: string; label: string; tone?: 'good' | 'warn' | 'muted' }) {
-  const toneClass = tone === 'good' ? 'text-emerald-700' : tone === 'warn' ? 'text-amber-800' : '';
+function JourneyStep({
+  number,
+  label,
+  done,
+}: {
+  number: string;
+  label: string;
+  done: boolean;
+}) {
   return (
-    <div className="rounded-md border border-border bg-background p-3">
-      <div className={`font-mono text-lg font-semibold tracking-tight ${toneClass}`}>{value}</div>
-      <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
+    <div
+      className={`rounded-md border p-3 ${
+        done
+          ? 'border-emerald-700/25 bg-emerald-50'
+          : 'border-border bg-card'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono text-[9px] text-muted-foreground">{number}</span>
+        <span
+          className={`size-1.5 rounded-full ${done ? 'bg-emerald-600' : 'bg-muted-foreground/40'}`}
+        />
+      </div>
+      <div className="mt-3 text-[11px] font-semibold leading-4">{label}</div>
     </div>
   );
 }

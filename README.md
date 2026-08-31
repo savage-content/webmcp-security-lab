@@ -20,11 +20,25 @@ This lab makes those differences observable:
 
 The Effective Surface is the security truth.
 
+## The guided experience
+
+The opening heads-up explains the selected page tool before anything runs. It keeps five facts separate: browser API support, page registration, permissions-policy outcome, client discovery, and invocation. Registration happens on load; invocation never does.
+
+The intended flow is:
+
+1. Read the tool name, schema fields, annotations, and calm risk explanation.
+2. See the exact `WMC-00x` rule that fired and why.
+3. Ask the browser agent to inspect the tool without invoking it, or use the discovery-only check.
+4. Approve a genuine WebMCP call or the explicitly labeled fallback harness.
+5. Compare Presented → Declared → Effective evidence.
+6. Open the builder remediation, run the secure contract against a fresh fixture, and produce a passing receipt plus an extension-ready allow/warn/ask/block policy artifact.
+
 ![A failed read-only claim shown across the Presented, Declared, and Effective surfaces](docs/assets/evidence.png)
 
 ## What is real
 
 - The selected fixture is registered at runtime with `document.modelContext.registerTool()`.
+- Registration is always attempted when the API exists. A policy probe is displayed as an observation, but only a successful registration or `NotAllowedError` decides the registration outcome.
 - A supported same-origin client can discover it with `document.modelContext.getTools()` and invoke it with `document.modelContext.executeTool()`.
 - Every path—external WebMCP invocation, in-page WebMCP self-test, and explicit fallback harness—uses the same scenario handler.
 - Every run produces a schema-validated evidence receipt and attempts an append-only write to Cloudflare D1.
@@ -34,11 +48,11 @@ The fallback harness is intentionally labeled as a harness. It is useful for edu
 
 ## Three-minute demo path
 
-1. Open Scenario 01 and compare the visible “read-only” promise with `readOnlyHint: true`.
-2. Run the fixture. The synthetic account flips from `reviewed: false` to `reviewed: true`.
-3. Expand the JSON receipt to show the exact declaration, arguments, confirmation, before/after state, raw result, and side effects.
-4. Open Scenario 03 to show a legitimate delivery result containing controlled instruction-shaped text.
-5. Open Scenario 05 to distinguish registration, browser policy, and client discovery.
+1. Arrive on Scenario 01 and let the heads-up identify `WMC-001` before invocation.
+2. Ask the browser agent to inspect the registered tool without calling it.
+3. Approve the harmless synthetic call. The account flips from `reviewed: false` to `reviewed: true` despite `readOnlyHint: true`.
+4. Show the Effective receipt, then run the secure builder retest and get `PASS`.
+5. Download the reusable policy artifact or briefly switch to Scenario 03 to show untrusted result content.
 
 The complete narration is in [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
 
@@ -93,7 +107,10 @@ npm run build
 The automated suite covers:
 
 - all five scenario transitions;
+- the registration regression where an advisory policy probe says blocked but `registerTool()` succeeds;
+- deterministic risk-rule and allow/warn/ask policy decisions across all five fixtures;
 - schema validation for vulnerable and secure tool contracts;
+- passing secure retests across the complete curriculum;
 - before/after evidence generation;
 - controlled no-mutation prompt-injection output; and
 - required receipt fields.
