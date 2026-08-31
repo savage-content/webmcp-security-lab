@@ -92,6 +92,7 @@ export async function registerPageTool({
       registration: 'unsupported',
       permissionsPolicy: permissionObservation,
       discovery: 'unsupported',
+      invocation: 'not-observed',
       detail:
         'This browser does not expose document.modelContext. The educational harness is available, but it is not WebMCP.',
       discoveredToolNames: [],
@@ -108,6 +109,7 @@ export async function registerPageTool({
       // enumeration, which has varied across experimental clients.
       permissionsPolicy: 'allowed',
       discovery: 'not-checked',
+      invocation: 'not-observed',
       detail:
         permissionObservation === 'blocked'
           ? `${tool.name} registered successfully. The earlier policy probe was advisory and contradicted by the authoritative registration result.`
@@ -126,6 +128,7 @@ export async function registerPageTool({
       registration: denied ? 'denied' : 'error',
       permissionsPolicy: denied ? 'blocked' : permissionObservation,
       discovery: 'not-checked',
+      invocation: 'not-observed',
       detail: denied
         ? 'The browser rejected registerTool() with NotAllowedError, so registration is blocked by policy.'
         : `Registration failed: ${error instanceof Error ? error.message : 'Unknown error'}`,

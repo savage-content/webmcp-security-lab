@@ -63,6 +63,7 @@ describe('WebMCP registration truth', () => {
     expect(registerTool).toHaveBeenCalledOnce();
     expect(result.registration).toBe('registered');
     expect(result.permissionsPolicy).toBe('allowed');
+    expect(result.invocation).toBe('not-observed');
     expect(result.detail).toContain('advisory');
   });
 
@@ -93,5 +94,6 @@ describe('WebMCP registration truth', () => {
     expect(result.browserSupport).toBe('unsupported');
     expect(result.registration).toBe('unsupported');
     expect(result.discovery).toBe('unsupported');
+    expect(result.invocation).toBe('not-observed');
   });
 });

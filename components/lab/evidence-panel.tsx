@@ -185,6 +185,7 @@ export function EvidencePanel({
 export function SecureComparison({
   scenario,
   assessment,
+  confirmationCopy,
   receipt,
   persistence,
   running,
@@ -193,12 +194,15 @@ export function SecureComparison({
 }: {
   scenario: ScenarioDefinition;
   assessment: RiskAssessment;
+  confirmationCopy: string;
   receipt?: EvidenceReceipt;
   persistence: PersistenceState;
   running: boolean;
   onRetest: () => void;
   onExportPolicy: () => void;
 }) {
+  const securePassed = receipt?.verdict === 'PASS';
+
   return (
     <section
       id="builder"
@@ -231,6 +235,14 @@ export function SecureComparison({
               </li>
             ))}
           </ol>
+          <div className="mt-5 rounded-md border border-border bg-card/80 p-3">
+            <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Retest approval scope
+            </p>
+            <p className="mt-2 text-xs font-medium leading-5">
+              “{confirmationCopy}”
+            </p>
+          </div>
           <div className="mt-5 flex flex-wrap gap-2">
             <Button onClick={onRetest} disabled={running}>
               <RefreshCw data-icon="inline-start" />
@@ -242,19 +254,31 @@ export function SecureComparison({
             </Button>
           </div>
           {receipt ? (
-            <div className="mt-4 rounded-md border border-emerald-700/25 bg-emerald-50 p-3 text-emerald-950">
+            <div
+              className={`mt-4 rounded-md border p-3 ${
+                securePassed
+                  ? 'border-emerald-700/25 bg-emerald-50 text-emerald-950'
+                  : 'border-amber-700/30 bg-amber-50 text-amber-950'
+              }`}
+            >
               <div className="flex items-center justify-between gap-3">
                 <p className="flex items-center gap-2 text-xs font-semibold">
-                  <CheckCircle2 className="size-4" />
+                  {securePassed ? (
+                    <CheckCircle2 className="size-4" />
+                  ) : (
+                    <AlertTriangle className="size-4" />
+                  )}
                   Secure retest {receipt.verdict}
                 </p>
                 <span className="font-mono text-[9px] uppercase">
                   {persistence === 'saved' ? 'ledger saved' : persistence}
                 </span>
               </div>
-              <p className="mt-2 text-[11px] leading-5 text-emerald-950/75">
-                Receipt {receipt.id.slice(0, 8)} proves the narrowed contract
-                against a fresh synthetic fixture.
+              <p className="mt-2 text-[11px] leading-5 opacity-75">
+                Receipt {receipt.id.slice(0, 8)}{' '}
+                {securePassed
+                  ? 'satisfies the scenario-specific safety invariants against a fresh synthetic fixture.'
+                  : 'does not satisfy every scenario-specific safety invariant.'}
               </p>
             </div>
           ) : null}

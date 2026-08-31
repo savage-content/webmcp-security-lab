@@ -140,6 +140,11 @@ export function PresentedFixture({
           </div>
           <div className="space-y-2">
             <CapabilityRow
+              label="Browser API support"
+              value={webMcp.browserSupport}
+              good={webMcp.browserSupport === 'supported'}
+            />
+            <CapabilityRow
               label="Registered on page"
               value={webMcp.registration}
               good={webMcp.registration === 'registered'}
@@ -153,6 +158,11 @@ export function PresentedFixture({
               label="Discovered here"
               value={webMcp.discovery}
               good={webMcp.discovery === 'discovered'}
+            />
+            <CapabilityRow
+              label="Invocation observed"
+              value={webMcp.invocation}
+              good={webMcp.invocation === 'observed'}
             />
           </div>
           <p className="mt-4 flex items-start gap-2 text-[11px] leading-5 text-muted-foreground">

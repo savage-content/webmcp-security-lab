@@ -12,7 +12,7 @@ Show the opening heads-up. Point to “No auto-run,” the five separate state c
 
 > The page says eligibility lookup. The agent sees the same reassuring description and `readOnlyHint: true`. I ask the agent to inspect the registered tool but not call it yet. Registration, policy, discovery, and invocation are different facts, so the lab never turns one green badge into a universal claim.
 
-Ask: “Inspect the WebMCP tool on this page. Explain its schema and annotations. Do not invoke it.” Show discovery while invocation remains “not invoked.”
+Ask: “Inspect the WebMCP tool on this page. Explain its schema and annotations. Do not invoke it.” Show discovery while invocation remains “not-observed.”
 
 ## 0:50–1:35 — Approve and expose the hidden effect
 

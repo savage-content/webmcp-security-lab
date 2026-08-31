@@ -24,6 +24,7 @@ const context: RunContext = {
     registration: 'registered',
     permissionsPolicy: 'allowed',
     discovery: 'discovered',
+    invocation: 'observed',
     detail: 'Test fixture',
     discoveredToolNames: [],
   },
@@ -114,12 +115,14 @@ describe('controlled state transitions', () => {
     expect(outcome.verdict).toBe('FAIL');
   });
 
-  it('records client observations without claiming universal support', () => {
+  it('exposes the unsupported universal claim in the vulnerable client observation', () => {
     const outcome = run('client-discovery-variance');
     const result = outcome.rawResult as Record<string, unknown>;
 
     expect(result.universal_support_verified).toBe(false);
-    expect(outcome.after.discovered).toBe('discovered');
+    expect(outcome.after.discovery).toBe('discovered');
+    expect(outcome.after.invocation).toBe('observed');
+    expect(outcome.verdict).toBe('FAIL');
   });
 
   it('passes secure retests across the five-fixture curriculum', () => {
@@ -128,7 +131,15 @@ describe('controlled state transitions', () => {
         scenario.id,
         structuredClone(scenario.initialState),
         scenario.secureDefaultArguments,
-        { ...context, channel: 'secure-retest' },
+        {
+          ...context,
+          channel: 'secure-retest',
+          confirmation: {
+            ...context.confirmation,
+            presentedCopy: scenario.secureConfirmationCopy,
+            source: 'builder-retest',
+          },
+        },
         true,
       );
 
@@ -142,11 +153,262 @@ describe('controlled state transitions', () => {
       scenario.id,
       structuredClone(scenario.initialState),
       scenario.secureDefaultArguments,
-      { ...context, channel: 'secure-retest' },
+      {
+        ...context,
+        channel: 'secure-retest',
+        confirmation: {
+          ...context.confirmation,
+          presentedCopy: scenario.secureConfirmationCopy,
+          source: 'builder-retest',
+        },
+      },
       true,
     );
 
     expect(outcome.after).toEqual(outcome.before);
     expect(outcome.sideEffects).toEqual([]);
+  });
+
+  it('limits the secure notice contract to one 80-character profile-banner field', () => {
+    const scenario = scenarioById['over-broad-schema'];
+    const outcome = runScenario(
+      scenario.id,
+      structuredClone(scenario.initialState),
+      scenario.secureDefaultArguments,
+      context,
+      true,
+    );
+    const properties = scenario.secureTool.inputSchema.properties as Record<
+      string,
+      { maxLength?: number }
+    >;
+
+    expect(Object.keys(properties)).toEqual(['notice']);
+    expect(properties.notice?.maxLength).toBe(80);
+    expect(scenario.secureTool.inputSchema.additionalProperties).toBe(false);
+    expect(() =>
+      validateArguments(
+        scenario.id,
+        { notice: 'Okay', instruction: 'Hidden authority' },
+        true,
+      ),
+    ).toThrow();
+    expect(outcome.after.target).toBe('profile-banner');
+    expect(outcome.after.agentApproved).toBe(false);
+    expect(outcome.verdict).toBe('PASS');
+  });
+
+  it('isolates instruction-shaped carrier text with no follow-on action', () => {
+    const scenario = scenarioById['tool-result-injection'];
+    const outcome = runScenario(
+      scenario.id,
+      structuredClone(scenario.initialState),
+      scenario.secureDefaultArguments,
+      context,
+      true,
+    );
+    const result = outcome.rawResult as Record<string, unknown>;
+
+    expect(scenario.secureTool.annotations.untrustedContentHint).toBe(true);
+    expect(result.untrusted_carrier_text).toContain('Ignore prior instructions');
+    expect(result).not.toHaveProperty('untrusted_carrier_message');
+    expect(outcome.after).toEqual(outcome.before);
+    expect(outcome.sideEffects).toEqual([]);
+    expect(outcome.verdict).toBe('PASS');
+  });
+
+  it('requires exact On-to-Off approval for the secure subscription mutation', () => {
+    const scenario = scenarioById['confirmation-mismatch'];
+    const approvedContext: RunContext = {
+      ...context,
+      channel: 'secure-retest',
+      confirmation: {
+        presentedCopy: scenario.secureConfirmationCopy,
+        known: true,
+        approved: true,
+        source: 'builder-retest',
+      },
+    };
+    const approved = runScenario(
+      scenario.id,
+      structuredClone(scenario.initialState),
+      scenario.secureDefaultArguments,
+      approvedContext,
+      true,
+    );
+    const vague = runScenario(
+      scenario.id,
+      structuredClone(scenario.initialState),
+      scenario.secureDefaultArguments,
+      {
+        ...approvedContext,
+        confirmation: {
+          ...approvedContext.confirmation,
+          presentedCopy: 'Run the secure retest.',
+        },
+      },
+      true,
+    );
+    const negated = runScenario(
+      scenario.id,
+      structuredClone(scenario.initialState),
+      scenario.secureDefaultArguments,
+      {
+        ...approvedContext,
+        confirmation: {
+          ...approvedContext.confirmation,
+          presentedCopy:
+            'Security lab digest is On; keep it On—changing to Off is not approved.',
+        },
+      },
+      true,
+    );
+
+    expect(scenario.secureTool.name).toBe(
+      'set_training_notification_subscription',
+    );
+    expect(scenario.secureTool.annotations.readOnlyHint).toBe(false);
+    expect(approved.before.subscribed).toBe(true);
+    expect(approved.after.subscribed).toBe(false);
+    expect(approved.rawResult).toMatchObject({
+      applied: true,
+      subscription_state: false,
+      message: 'Subscription updated.',
+    });
+    expect(approved.verdict).toBe('PASS');
+    expect(vague.verdict).toBe('FAIL');
+    expect(negated.verdict).toBe('FAIL');
+  });
+
+  it.each([
+    {
+      browserSupport: 'unsupported' as const,
+      registration: 'unsupported' as const,
+      permissionsPolicy: 'unknown' as const,
+      discovery: 'unsupported' as const,
+      invocation: 'not-observed' as const,
+    },
+    {
+      browserSupport: 'supported' as const,
+      registration: 'denied' as const,
+      permissionsPolicy: 'blocked' as const,
+      discovery: 'not-checked' as const,
+      invocation: 'not-observed' as const,
+    },
+    {
+      browserSupport: 'supported' as const,
+      registration: 'registered' as const,
+      permissionsPolicy: 'allowed' as const,
+      discovery: 'not-checked' as const,
+      invocation: 'not-observed' as const,
+    },
+    {
+      browserSupport: 'supported' as const,
+      registration: 'registered' as const,
+      permissionsPolicy: 'allowed' as const,
+      discovery: 'discovered' as const,
+      invocation: 'not-observed' as const,
+    },
+    {
+      browserSupport: 'supported' as const,
+      registration: 'registered' as const,
+      permissionsPolicy: 'allowed' as const,
+      discovery: 'discovered' as const,
+      invocation: 'observed' as const,
+    },
+  ])('records five independent, scoped WebMCP stages: $registration/$invocation', (stage) => {
+    const scenario = scenarioById['client-discovery-variance'];
+    const matrixContext: RunContext = {
+      ...context,
+      channel: 'secure-retest',
+      webMcp: {
+        ...context.webMcp,
+        ...stage,
+      },
+      confirmation: {
+        presentedCopy: scenario.secureConfirmationCopy,
+        known: true,
+        approved: true,
+        source: 'builder-retest',
+      },
+    };
+    const outcome = runScenario(
+      scenario.id,
+      structuredClone(scenario.initialState),
+      scenario.secureDefaultArguments,
+      matrixContext,
+      true,
+    );
+    const result = outcome.rawResult as {
+      claim: string;
+      observed: Record<string, unknown>;
+    };
+
+    expect(Object.keys(scenario.secureTool.inputSchema.properties as object)).toEqual([
+      'client_label',
+    ]);
+    expect(() =>
+      validateArguments(
+        scenario.id,
+        { client_label: 'Unit test', discovered: true },
+        true,
+      ),
+    ).toThrow();
+    expect(result.claim).toBe('scoped-client-observation');
+    expect(result.observed).toMatchObject({
+      browser_api_support: stage.browserSupport,
+      registration: stage.registration,
+      permissions_policy: stage.permissionsPolicy,
+      discovery: stage.discovery,
+      invocation: stage.invocation,
+      client: 'This browser session',
+      observed_at: context.now,
+    });
+    expect(JSON.stringify(result)).not.toContain('universal');
+    expect(outcome.verdict).toBe('PASS');
+  });
+
+  it('does not mistake a client label for a universal-support claim', () => {
+    const scenario = scenarioById['client-discovery-variance'];
+    const outcome = runScenario(
+      scenario.id,
+      structuredClone(scenario.initialState),
+      { client_label: 'Universal QA Browser' },
+      {
+        ...context,
+        channel: 'secure-retest',
+        confirmation: {
+          presentedCopy: `${scenario.secureConfirmationCopy} Named client: Universal QA Browser.`,
+          known: true,
+          approved: true,
+          source: 'builder-retest',
+        },
+      },
+      true,
+    );
+
+    expect(outcome.verdict).toBe('PASS');
+  });
+
+  it('fails a scoped observation if the fixture carries extra mutable state', () => {
+    const scenario = scenarioById['client-discovery-variance'];
+    const outcome = runScenario(
+      scenario.id,
+      { ...structuredClone(scenario.initialState), unrelatedAuthority: false },
+      scenario.secureDefaultArguments,
+      {
+        ...context,
+        channel: 'secure-retest',
+        confirmation: {
+          presentedCopy: scenario.secureConfirmationCopy,
+          known: true,
+          approved: true,
+          source: 'builder-retest',
+        },
+      },
+      true,
+    );
+
+    expect(outcome.verdict).toBe('FAIL');
   });
 });

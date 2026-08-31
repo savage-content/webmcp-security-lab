@@ -48,6 +48,7 @@ export interface WebMcpStatus {
   registration: RegistrationState;
   permissionsPolicy: 'allowed' | 'blocked' | 'unknown';
   discovery: DiscoveryState;
+  invocation: 'not-observed' | 'observed';
   detail: string;
   discoveredToolNames: string[];
 }
@@ -120,6 +121,7 @@ export interface ScenarioDefinition {
   initialState: Record<string, JsonValue>;
   defaultArguments: Record<string, JsonValue>;
   secureDefaultArguments: Record<string, JsonValue>;
+  secureConfirmationCopy: string;
   riskProfile: ScenarioRiskProfile;
   builder: BuilderGuidance;
   expectedFinding: string;

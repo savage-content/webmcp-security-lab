@@ -103,6 +103,7 @@ const initialWebMcpStatus: WebMcpStatus = {
   registration: 'checking',
   permissionsPolicy: 'unknown',
   discovery: 'not-checked',
+  invocation: 'not-observed',
   detail: 'Checking this browser for page-scoped WebMCP support.',
   discoveredToolNames: [],
 };
@@ -194,6 +195,13 @@ export function LabApp() {
   const riskAssessment = useMemo(
     () => assessScenarioRisk(scenario),
     [scenario],
+  );
+  const secureConfirmationCopy = useMemo(
+    () =>
+      scenario.id === 'client-discovery-variance'
+        ? `${scenario.secureConfirmationCopy} Named client: ${clientLabel}.`
+        : scenario.secureConfirmationCopy,
+    [clientLabel, scenario],
   );
 
   const commitWebMcp = useCallback(
@@ -408,6 +416,7 @@ export function LabApp() {
       registration: 'registering',
       permissionsPolicy: permissionObservation,
       discovery: 'not-checked',
+      invocation: 'not-observed',
       detail: `Registering ${scenario.tool.name} on this document.`,
       discoveredToolNames: [],
     });
@@ -416,16 +425,19 @@ export function LabApp() {
       ...scenario.tool,
       execute: async (input: unknown) => {
         const selfTest = consumePendingSelfTest(selfTestPendingRef);
-        if (!selfTest) {
-          commitWebMcp((current) => ({
-            ...current,
-            discovery: 'discovered',
-            detail: `${scenario.tool.name} was invoked through WebMCP. That proves this client discovered this tool for this call.`,
-            discoveredToolNames: Array.from(
-              new Set([...current.discoveredToolNames, scenario.tool.name]),
-            ),
-          }));
-        }
+        commitWebMcp((current) => ({
+          ...current,
+          discovery: selfTest ? current.discovery : 'discovered',
+          invocation: 'observed',
+          detail: selfTest
+            ? `${scenario.tool.name} was invoked through the approved in-page WebMCP self-test.`
+            : `${scenario.tool.name} was invoked through WebMCP. That proves this client discovered this tool for this call.`,
+          discoveredToolNames: selfTest
+            ? current.discoveredToolNames
+            : Array.from(
+                new Set([...current.discoveredToolNames, scenario.tool.name]),
+              ),
+        }));
         return invokeRef.current(
           input,
           selfTest ? 'webmcp-self-test' : 'webmcp',
@@ -521,6 +533,10 @@ export function LabApp() {
     setSecurePersistence('saving');
     try {
       const now = new Date().toISOString();
+      const secureArguments = structuredClone(scenario.secureDefaultArguments);
+      if (scenario.id === 'client-discovery-variance') {
+        secureArguments.client_label = clientLabel;
+      }
       const context = {
         channel: 'secure-retest' as const,
         now,
@@ -540,7 +556,7 @@ export function LabApp() {
         clientLabel,
         webMcp: webMcpRef.current,
         confirmation: {
-          presentedCopy: `Run the narrowed ${scenario.secureTool.name} contract against a fresh synthetic fixture.`,
+          presentedCopy: secureConfirmationCopy,
           known: true,
           approved: true,
           source: 'builder-retest' as const,
@@ -549,14 +565,14 @@ export function LabApp() {
       const outcome = runScenario(
         scenario.id,
         structuredClone(scenario.initialState),
-        scenario.secureDefaultArguments,
+        secureArguments,
         context,
         true,
       );
       const receipt = createEvidenceReceipt({
         scenario,
         declaration: scenario.secureTool,
-        argumentsValue: scenario.secureDefaultArguments,
+        argumentsValue: secureArguments,
         sessionId: sessionIdRef.current || getOrCreateSessionId(),
         context,
         outcome,
@@ -594,8 +610,8 @@ export function LabApp() {
 
       setExecutionMessage(
         persisted
-          ? `Secure retest ${receipt.id.slice(0, 8)} passed and was appended to the ledger.`
-          : `Secure retest ${receipt.id.slice(0, 8)} passed locally; durable storage was unavailable.`,
+          ? `Secure retest ${receipt.id.slice(0, 8)} ${receipt.verdict} was appended to the ledger.`
+          : `Secure retest ${receipt.id.slice(0, 8)} finished ${receipt.verdict}; durable storage was unavailable.`,
       );
       window.setTimeout(() => {
         document
@@ -774,7 +790,6 @@ export function LabApp() {
             scenario={scenario}
             assessment={riskAssessment}
             webMcp={webMcp}
-            receipt={latestReceipt}
             secureReceipt={latestSecureReceipt}
             onInspect={() =>
               document
@@ -1106,7 +1121,7 @@ export function LabApp() {
                     />
                     <ObservationCell
                       label="Invocation"
-                      value={latestReceipt ? 'observed' : 'not invoked'}
+                      value={webMcp.invocation}
                     />
                   </div>
                   {executionMessage ? (
@@ -1132,6 +1147,7 @@ export function LabApp() {
               <SecureComparison
                 scenario={scenario}
                 assessment={riskAssessment}
+                confirmationCopy={secureConfirmationCopy}
                 receipt={latestSecureReceipt}
                 persistence={securePersistence}
                 running={secureRunning}

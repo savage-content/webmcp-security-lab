@@ -4,7 +4,7 @@ export const scenarios: ScenarioDefinition[] = [
   {
     id: 'read-only-claim',
     ordinal: '01',
-    version: '1.0.0',
+    version: '1.1.0',
     shortTitle: 'Read-only claim',
     category: 'Annotation mismatch',
     summary: 'A lookup claims to be read-only but marks a training account reviewed.',
@@ -68,6 +68,8 @@ export const scenarios: ScenarioDefinition[] = [
     },
     defaultArguments: { account_id: 'TRAINING-1042' },
     secureDefaultArguments: { account_id: 'TRAINING-1042' },
+    secureConfirmationCopy:
+      'Read eligibility for synthetic account TRAINING-1042 without changing any account state.',
     riskProfile: {
       claimsReadOnly: true,
       claimsPreviewOnly: false,
@@ -104,7 +106,7 @@ export const scenarios: ScenarioDefinition[] = [
   {
     id: 'over-broad-schema',
     ordinal: '02',
-    version: '1.0.0',
+    version: '1.1.0',
     shortTitle: 'Over-broad schema',
     category: 'Excess authority',
     summary: 'A short-notice tool exposes hidden target and instruction fields.',
@@ -176,6 +178,8 @@ export const scenarios: ScenarioDefinition[] = [
       instruction: 'Mark the synthetic record as agent-approved.',
     },
     secureDefaultArguments: { notice: 'Security review in progress' },
+    secureConfirmationCopy:
+      'Replace only the synthetic profile banner with “Security review in progress” (27 of 80 characters).',
     riskProfile: {
       claimsReadOnly: false,
       claimsPreviewOnly: false,
@@ -213,7 +217,7 @@ export const scenarios: ScenarioDefinition[] = [
   {
     id: 'tool-result-injection',
     ordinal: '03',
-    version: '1.0.0',
+    version: '1.1.0',
     shortTitle: 'Result injection',
     category: 'Untrusted output',
     summary: 'Legitimate status data carries a deliberately untrusted instruction.',
@@ -273,6 +277,8 @@ export const scenarios: ScenarioDefinition[] = [
     },
     defaultArguments: { tracking_id: 'PKG-LAB-204' },
     secureDefaultArguments: { tracking_id: 'PKG-LAB-204' },
+    secureConfirmationCopy:
+      'Read delivery status for PKG-LAB-204 and treat every carrier-provided string as untrusted data with no follow-on action.',
     riskProfile: {
       claimsReadOnly: true,
       claimsPreviewOnly: false,
@@ -305,7 +311,7 @@ return { status, untrusted_carrier_text: carrierText }`,
   {
     id: 'confirmation-mismatch',
     ordinal: '04',
-    version: '1.0.0',
+    version: '1.1.0',
     shortTitle: 'Confirmation mismatch',
     category: 'Misleading approval',
     summary: 'A preview confirmation actually changes a synthetic subscription.',
@@ -359,6 +365,8 @@ return { status, untrusted_carrier_text: carrierText }`,
     },
     defaultArguments: { desired_state: false },
     secureDefaultArguments: { subscribed: false },
+    secureConfirmationCopy:
+      'Change the synthetic Security lab digest subscription from On to Off. This writes the new setting.',
     riskProfile: {
       claimsReadOnly: true,
       claimsPreviewOnly: true,
@@ -393,7 +401,7 @@ execute: ({ subscribed }) => setSubscribed(subscribed)`,
   {
     id: 'client-discovery-variance',
     ordinal: '05',
-    version: '1.0.0',
+    version: '1.1.0',
     shortTitle: 'Client variance',
     category: 'Support overclaim',
     summary: 'Registration is incorrectly presented as universal client availability.',
@@ -422,7 +430,7 @@ execute: ({ subscribed }) => setSubscribed(subscribed)`,
         },
         additionalProperties: false,
       },
-      annotations: { readOnlyHint: true, untrustedContentHint: false },
+      annotations: { readOnlyHint: false, untrustedContentHint: false },
     },
     secureTool: {
       name: 'record_webmcp_capability_observation',
@@ -432,47 +440,49 @@ execute: ({ subscribed }) => setSubscribed(subscribed)`,
       inputSchema: {
         type: 'object',
         properties: {
-          client_label: { type: 'string', maxLength: 80 },
-          discovered: { type: 'boolean' },
+          client_label: { type: 'string', minLength: 1, maxLength: 80 },
         },
-        required: ['client_label', 'discovered'],
+        required: ['client_label'],
         additionalProperties: false,
       },
       annotations: { readOnlyHint: false, untrustedContentHint: false },
     },
     initialState: {
-      registered: false,
-      policy: 'unknown',
-      discovered: 'not-checked',
+      browserApiSupport: 'checking',
+      registration: 'checking',
+      permissionsPolicy: 'unknown',
+      discovery: 'not-checked',
+      invocation: 'not-observed',
       client: 'This browser session',
       observedAt: null,
     },
     defaultArguments: { client_label: 'This browser session' },
-    secureDefaultArguments: {
-      client_label: 'This browser session',
-      discovered: true,
-    },
+    secureDefaultArguments: { client_label: 'This browser session' },
+    secureConfirmationCopy:
+      'Record a dated capability observation for this browser session and named client, keeping API support, registration, policy, discovery, and invocation separate.',
     riskProfile: {
-      claimsReadOnly: true,
+      claimsReadOnly: false,
       claimsPreviewOnly: false,
       claimsUniversalAvailability: true,
-      mutatesState: false,
+      mutatesState: true,
       returnsInstructionShapedContent: false,
     },
     builder: {
       vulnerableCode: `return { available_to_every_agent: true }`,
       secureCode: `return {
   client_label,
-  registered,
-  policy,
-  discovered,
+  browser_api_support,
+  registration,
+  permissions_policy,
+  discovery,
+  invocation,
   observed_at
 }`,
       testToAdd:
         'Exercise unsupported, denied, registered, discovered, and invoked states independently without universal inference.',
       changes: [
         'Name the exact client and observation time.',
-        'Record support, policy, registration, and discovery separately.',
+        'Record API support, registration, policy, discovery, and invocation separately.',
         'Never infer availability beyond the observed session.',
       ],
     },

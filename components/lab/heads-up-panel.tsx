@@ -26,14 +26,12 @@ export function HeadsUpPanel({
   scenario,
   assessment,
   webMcp,
-  receipt,
   secureReceipt,
   onInspect,
 }: {
   scenario: ScenarioDefinition;
   assessment: RiskAssessment;
   webMcp: WebMcpStatus;
-  receipt?: EvidenceReceipt;
   secureReceipt?: EvidenceReceipt;
   onInspect: () => void;
 }) {
@@ -61,8 +59,8 @@ export function HeadsUpPanel({
     },
     {
       label: 'Invocation',
-      value: receipt ? 'observed' : 'not invoked',
-      positive: Boolean(receipt),
+      value: webMcp.invocation,
+      positive: webMcp.invocation === 'observed',
     },
   ];
 

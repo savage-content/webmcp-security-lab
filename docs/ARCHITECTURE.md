@@ -29,7 +29,7 @@ flowchart LR
 2. **WebMCP declaration boundary** — name, description, schema, and annotations describe a capability but do not enforce handler behavior.
 3. **Execution boundary** — the shared scenario engine is the only place fixture state changes.
 4. **Persistence boundary** — the API validates and appends complete receipts to D1. It exposes no mutation or deletion path.
-5. **Client-observation boundary** — registration, permissions policy, and discovery are recorded separately. External client behavior is not inferred when the page cannot observe it.
+5. **Client-observation boundary** — browser API support, registration, permissions policy, discovery, and invocation are recorded separately. External client behavior is not inferred when the page cannot observe it, and a fallback receipt never counts as WebMCP invocation.
 6. **Awareness-policy boundary** — deterministic rules explain why a declaration deserves allow, warn, or ask treatment. They provide guidance and do not replace browser enforcement or professional validation.
 
 ## Scenario contract
@@ -41,9 +41,10 @@ Every `ScenarioDefinition` includes:
 - the vulnerable `ToolDeclaration` registered on the page;
 - a secure comparison declaration;
 - generated initial state and bounded default arguments;
+- exact secure-retest approval scope;
 - expected finding, debrief, remediation, and secure-design explanation.
 
-The pure `runScenario()` function receives the scenario id, current state, arguments, and run context. It returns immutable before/after snapshots, a raw serializable result, explicit side effects, a verdict, and remediation.
+The pure `runScenario()` function receives the scenario id, current state, arguments, and run context. It returns immutable before/after snapshots, a raw serializable result, explicit side effects, a verdict, and remediation. Verdicts are derived from scenario-specific invariants; selecting a secure fixture does not mechanically produce `PASS`.
 
 ## Registration lifecycle
 
@@ -55,7 +56,7 @@ await document.modelContext.registerTool(tool, {
 });
 ```
 
-The callback delegates to the same scenario engine used by the fallback harness. Aborting the controller when the scenario changes removes the old registration. No `navigator.modelContext` alias is used.
+The callback delegates to the same scenario engine used by the fallback harness. Only the registered callback marks WebMCP invocation as observed. Aborting the controller when the scenario changes removes the old registration. No `navigator.modelContext` alias is used.
 
 The app may also display `document.permissionsPolicy.allowsFeature('tools')`, but that enumeration is advisory because behavior has varied in experimental clients. It never short-circuits registration. A resolved `registerTool()` call proves registration and permission for that document; a thrown `NotAllowedError` proves policy denial. Browser support, registration, policy, discovery, and invocation remain separate states.
 
@@ -75,7 +76,7 @@ Meaningful mismatches map to `ask`, scoped support uncertainty maps to `warn`, a
 
 The downloadable receipt is the canonical evidence record. D1 stores the complete serialized receipt plus indexed columns for id, lab session, scenario, timestamp, invocation channel, and verdict.
 
-Secure builder retests run the narrowed declaration against a fresh synthetic fixture and produce a distinct `secure-retest` receipt with a `PASS` verdict. Every generated receipt and policy artifact carries the required self-reported-readiness limitation.
+Secure builder retests run the narrowed declaration against a fresh synthetic fixture and produce a distinct `secure-retest` receipt. A retest receives `PASS` only when its declaration, arguments, approval evidence, state transition, result, and side effects satisfy that scenario’s invariants. Every generated receipt and policy artifact carries the required self-reported-readiness limitation.
 
 Indexes match the actual read patterns:
 

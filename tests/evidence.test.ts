@@ -23,6 +23,7 @@ const context: RunContext = {
     registration: 'registered',
     permissionsPolicy: 'allowed',
     discovery: 'not-checked',
+    invocation: 'not-observed',
     detail: 'External client discovery is not observable.',
     discoveredToolNames: [],
   },
@@ -76,5 +77,30 @@ describe('evidence receipts', () => {
         schemaVersion: '1.0',
       }),
     ).toThrow();
+  });
+
+  it('defaults invocation state for receipts created before stage tracking', () => {
+    const scenario = scenarioById['confirmation-mismatch'];
+    const outcome = runScenario(
+      scenario.id,
+      structuredClone(scenario.initialState),
+      scenario.defaultArguments,
+      context,
+    );
+    const legacy = structuredClone(
+      createEvidenceReceipt({
+        scenario,
+        declaration: scenario.tool,
+        argumentsValue: scenario.defaultArguments,
+        sessionId: '4ecf0c2b-cc5c-4854-a11e-22fa93cc4a1d',
+        context,
+        outcome,
+        id: '6f8f5771-9cde-4f2d-b9f1-66d29ef5a932',
+      }),
+    ) as unknown as { client: { webMcp: Record<string, unknown> } };
+    delete legacy.client.webMcp.invocation;
+
+    const parsed = evidenceReceiptSchema.parse(legacy);
+    expect(parsed.client.webMcp.invocation).toBe('not-observed');
   });
 });

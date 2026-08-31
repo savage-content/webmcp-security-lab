@@ -56,7 +56,7 @@ export const secureArgumentSchemas = {
     .object({ subscribed: z.boolean() })
     .strict(),
   'client-discovery-variance': z
-    .object({ client_label: z.string().min(1).max(80), discovered: z.boolean() })
+    .object({ client_label: z.string().min(1).max(80) })
     .strict(),
 } satisfies Record<ScenarioId, z.ZodType<Record<string, unknown>>>;
 
@@ -118,6 +118,7 @@ export const evidenceReceiptSchema = z.object({
         'not-discovered',
         'error',
       ]),
+      invocation: z.enum(['not-observed', 'observed']).default('not-observed'),
       detail: z.string(),
       discoveredToolNames: z.array(z.string()),
     }),
@@ -187,6 +188,7 @@ export function validateScenarioCatalog() {
     }
 
     validateArguments(scenario.id, scenario.defaultArguments);
+    validateArguments(scenario.id, scenario.secureDefaultArguments, true);
   }
 
   if (ids.size !== 5) {
