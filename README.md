@@ -143,4 +143,3 @@ Read [SECURITY.md](SECURITY.md) before extending a fixture.
 ## License
 
 Copyright © 2026 Left Out Security. Released under the [MIT License](LICENSE).
-

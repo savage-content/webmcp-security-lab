@@ -1,0 +1,81 @@
+import type {
+  EvidenceReceipt,
+  RunContext,
+  RunOutcome,
+  ScenarioDefinition,
+  ToolDeclaration,
+} from './types';
+
+function createId() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+
+  throw new Error('A secure random UUID generator is required for evidence receipts.');
+}
+
+export function createEvidenceReceipt({
+  scenario,
+  declaration,
+  argumentsValue,
+  context,
+  outcome,
+  sessionId,
+  id = createId(),
+}: {
+  scenario: ScenarioDefinition;
+  declaration: ToolDeclaration;
+  argumentsValue: Record<string, EvidenceReceipt['invocation']['arguments'][string]>;
+  context: RunContext;
+  outcome: RunOutcome;
+  sessionId: string;
+  id?: string;
+}): EvidenceReceipt {
+  return {
+    id,
+    schemaVersion: '1.0',
+    sessionId,
+    scenario: {
+      id: scenario.id,
+      version: scenario.version,
+      title: scenario.shortTitle,
+    },
+    timestamp: context.now,
+    origin: context.origin,
+    browser: context.browser,
+    client: {
+      label: context.clientLabel,
+      webMcp: context.webMcp,
+    },
+    declaration: structuredClone(declaration),
+    invocation: {
+      channel: context.channel,
+      arguments: structuredClone(argumentsValue),
+      confirmation: context.confirmation,
+    },
+    effective: {
+      before: outcome.before,
+      after: outcome.after,
+      rawResult: outcome.rawResult,
+      sideEffects: outcome.sideEffects,
+    },
+    verdict: outcome.verdict,
+    debrief: outcome.debrief,
+    remediation: outcome.remediation,
+  };
+}
+
+export function downloadEvidenceReceipt(receipt: EvidenceReceipt) {
+  const blob = new Blob([JSON.stringify(receipt, null, 2)], {
+    type: 'application/json',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `webmcp-evidence-${receipt.scenario.id}-${receipt.id}.json`;
+  link.hidden = true;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+}
