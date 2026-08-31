@@ -28,12 +28,12 @@ export function EvidencePanel({
   scenario,
   receipt,
   persistence,
-  onDownload,
+  onExport,
 }: {
   scenario: ScenarioDefinition;
   receipt?: EvidenceReceipt;
   persistence: PersistenceState;
-  onDownload: (receipt: EvidenceReceipt) => void;
+  onExport: (receipt: EvidenceReceipt) => void;
 }) {
   return (
     <section id="evidence" className="scroll-mt-6 border-t border-foreground">
@@ -52,10 +52,10 @@ export function EvidencePanel({
             <Button
               variant="secondary"
               className="h-9 bg-background text-foreground hover:bg-background/90"
-              onClick={() => onDownload(receipt)}
+              onClick={() => onExport(receipt)}
             >
               <Download data-icon="inline-start" />
-              JSON receipt
+              Export receipt
             </Button>
           ) : null}
         </div>
@@ -139,12 +139,17 @@ export function EvidencePanel({
                 )}
               </div>
               <JsonBlock label="After state" value={receipt.effective.after} />
-              <JsonBlock label="Raw result" value={receipt.effective.rawResult} />
+              <JsonBlock
+                label="Raw result"
+                value={receipt.effective.rawResult}
+              />
             </>
           ) : (
             <div className="flex min-h-64 flex-col items-center justify-center rounded-lg border border-dashed border-border bg-background p-6 text-center">
               <FileJson className="size-7 text-muted-foreground" />
-              <p className="mt-3 text-sm font-semibold">Awaiting a controlled run</p>
+              <p className="mt-3 text-sm font-semibold">
+                Awaiting a controlled run
+              </p>
               <p className="mt-1 max-w-xs text-xs leading-5 text-muted-foreground">
                 Run the handler to capture before/after state, the raw result,
                 side effects, and a verdict.
@@ -184,7 +189,7 @@ export function SecureComparison({
   persistence,
   running,
   onRetest,
-  onDownloadPolicy,
+  onExportPolicy,
 }: {
   scenario: ScenarioDefinition;
   assessment: RiskAssessment;
@@ -192,7 +197,7 @@ export function SecureComparison({
   persistence: PersistenceState;
   running: boolean;
   onRetest: () => void;
-  onDownloadPolicy: () => void;
+  onExportPolicy: () => void;
 }) {
   return (
     <section
@@ -215,7 +220,10 @@ export function SecureComparison({
           </p>
           <ol className="mt-5 space-y-2">
             {scenario.builder.changes.map((change, index) => (
-              <li key={change} className="flex items-start gap-2 text-xs leading-5">
+              <li
+                key={change}
+                className="flex items-start gap-2 text-xs leading-5"
+              >
                 <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground font-mono text-[9px] text-background">
                   {index + 1}
                 </span>
@@ -228,9 +236,9 @@ export function SecureComparison({
               <RefreshCw data-icon="inline-start" />
               {running ? 'Retesting…' : 'Run secure retest'}
             </Button>
-            <Button variant="outline" onClick={onDownloadPolicy}>
+            <Button variant="outline" onClick={onExportPolicy}>
               <FileDown data-icon="inline-start" />
-              Policy artifact
+              Export policy
             </Button>
           </div>
           {receipt ? (
@@ -245,7 +253,8 @@ export function SecureComparison({
                 </span>
               </div>
               <p className="mt-2 text-[11px] leading-5 text-emerald-950/75">
-                Receipt {receipt.id.slice(0, 8)} proves the narrowed contract against a fresh synthetic fixture.
+                Receipt {receipt.id.slice(0, 8)} proves the narrowed contract
+                against a fresh synthetic fixture.
               </p>
             </div>
           ) : null}
@@ -273,9 +282,13 @@ export function SecureComparison({
                 <TestTube2 className="size-3.5" />
                 Regression test to add
               </p>
-              <Badge variant="outline">{assessment.policyAction} until verified</Badge>
+              <Badge variant="outline">
+                {assessment.policyAction} until verified
+              </Badge>
             </div>
-            <p className="mt-2 text-xs leading-5">{scenario.builder.testToAdd}</p>
+            <p className="mt-2 text-xs leading-5">
+              {scenario.builder.testToAdd}
+            </p>
           </div>
         </div>
       </div>
@@ -295,7 +308,9 @@ function CodeComparison({
   return (
     <div className="min-w-0 bg-[#101722] p-4 text-slate-100">
       <div className="flex items-center gap-2 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-        <Code2 className={`size-3.5 ${warning ? 'text-amber-300' : 'text-lime-300'}`} />
+        <Code2
+          className={`size-3.5 ${warning ? 'text-amber-300' : 'text-lime-300'}`}
+        />
         {label}
       </div>
       <pre className="mt-3 overflow-auto whitespace-pre-wrap font-mono text-[10px] leading-5 text-slate-200">
@@ -415,7 +430,9 @@ function ComparisonTool({
         <Badge variant={secure ? 'default' : 'outline'}>{label}</Badge>
         {secure ? <ShieldCheck className="size-4 text-emerald-700" /> : null}
       </div>
-      <p className="mt-4 break-all font-mono text-xs font-semibold">{tool.name}</p>
+      <p className="mt-4 break-all font-mono text-xs font-semibold">
+        {tool.name}
+      </p>
       <p className="mt-2 text-xs leading-5 text-muted-foreground">
         {tool.description}
       </p>

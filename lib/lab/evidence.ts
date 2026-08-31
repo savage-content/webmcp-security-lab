@@ -12,7 +12,9 @@ function createId() {
     return crypto.randomUUID();
   }
 
-  throw new Error('A secure random UUID generator is required for evidence receipts.');
+  throw new Error(
+    'A secure random UUID generator is required for evidence receipts.',
+  );
 }
 
 export function createEvidenceReceipt({
@@ -26,7 +28,10 @@ export function createEvidenceReceipt({
 }: {
   scenario: ScenarioDefinition;
   declaration: ToolDeclaration;
-  argumentsValue: Record<string, EvidenceReceipt['invocation']['arguments'][string]>;
+  argumentsValue: Record<
+    string,
+    EvidenceReceipt['invocation']['arguments'][string]
+  >;
   context: RunContext;
   outcome: RunOutcome;
   sessionId: string;
@@ -65,19 +70,4 @@ export function createEvidenceReceipt({
     remediation: outcome.remediation,
     limitation: SELF_REPORTED_LIMITATION,
   };
-}
-
-export function downloadEvidenceReceipt(receipt: EvidenceReceipt) {
-  const blob = new Blob([JSON.stringify(receipt, null, 2)], {
-    type: 'application/json',
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `webmcp-evidence-${receipt.scenario.id}-${receipt.id}.json`;
-  link.hidden = true;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }

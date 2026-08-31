@@ -1,4 +1,4 @@
-import type { ToolDeclaration, WebMcpStatus } from './types';
+import type { JsonValue, ToolDeclaration, WebMcpStatus } from './types';
 
 export interface RegisteredWebMcpTool {
   name: string;
@@ -14,34 +14,51 @@ export interface RegisteredWebMcpTool {
 export interface ModelContextApi {
   registerTool: (
     tool: ToolDeclaration & {
-      execute: (
-        input: unknown,
-        client?: { signal?: AbortSignal },
-      ) => unknown;
+      execute: (input: unknown, client?: { signal?: AbortSignal }) => unknown;
     },
     options?: { signal?: AbortSignal },
   ) => Promise<void> | void;
   getTools?: () => Promise<RegisteredWebMcpTool[]>;
   executeTool?: (
     tool: RegisteredWebMcpTool,
-    input: string,
+    input: Record<string, JsonValue>,
     options?: { signal?: AbortSignal },
   ) => Promise<unknown>;
 }
 
+export function consumePendingSelfTest(marker: { current: boolean }) {
+  const pending = marker.current;
+  marker.current = false;
+  return pending;
+}
+
+export function executeRegisteredTool(
+  modelContext: ModelContextApi,
+  tool: RegisteredWebMcpTool,
+  input: Record<string, JsonValue>,
+) {
+  if (!modelContext.executeTool) {
+    throw new Error('document.modelContext.executeTool is unavailable.');
+  }
+
+  return modelContext.executeTool(tool, input);
+}
+
 export function getModelContext(): ModelContextApi | undefined {
   if (typeof document === 'undefined') return undefined;
-  return (document as Document & { modelContext?: ModelContextApi }).modelContext;
+  return (document as Document & { modelContext?: ModelContextApi })
+    .modelContext;
 }
 
 export function observeToolsPermission(): WebMcpStatus['permissionsPolicy'] {
   if (typeof document === 'undefined') return 'unknown';
-  const policy = (
-    document as Document & {
-      permissionsPolicy?: { allowsFeature: (feature: string) => boolean };
-      featurePolicy?: { allowsFeature: (feature: string) => boolean };
-    }
-  ).permissionsPolicy ??
+  const policy =
+    (
+      document as Document & {
+        permissionsPolicy?: { allowsFeature: (feature: string) => boolean };
+        featurePolicy?: { allowsFeature: (feature: string) => boolean };
+      }
+    ).permissionsPolicy ??
     (
       document as Document & {
         featurePolicy?: { allowsFeature: (feature: string) => boolean };

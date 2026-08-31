@@ -16,13 +16,7 @@ import {
   ScanSearch,
   ShieldAlert,
 } from 'lucide-react';
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   AlertDialog,
@@ -37,9 +31,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { createEvidenceReceipt, downloadEvidenceReceipt } from '@/lib/lab/evidence';
+import {
+  createEvidenceReceiptArtifact,
+  createPolicyJsonArtifact,
+  type JsonArtifact,
+} from '@/lib/lab/artifacts';
+import { createEvidenceReceipt } from '@/lib/lab/evidence';
 import { runScenario } from '@/lib/lab/engine';
-import { assessScenarioRisk, downloadPolicyArtifact } from '@/lib/lab/risk';
+import { assessScenarioRisk } from '@/lib/lab/risk';
 import {
   defaultScenarioId,
   scenarioById,
@@ -54,11 +53,14 @@ import type {
   WebMcpStatus,
 } from '@/lib/lab/types';
 import {
+  consumePendingSelfTest,
+  executeRegisteredTool,
   getModelContext,
   observeToolsPermission,
   registerPageTool,
 } from '@/lib/lab/webmcp';
 
+import { ArtifactExportDialog } from './artifact-export-dialog';
 import {
   EvidencePanel,
   type PersistenceState,
@@ -142,7 +144,8 @@ function describeBrowser(userAgent: string) {
 
 function stateText(value: JsonValue | undefined) {
   if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return `${value}`;
+  if (typeof value === 'number' || typeof value === 'boolean')
+    return `${value}`;
   if (value === null || value === undefined) return '';
   return JSON.stringify(value);
 }
@@ -179,6 +182,7 @@ export function LabApp() {
   const [running, setRunning] = useState(false);
   const [secureRunning, setSecureRunning] = useState(false);
   const [executionMessage, setExecutionMessage] = useState('');
+  const [exportArtifact, setExportArtifact] = useState<JsonArtifact>();
   const selfTestPendingRef = useRef(false);
   const [sessionId, setSessionId] = useState('');
   const sessionIdRef = useRef('');
@@ -187,14 +191,13 @@ export function LabApp() {
   const scenarioState = stateMap[selectedId];
   const latestReceipt = receiptMap[selectedId];
   const latestSecureReceipt = secureReceiptMap[selectedId];
-  const riskAssessment = useMemo(() => assessScenarioRisk(scenario), [scenario]);
+  const riskAssessment = useMemo(
+    () => assessScenarioRisk(scenario),
+    [scenario],
+  );
 
   const commitWebMcp = useCallback(
-    (
-      update:
-        | WebMcpStatus
-        | ((previous: WebMcpStatus) => WebMcpStatus),
-    ) => {
+    (update: WebMcpStatus | ((previous: WebMcpStatus) => WebMcpStatus)) => {
       const previous = webMcpRef.current;
       const next = typeof update === 'function' ? update(previous) : update;
       webMcpRef.current = next;
@@ -278,29 +281,26 @@ export function LabApp() {
       const now = new Date().toISOString();
       const currentState = stateMapRef.current[scenario.id];
       const currentWebMcp = webMcpRef.current;
-      const outcome = runScenario(
-        scenario.id,
-        currentState,
-        argumentsValue,
-        {
-          channel,
-          now,
-          origin: window.location.origin,
-          browser: {
-            userAgent: navigator.userAgent ?? '',
-            language: navigator.language ?? '',
-            platform:
-              (
-                navigator as Navigator & {
-                  userAgentData?: { platform?: string };
-                }
-              ).userAgentData?.platform ?? navigator.platform ?? '',
-          },
-          clientLabel,
-          webMcp: currentWebMcp,
-          confirmation,
+      const outcome = runScenario(scenario.id, currentState, argumentsValue, {
+        channel,
+        now,
+        origin: window.location.origin,
+        browser: {
+          userAgent: navigator.userAgent ?? '',
+          language: navigator.language ?? '',
+          platform:
+            (
+              navigator as Navigator & {
+                userAgentData?: { platform?: string };
+              }
+            ).userAgentData?.platform ??
+            navigator.platform ??
+            '',
         },
-      );
+        clientLabel,
+        webMcp: currentWebMcp,
+        confirmation,
+      });
 
       const nextStateMap = {
         ...stateMapRef.current,
@@ -326,7 +326,9 @@ export function LabApp() {
                 navigator as Navigator & {
                   userAgentData?: { platform?: string };
                 }
-              ).userAgentData?.platform ?? navigator.platform ?? '',
+              ).userAgentData?.platform ??
+              navigator.platform ??
+              '',
           },
           clientLabel,
           webMcp: currentWebMcp,
@@ -413,7 +415,7 @@ export function LabApp() {
     const registeredTool = {
       ...scenario.tool,
       execute: async (input: unknown) => {
-        const selfTest = selfTestPendingRef.current;
+        const selfTest = consumePendingSelfTest(selfTestPendingRef);
         if (!selfTest) {
           commitWebMcp((current) => ({
             ...current,
@@ -489,7 +491,9 @@ export function LabApp() {
     try {
       const tools = await modelContext.getTools();
       const names = tools.map((tool) => tool.name);
-      const selectedTool = tools.find((tool) => tool.name === scenario.tool.name);
+      const selectedTool = tools.find(
+        (tool) => tool.name === scenario.tool.name,
+      );
       commitWebMcp((current) => ({
         ...current,
         discovery: selectedTool ? 'discovered' : 'not-discovered',
@@ -501,10 +505,7 @@ export function LabApp() {
 
       if (!selectedTool) return;
       selfTestPendingRef.current = true;
-      await modelContext.executeTool(
-        selectedTool,
-        JSON.stringify(buildArguments()),
-      );
+      await executeRegisteredTool(modelContext, selectedTool, buildArguments());
     } catch (error) {
       setExecutionMessage(
         `WebMCP self-test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -532,7 +533,9 @@ export function LabApp() {
               navigator as Navigator & {
                 userAgentData?: { platform?: string };
               }
-            ).userAgentData?.platform ?? navigator.platform ?? '',
+            ).userAgentData?.platform ??
+            navigator.platform ??
+            '',
         },
         clientLabel,
         webMcp: webMcpRef.current,
@@ -620,7 +623,9 @@ export function LabApp() {
     try {
       const tools = await modelContext.getTools();
       const names = tools.map((tool) => tool.name);
-      const selectedTool = tools.find((tool) => tool.name === scenario.tool.name);
+      const selectedTool = tools.find(
+        (tool) => tool.name === scenario.tool.name,
+      );
       const nextStatus: WebMcpStatus = {
         ...webMcpRef.current,
         discovery: selectedTool ? 'discovered' : 'not-discovered',
@@ -680,14 +685,27 @@ export function LabApp() {
               <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                 Left Out Security
               </p>
-              <p className="text-sm font-semibold tracking-tight">WebMCP Test Range</p>
+              <p className="text-sm font-semibold tracking-tight">
+                WebMCP Test Range
+              </p>
             </div>
           </a>
-          <nav className="hidden items-center gap-6 md:flex" aria-label="Primary navigation">
-            <a className="nav-link" href="#top">Heads-up</a>
-            <a className="nav-link" href="#range">Guided test</a>
-            <a className="nav-link" href="#builder">Builder fix</a>
-            <a className="nav-link" href="#ledger">Evidence ledger</a>
+          <nav
+            className="hidden items-center gap-6 md:flex"
+            aria-label="Primary navigation"
+          >
+            <a className="nav-link" href="#top">
+              Heads-up
+            </a>
+            <a className="nav-link" href="#range">
+              Guided test
+            </a>
+            <a className="nav-link" href="#builder">
+              Builder fix
+            </a>
+            <a className="nav-link" href="#ledger">
+              Evidence ledger
+            </a>
           </nav>
           <div className="flex items-center gap-3">
             <Badge
@@ -722,7 +740,9 @@ export function LabApp() {
             </div>
             <h1 className="max-w-4xl text-balance text-[clamp(3rem,7vw,6.8rem)] font-semibold leading-[0.88] tracking-[-0.065em]">
               Trust the effect,
-              <span className="block text-muted-foreground">not the label.</span>
+              <span className="block text-muted-foreground">
+                not the label.
+              </span>
             </h1>
             <p className="mt-7 max-w-2xl text-pretty text-base leading-7 text-muted-foreground lg:text-lg">
               A calm heads-up before an agent acts: see the tool a page offered,
@@ -733,7 +753,11 @@ export function LabApp() {
               <Button
                 size="lg"
                 className="h-11 px-4"
-                onClick={() => document.getElementById('range')?.scrollIntoView({ behavior: 'smooth' })}
+                onClick={() =>
+                  document
+                    .getElementById('range')
+                    ?.scrollIntoView({ behavior: 'smooth' })
+                }
               >
                 <FlaskConical data-icon="inline-start" />
                 Inspect the detected tool
@@ -785,7 +809,9 @@ export function LabApp() {
                 </span>
                 <Badge variant="outline">{surface.label}</Badge>
               </div>
-              <h3 className="text-lg font-semibold tracking-tight">{surface.title}</h3>
+              <h3 className="text-lg font-semibold tracking-tight">
+                {surface.title}
+              </h3>
               <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
                 {surface.detail}
               </p>
@@ -794,7 +820,10 @@ export function LabApp() {
         </div>
       </section>
 
-      <section id="range" className="mx-auto max-w-[1480px] scroll-mt-20 px-5 pb-8 lg:px-8 lg:pb-12">
+      <section
+        id="range"
+        className="mx-auto max-w-[1480px] scroll-mt-20 px-5 pb-8 lg:px-8 lg:pb-12"
+      >
         <div className="overflow-hidden rounded-xl border border-foreground bg-card shadow-[7px_7px_0_0_var(--accent-strong)]">
           <div className="grid lg:grid-cols-[270px_minmax(0,1fr)]">
             <aside className="border-b border-border bg-muted/45 p-3 lg:border-b-0 lg:border-r">
@@ -821,9 +850,13 @@ export function LabApp() {
                       setExecutionMessage('');
                     }}
                   >
-                    <span className="font-mono text-[10px] opacity-60">{item.ordinal}</span>
+                    <span className="font-mono text-[10px] opacity-60">
+                      {item.ordinal}
+                    </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold">{item.shortTitle}</span>
+                      <span className="block text-sm font-semibold">
+                        {item.shortTitle}
+                      </span>
                       <span className="mt-0.5 block truncate text-[10px] opacity-65">
                         {item.category}
                       </span>
@@ -838,7 +871,8 @@ export function LabApp() {
                   Safety boundary
                 </p>
                 <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
-                  Generated accounts, synthetic state, same-origin storage, and no external actions.
+                  Generated accounts, synthetic state, same-origin storage, and
+                  no external actions.
                 </p>
               </div>
             </aside>
@@ -848,10 +882,15 @@ export function LabApp() {
                 <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                   <div className="max-w-3xl">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge className="bg-amber-100 text-amber-900" variant="secondary">
+                      <Badge
+                        className="bg-amber-100 text-amber-900"
+                        variant="secondary"
+                      >
                         Deliberately vulnerable
                       </Badge>
-                      <Badge variant="outline">Scenario {scenario.ordinal} / v{scenario.version}</Badge>
+                      <Badge variant="outline">
+                        Scenario {scenario.ordinal} / v{scenario.version}
+                      </Badge>
                       <Badge variant="outline">{scenario.riskLabel}</Badge>
                     </div>
                     <p className="mt-5 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -892,18 +931,43 @@ export function LabApp() {
                       </h3>
                     </div>
                     <p className="max-w-lg text-xs leading-5 text-muted-foreground">
-                      Detection and registration are automatic. Invocation is not. Ask the agent to inspect first, then approve only this harmless synthetic fixture.
+                      Detection and registration are automatic. Invocation is
+                      not. Ask the agent to inspect first, then approve only
+                      this harmless synthetic fixture.
                     </p>
                   </div>
                   <div className="mt-4 grid gap-1.5 sm:grid-cols-5">
-                    <JourneyStep number="1" label="Browser support" done={webMcp.browserSupport === 'supported'} />
-                    <JourneyStep number="2" label="Tool registered" done={webMcp.registration === 'registered'} />
-                    <JourneyStep number="3" label="Client discovers" done={webMcp.discovery === 'discovered'} />
-                    <JourneyStep number="4" label="Effect observed" done={Boolean(latestReceipt)} />
-                    <JourneyStep number="5" label="Fix verified" done={latestSecureReceipt?.verdict === 'PASS'} />
+                    <JourneyStep
+                      number="1"
+                      label="Browser support"
+                      done={webMcp.browserSupport === 'supported'}
+                    />
+                    <JourneyStep
+                      number="2"
+                      label="Tool registered"
+                      done={webMcp.registration === 'registered'}
+                    />
+                    <JourneyStep
+                      number="3"
+                      label="Client discovers"
+                      done={webMcp.discovery === 'discovered'}
+                    />
+                    <JourneyStep
+                      number="4"
+                      label="Effect observed"
+                      done={Boolean(latestReceipt)}
+                    />
+                    <JourneyStep
+                      number="5"
+                      label="Fix verified"
+                      done={latestSecureReceipt?.verdict === 'PASS'}
+                    />
                   </div>
                   <div className="mt-4">
-                    <PreflightComparison scenario={scenario} assessment={riskAssessment} />
+                    <PreflightComparison
+                      scenario={scenario}
+                      assessment={riskAssessment}
+                    />
                   </div>
                   <div className="mt-3">
                     <RiskRules assessment={riskAssessment} />
@@ -912,7 +976,11 @@ export function LabApp() {
 
                 <div className="mt-8 grid gap-5 xl:grid-cols-2">
                   <div>
-                    <SurfaceHeader number="01" label="Presented surface" icon={<Activity />} />
+                    <SurfaceHeader
+                      number="01"
+                      label="Presented surface"
+                      icon={<Activity />}
+                    />
                     <div className="rounded-xl border border-border bg-muted/35 p-4 md:p-5">
                       <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                         {scenario.presented.eyebrow}
@@ -940,14 +1008,20 @@ export function LabApp() {
                   </div>
 
                   <div>
-                    <SurfaceHeader number="02" label="Declared agent surface" icon={<Bot />} />
+                    <SurfaceHeader
+                      number="02"
+                      label="Declared agent surface"
+                      icon={<Bot />}
+                    />
                     <div className="overflow-hidden rounded-xl border border-[#26354a] bg-[#101722] text-slate-100">
                       <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
                         <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
                           <Braces className="size-3.5" />
                           document.modelContext
                         </div>
-                        <span className="font-mono text-[9px] text-lime-300">registerTool()</span>
+                        <span className="font-mono text-[9px] text-lime-300">
+                          registerTool()
+                        </span>
                       </div>
                       <pre className="max-h-[420px] overflow-auto p-4 font-mono text-[10px] leading-5 text-slate-200 md:p-5">
                         {JSON.stringify(scenario.tool, null, 2)}
@@ -963,18 +1037,27 @@ export function LabApp() {
                         Choose how to verify
                       </p>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        Discovery checks never execute the tool. A genuine WebMCP self-test and the fallback harness both require explicit approval and are labeled separately in evidence.
+                        Discovery checks never execute the tool. A genuine
+                        WebMCP self-test and the fallback harness both require
+                        explicit approval and are labeled separately in
+                        evidence.
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button variant="outline" onClick={resetScenario} disabled={running}>
+                      <Button
+                        variant="outline"
+                        onClick={resetScenario}
+                        disabled={running}
+                      >
                         <RefreshCw data-icon="inline-start" />
                         Reset fixture
                       </Button>
                       <Button
                         variant="secondary"
                         onClick={() => void checkDiscovery()}
-                        disabled={running || webMcp.registration !== 'registered'}
+                        disabled={
+                          running || webMcp.registration !== 'registered'
+                        }
                       >
                         <ScanSearch data-icon="inline-start" />
                         Check discovery only
@@ -984,7 +1067,9 @@ export function LabApp() {
                           setConfirmationMode('webmcp-self-test');
                           setConfirmOpen(true);
                         }}
-                        disabled={running || webMcp.registration !== 'registered'}
+                        disabled={
+                          running || webMcp.registration !== 'registered'
+                        }
                       >
                         <Radio data-icon="inline-start" />
                         WebMCP self-test
@@ -1003,14 +1088,32 @@ export function LabApp() {
                     </div>
                   </div>
                   <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-                    <ObservationCell label="Browser API" value={webMcp.browserSupport} />
-                    <ObservationCell label="Registration" value={webMcp.registration} />
-                    <ObservationCell label="Policy" value={webMcp.permissionsPolicy} />
-                    <ObservationCell label="Discovery" value={webMcp.discovery} />
-                    <ObservationCell label="Invocation" value={latestReceipt ? 'observed' : 'not invoked'} />
+                    <ObservationCell
+                      label="Browser API"
+                      value={webMcp.browserSupport}
+                    />
+                    <ObservationCell
+                      label="Registration"
+                      value={webMcp.registration}
+                    />
+                    <ObservationCell
+                      label="Policy"
+                      value={webMcp.permissionsPolicy}
+                    />
+                    <ObservationCell
+                      label="Discovery"
+                      value={webMcp.discovery}
+                    />
+                    <ObservationCell
+                      label="Invocation"
+                      value={latestReceipt ? 'observed' : 'not invoked'}
+                    />
                   </div>
                   {executionMessage ? (
-                    <output aria-live="polite" className="mt-4 flex items-start gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                    <output
+                      aria-live="polite"
+                      className="mt-4 flex items-start gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground"
+                    >
                       <Info className="mt-0.5 size-3.5 shrink-0" />
                       {executionMessage}
                     </output>
@@ -1022,7 +1125,9 @@ export function LabApp() {
                 scenario={scenario}
                 receipt={latestReceipt}
                 persistence={persistence}
-                onDownload={downloadEvidenceReceipt}
+                onExport={(receipt) =>
+                  setExportArtifact(createEvidenceReceiptArtifact(receipt))
+                }
               />
               <SecureComparison
                 scenario={scenario}
@@ -1031,8 +1136,10 @@ export function LabApp() {
                 persistence={securePersistence}
                 running={secureRunning}
                 onRetest={() => void runSecureRetest()}
-                onDownloadPolicy={() =>
-                  downloadPolicyArtifact(scenario, riskAssessment)
+                onExportPolicy={() =>
+                  setExportArtifact(
+                    createPolicyJsonArtifact(scenario, riskAssessment),
+                  )
                 }
               />
             </div>
@@ -1044,10 +1151,15 @@ export function LabApp() {
         receipts={ledger}
         loading={ledgerLoading}
         unavailable={ledgerUnavailable}
-        onDownload={downloadEvidenceReceipt}
+        onExport={(receipt) =>
+          setExportArtifact(createEvidenceReceiptArtifact(receipt))
+        }
       />
 
-      <section id="safety" className="border-y border-border bg-foreground text-background">
+      <section
+        id="safety"
+        className="border-y border-border bg-foreground text-background"
+      >
         <div className="mx-auto grid max-w-[1480px] gap-8 px-5 py-12 lg:grid-cols-[0.75fr_1.25fr] lg:px-8 lg:py-16">
           <div>
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-background/55">
@@ -1064,7 +1176,10 @@ export function LabApp() {
               'No email, purchase, or external mutation',
               'Session-scoped fixtures; append-only receipts',
             ].map((item) => (
-              <div key={item} className="flex items-start gap-3 rounded-lg border border-white/14 bg-white/5 p-4 text-sm leading-6 text-background/78">
+              <div
+                key={item}
+                className="flex items-start gap-3 rounded-lg border border-white/14 bg-white/5 p-4 text-sm leading-6 text-background/78"
+              >
                 <CheckCircle2 className="mt-1 size-4 shrink-0 text-lime-300" />
                 {item}
               </div>
@@ -1075,21 +1190,45 @@ export function LabApp() {
 
       <footer className="mx-auto flex max-w-[1480px] flex-col gap-5 px-5 py-8 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between lg:px-8">
         <div>
-          <p className="font-semibold text-foreground">Left Out Security · WebMCP Security Lab</p>
-          <p className="mt-1">MIT licensed. Built as a controlled educational test range.</p>
+          <p className="font-semibold text-foreground">
+            Left Out Security · WebMCP Security Lab
+          </p>
+          <p className="mt-1">
+            MIT licensed. Built as a controlled educational test range.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
-          <a className="footer-link" href="https://github.com/webmachinelearning/webmcp" target="_blank" rel="noreferrer">
+          <a
+            className="footer-link"
+            href="https://github.com/webmachinelearning/webmcp"
+            target="_blank"
+            rel="noreferrer"
+          >
             WebMCP proposal <ExternalLink className="size-3" />
           </a>
-          <a className="footer-link" href="https://developer.chrome.com/docs/ai/webmcp" target="_blank" rel="noreferrer">
+          <a
+            className="footer-link"
+            href="https://developer.chrome.com/docs/ai/webmcp"
+            target="_blank"
+            rel="noreferrer"
+          >
             Browser support notes <ExternalLink className="size-3" />
           </a>
-          <a className="footer-link" href="https://github.com/savage-content/webmcp-security-lab" target="_blank" rel="noreferrer">
+          <a
+            className="footer-link"
+            href="https://github.com/savage-content/webmcp-security-lab"
+            target="_blank"
+            rel="noreferrer"
+          >
             Source <ExternalLink className="size-3" />
           </a>
         </div>
       </footer>
+
+      <ArtifactExportDialog
+        artifact={exportArtifact}
+        onClose={() => setExportArtifact(undefined)}
+      />
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent className="sm:max-w-3xl">
@@ -1136,14 +1275,24 @@ export function LabApp() {
   );
 }
 
-function SurfaceHeader({ number, label, icon }: { number: string; label: string; icon: React.ReactNode }) {
+function SurfaceHeader({
+  number,
+  label,
+  icon,
+}: {
+  number: string;
+  label: string;
+  icon: React.ReactNode;
+}) {
   return (
     <div className="mb-3 flex items-center justify-between gap-3">
       <div className="flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground [&_svg]:size-3.5">
         {icon}
         {label}
       </div>
-      <span className="font-mono text-[10px] text-muted-foreground">{number}</span>
+      <span className="font-mono text-[10px] text-muted-foreground">
+        {number}
+      </span>
     </div>
   );
 }
@@ -1160,13 +1309,13 @@ function JourneyStep({
   return (
     <div
       className={`rounded-md border p-3 ${
-        done
-          ? 'border-emerald-700/25 bg-emerald-50'
-          : 'border-border bg-card'
+        done ? 'border-emerald-700/25 bg-emerald-50' : 'border-border bg-card'
       }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[9px] text-muted-foreground">{number}</span>
+        <span className="font-mono text-[9px] text-muted-foreground">
+          {number}
+        </span>
         <span
           className={`size-1.5 rounded-full ${done ? 'bg-emerald-600' : 'bg-muted-foreground/40'}`}
         />
@@ -1176,12 +1325,21 @@ function JourneyStep({
   );
 }
 
-function RegistrationBadge({ status }: { status: WebMcpStatus['registration'] }) {
+function RegistrationBadge({
+  status,
+}: {
+  status: WebMcpStatus['registration'];
+}) {
   const good = status === 'registered';
-  const warning = status === 'unsupported' || status === 'denied' || status === 'error';
+  const warning =
+    status === 'unsupported' || status === 'denied' || status === 'error';
   return (
-    <span className={`flex items-center gap-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.12em] ${good ? 'text-emerald-700' : warning ? 'text-amber-800' : 'text-muted-foreground'}`}>
-      <span className={`size-1.5 rounded-full ${good ? 'bg-emerald-600' : warning ? 'bg-amber-600' : 'bg-muted-foreground'}`} />
+    <span
+      className={`flex items-center gap-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.12em] ${good ? 'text-emerald-700' : warning ? 'text-amber-800' : 'text-muted-foreground'}`}
+    >
+      <span
+        className={`size-1.5 rounded-full ${good ? 'bg-emerald-600' : warning ? 'bg-amber-600' : 'bg-muted-foreground'}`}
+      />
       {status}
     </span>
   );
@@ -1190,7 +1348,9 @@ function RegistrationBadge({ status }: { status: WebMcpStatus['registration'] })
 function ObservationCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2.5">
-      <span className="font-mono text-[9px] uppercase tracking-[0.13em] text-muted-foreground">{label}</span>
+      <span className="font-mono text-[9px] uppercase tracking-[0.13em] text-muted-foreground">
+        {label}
+      </span>
       <span className="font-mono text-[10px] font-semibold">{value}</span>
     </div>
   );

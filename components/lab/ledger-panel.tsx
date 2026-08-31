@@ -10,15 +10,18 @@ export function LedgerPanel({
   receipts,
   loading,
   unavailable,
-  onDownload,
+  onExport,
 }: {
   receipts: EvidenceReceipt[];
   loading: boolean;
   unavailable: boolean;
-  onDownload: (receipt: EvidenceReceipt) => void;
+  onExport: (receipt: EvidenceReceipt) => void;
 }) {
   return (
-    <section id="ledger" className="mx-auto max-w-[1480px] px-5 py-12 lg:px-8 lg:py-16">
+    <section
+      id="ledger"
+      className="mx-auto max-w-[1480px] px-5 py-12 lg:px-8 lg:py-16"
+    >
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -43,7 +46,8 @@ export function LedgerPanel({
           <div className="p-8 text-center">
             <p className="text-sm font-semibold">Ledger is unavailable</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              New runs still show a local receipt, but they are not claimed as durable.
+              New runs still show a local receipt, but they are not claimed as
+              durable.
             </p>
           </div>
         ) : receipts.length === 0 ? (
@@ -73,7 +77,9 @@ export function LedgerPanel({
                   {new Date(receipt.timestamp).toLocaleString()}
                 </span>
                 <Badge
-                  variant={receipt.verdict === 'PASS' ? 'default' : 'destructive'}
+                  variant={
+                    receipt.verdict === 'PASS' ? 'default' : 'destructive'
+                  }
                   className={`w-fit font-mono ${
                     receipt.verdict === 'PASS'
                       ? 'bg-emerald-100 text-emerald-900'
@@ -85,8 +91,8 @@ export function LedgerPanel({
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label={`Download ${receipt.scenario.title} evidence receipt`}
-                  onClick={() => onDownload(receipt)}
+                  aria-label={`Export ${receipt.scenario.title} evidence receipt`}
+                  onClick={() => onExport(receipt)}
                 >
                   <Download />
                 </Button>

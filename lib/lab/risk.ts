@@ -16,7 +16,11 @@ const levelRank: Record<RiskLevel, number> = {
 
 function schemaFields(tool: ToolDeclaration) {
   const properties = tool.inputSchema.properties;
-  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) {
+  if (
+    !properties ||
+    typeof properties !== 'object' ||
+    Array.isArray(properties)
+  ) {
     return [];
   }
   return Object.keys(properties);
@@ -131,11 +135,12 @@ export function assessScenarioRisk(
 export function createPolicyArtifact(
   scenario: ScenarioDefinition,
   assessment: RiskAssessment,
+  generatedAt = new Date().toISOString(),
 ) {
   return {
     schemaVersion: '1.0',
     kind: 'webmcp-awareness-policy',
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     match: {
       toolName: scenario.tool.name,
       capabilityFields: assessment.schemaFields,
@@ -150,23 +155,4 @@ export function createPolicyArtifact(
     testsToAdd: [scenario.builder.testToAdd],
     limitation: SELF_REPORTED_LIMITATION,
   };
-}
-
-export function downloadPolicyArtifact(
-  scenario: ScenarioDefinition,
-  assessment: RiskAssessment,
-) {
-  const artifact = createPolicyArtifact(scenario, assessment);
-  const blob = new Blob([JSON.stringify(artifact, null, 2)], {
-    type: 'application/json',
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `webmcp-policy-${scenario.id}.json`;
-  link.hidden = true;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }

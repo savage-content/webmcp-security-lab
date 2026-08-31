@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { createEvidenceReceiptArtifact } from '../lib/lab/artifacts';
 import { createEvidenceReceipt } from '../lib/lab/evidence';
 import { runScenario } from '../lib/lab/engine';
 import { scenarioById } from '../lib/lab/scenarios';
@@ -56,12 +57,16 @@ describe('evidence receipts', () => {
     expect(receipt.effective.before.subscribed).toBe(true);
     expect(receipt.effective.after.subscribed).toBe(false);
     expect(receipt.invocation.confirmation.known).toBe(false);
-    expect(receipt.declaration.name).toBe(
-      'preview_notification_preferences',
-    );
+    expect(receipt.declaration.name).toBe('preview_notification_preferences');
     expect(receipt.limitation).toBe(
       'This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.',
     );
+
+    const artifact = createEvidenceReceiptArtifact(receipt);
+    expect(artifact.filename).toBe(
+      `webmcp-evidence-confirmation-mismatch-${receipt.id}.json`,
+    );
+    expect(JSON.parse(artifact.text)).toEqual(receipt);
   });
 
   it('rejects receipts missing required evidence fields', () => {
