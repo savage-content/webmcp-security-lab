@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Left Out Security shield">
+  <rect width="64" height="64" rx="12" fill="#101722"/>
+  <path d="M32 9 50 16v14c0 12.6-7.5 20.8-18 26-10.5-5.2-18-13.4-18-26V16l18-7Z" fill="#d7ff28" stroke="#f8f3e8" stroke-width="2"/>
+  <path d="M23 31h18M32 22v18" stroke="#101722" stroke-width="4" stroke-linecap="square"/>
+  <circle cx="32" cy="31" r="5" fill="#f8f3e8" stroke="#101722" stroke-width="3"/>
+</svg>
