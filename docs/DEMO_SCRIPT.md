@@ -3,9 +3,11 @@
 **Target runtime:** 2:45–2:55
 
 > **FROZEN VERSION 1 SCRIPT — DO NOT RECORD OR PUBLISH AS THE CURRENT MVP.**
-> Two connector receipt-return attempts failed, and the Chrome 152
-> deferred-retirement fix is not yet live-validated. The extension is unpacked,
-> the Android work is conformance-only, and the current MVP is not publicly
+> Two connector receipt-return attempts failed; a later fresh one-call local
+> session completed the Chrome, unpacked-extension, connector, ledger, and
+> dashboard path. That bounded `PASS` does not update this frozen script or
+> establish universal compatibility. The extension remains unpacked, the
+> Android work is conformance-only, and the current MVP is not publicly
 > deployed. See [GO_NO_GO.md](GO_NO_GO.md).
 
 ## 0:00–0:25 — Heads-up before action

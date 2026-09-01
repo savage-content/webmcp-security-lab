@@ -35,28 +35,28 @@ There are intentionally no credentials, real identities, production accounts, or
 
 ## Threats and controls
 
-| Threat | Impact | Control |
-|---|---|---|
-| Misleading tool metadata | Agent underestimates effect | Before/after evidence, explicit side-effect list, failing verdict; annotations are advisory metadata, not enforcement |
-| Over-broad arguments | Handler receives authority absent from UI | Bounded fixture validator; secure comparison uses narrow schema |
-| Prompt injection in result | Agent treats returned text as authority | Controlled fixed payload, raw-result display, `untrustedContentHint` comparison, no automatic follow-on action |
-| Misleading confirmation | Human approves a different effect | Confirmation copy stored verbatim beside actual state transition |
-| Client-support overclaim | Judges mistake registration for discovery | Separate registration, policy, and discovery states; unavailable is reported honestly |
-| Receipt overwrite | Evidence is rewritten after a run | Primary-key insert only; no update/delete endpoint |
-| Cross-session ledger leakage | One visitor sees another visitor’s inputs | D1 queries partitioned by random lab-session UUID |
-| Oversized receipt spam | Storage or parsing pressure | 128 KiB request limit plus Zod validation and bounded fixture strings |
-| Real-world side effect | Educational fixture causes harm | No credentials or external integrations; handlers mutate generated in-memory state only |
-| Ordinary automation mislabeled WebMCP | False contest claim | Fallback explicitly says “lab harness”; only `document.modelContext` status is called WebMCP |
-| Page success mislabeled connector success | A consumed grant appears durably reported when its receipt was lost | Connector success requires validated append before acknowledgement; page and connector statuses are documented separately |
-| Receipt substitution or instruction-shaped metadata | A page influences model behavior or corrupts the report | Exact session/origin/tool binding, bounded schemas, fixed error messages, and model-visible summaries that omit raw page-controlled text |
-| Lost connector acknowledgement | Duplicate or ambiguous reporting | Exact idempotent completion may be retried while the local process remains alive; no crash-atomic or cross-process guarantee is claimed |
-| Extension authority widens silently | An unrelated page or broad tool becomes invokable | `activeTab`, exact loopback host permissions, top-level document binding, fixed generated-tool-name pattern, and empty arguments only |
-| Browser lifecycle leaves stale discovery | A destroyed, navigated, or BFCache-suspended document appears to retain usable authority | Treat logical invalidation and physical discovery as separate facts; require fresh exact-build discovery across destruction, navigation, suspension, and restoration; do not rely only on `toolchange` |
-| Browser result serialization changes or coerces types | Connector accepts malformed, substituted, or ambiguous evidence | Preserve the raw platform value, parse the current string result strictly, validate the complete receipt, and reject serialization or schema failure |
-| Privileged adapter path expands authority | An extension or debugger path bypasses the documented page/connector boundary | Current extension injects only into the selected top-level `MAIN` world and has no `debugger` permission; isolated-world and CDP adapters require separate review and exact-build evidence |
-| Declarative form-tool sandbox gap is generalized to this lab | An upstream declarative vulnerability is mislabeled as a demonstrated imperative-lab result | Declarative forms and cross-frame discovery are out of scope; Chromium issue 526451590 remains an upstream residual risk, not a local finding or PASS |
-| Loopback or browser profile compromise | Local attacker captures development tokens or tampers with the prototype | Explicit local-development boundary; no production authentication claim; restart invalidates connector state |
-| Android conformance mislabeled integration | JVM tests are represented as device/AppFunction support | No generated metadata or device discovery claim; Android remains isolated and conformance-only |
+| Threat                                                       | Impact                                                                                      | Control                                                                                                                                                                                                |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Misleading tool metadata                                     | Agent underestimates effect                                                                 | Before/after evidence, explicit side-effect list, failing verdict; annotations are advisory metadata, not enforcement                                                                                  |
+| Over-broad arguments                                         | Handler receives authority absent from UI                                                   | Bounded fixture validator; secure comparison uses narrow schema                                                                                                                                        |
+| Prompt injection in result                                   | Agent treats returned text as authority                                                     | Controlled fixed payload, raw-result display, `untrustedContentHint` comparison, no automatic follow-on action                                                                                         |
+| Misleading confirmation                                      | Human approves a different effect                                                           | Confirmation copy stored verbatim beside actual state transition                                                                                                                                       |
+| Client-support overclaim                                     | Judges mistake registration for discovery                                                   | Separate registration, policy, and discovery states; unavailable is reported honestly                                                                                                                  |
+| Receipt overwrite                                            | Evidence is rewritten after a run                                                           | Primary-key insert only; no update/delete endpoint                                                                                                                                                     |
+| Cross-session ledger leakage                                 | One visitor sees another visitor’s inputs                                                   | D1 queries partitioned by random lab-session UUID                                                                                                                                                      |
+| Oversized receipt spam                                       | Storage or parsing pressure                                                                 | 128 KiB request limit plus Zod validation and bounded fixture strings                                                                                                                                  |
+| Real-world side effect                                       | Educational fixture causes harm                                                             | No credentials or external integrations; handlers mutate generated in-memory state only                                                                                                                |
+| Ordinary automation mislabeled WebMCP                        | False contest claim                                                                         | Fallback explicitly says “lab harness”; only `document.modelContext` status is called WebMCP                                                                                                           |
+| Page success mislabeled connector success                    | A consumed grant appears durably reported when its receipt was lost                         | Connector success requires validated append before acknowledgement; page and connector statuses are documented separately                                                                              |
+| Receipt substitution or instruction-shaped metadata          | A page influences model behavior or corrupts the report                                     | Exact session/origin/tool binding, bounded schemas, fixed error messages, and model-visible summaries that omit raw page-controlled text                                                               |
+| Lost connector acknowledgement                               | Duplicate or ambiguous reporting                                                            | Exact idempotent completion may be retried while the local process remains alive; no crash-atomic or cross-process guarantee is claimed                                                                |
+| Extension authority widens silently                          | An unrelated page or broad tool becomes invokable                                           | `activeTab`, exact loopback host permissions, top-level document binding, fixed generated-tool-name pattern, and empty arguments only                                                                  |
+| Browser lifecycle leaves stale discovery                     | A destroyed, navigated, or BFCache-suspended document appears to retain usable authority    | Treat logical invalidation and physical discovery as separate facts; require fresh exact-build discovery across destruction, navigation, suspension, and restoration; do not rely only on `toolchange` |
+| Browser result serialization changes or coerces types        | Connector accepts malformed, substituted, or ambiguous evidence                             | Preserve the raw platform value, parse the current string result strictly, validate the complete receipt, and reject serialization or schema failure                                                   |
+| Privileged adapter path expands authority                    | An extension or debugger path bypasses the documented page/connector boundary               | Current extension injects only into the selected top-level `MAIN` world and has no `debugger` permission; isolated-world and CDP adapters require separate review and exact-build evidence             |
+| Declarative form-tool sandbox gap is generalized to this lab | An upstream declarative vulnerability is mislabeled as a demonstrated imperative-lab result | Declarative forms and cross-frame discovery are out of scope; Chromium issue 526451590 remains an upstream residual risk, not a local finding or PASS                                                  |
+| Loopback or browser profile compromise                       | Local attacker captures development tokens or tampers with the prototype                    | Explicit local-development boundary; no production authentication claim; restart invalidates connector state                                                                                           |
+| Android conformance mislabeled integration                   | JVM tests are represented as device/AppFunction support                                     | No generated metadata or device discovery claim; Android remains isolated and conformance-only                                                                                                         |
 
 ## Deliberate vulnerabilities versus platform vulnerabilities
 
@@ -89,13 +89,15 @@ The fixture mismatches are intentional application-design failures. The lab does
   deletion-resistant, or crash-atomic.
 - The unpacked extension and loopback connector assume the local machine and
   browser profile are not already compromised.
-- Both observed 2026-09-01 page invocations produced local `PASS` receipts,
-  but their connector return paths failed. The latest failure occurred at the
-  Chrome 152 WebMCP result-return boundary, before connector commitment. An
-  in-flight registration abort is the leading hypothesis, not proven causality
-  from a retained browser trace. End-to-end receipt reporting remains
-  unvalidated until fresh exact-build runs verify the compatibility shim and
-  Chrome 153-or-later behavior separately.
+- Two earlier 2026-09-01 page invocations produced local `PASS` receipts but
+  failed before connector commitment. An in-flight Chrome 152 registration
+  abort remains the leading hypothesis for the later failure, not proven
+  causality from a retained browser trace. A subsequent fresh no-retry run
+  completed the extension, connector, JSONL ledger, MCP summaries, and local
+  dashboard path with byte-identical state, zero side effects, and consumed
+  authority. That single-session `PASS` validates the compatibility path only
+  for the observed build; Chrome 153-or-later, other clients, navigation,
+  BFCache, and crash-recovery behavior still require separate exact-build runs.
 
 ## Out of scope
 

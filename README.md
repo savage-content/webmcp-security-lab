@@ -10,31 +10,36 @@
 
 **License:** [MIT](LICENSE)
 
-> **Working status (September 1, 2026): NO-GO for publishing the current
-> working tree as a validated MVP.** Two authorized one-use calls produced
-> local page-side `PASS` receipts, most recently
-> `fe3d952f-db38-463c-9023-3d36f51bf863`, but neither receipt completed the
-> extension-to-connector return path. The latest no-retry attempt exposed a
-> Chrome 152 result-return failure consistent with an in-flight registration
-> abort, but no retained browser trace proves that cause. The candidate closes
-> logical authority synchronously and schedules retirement of the inert
-> registration 50 ms after the page callback settles. This compatibility shim
-> does not observe result delivery and remains mocked-test evidence until a
-> fresh approved exact-build live retest succeeds. The extension remains unpacked
-> development software, the Android work is conformance-only, and none of the
-> current MVP has been publicly deployed, recorded, or submitted. See
+> **Working status (September 1, 2026): GO for a locally validated technical
+> MVP release candidate and bounded Scenario 1 demonstration through the tested
+> external-Chrome, unpacked-extension, and loopback-connector path.** One fresh
+> generated zero-input capability was invoked exactly once with no retry. Receipt
+> `d421aaaf-262d-4fbe-81ab-e93acb5efce9` records byte-identical state, zero side
+> effects, and consumed authority; the connector ledger, list/detail methods,
+> and dashboard cross-check passed. This is not a public-deployment or universal-
+> compatibility decision. The frozen public version 1 demo remains unchanged,
+> the extension remains unpacked development software, and Android remains
+> conformance-only. The independent prior-art decision remains NO-GO for
+> novelty, patentability, clean-room, and freedom-to-operate claims. See
 > [TARGET_CLIENT_VALIDATION.md](docs/TARGET_CLIENT_VALIDATION.md),
 > [PRIOR_ART.md](PRIOR_ART.md), and [docs/GO_NO_GO.md](docs/GO_NO_GO.md).
 
-| Current component | Status |
-| --- | --- |
-| Frozen version 1 web range | Existing public baseline only |
-| Scenario 1 page capability | Two local page-side `PASS` receipts; neither is connector proof |
-| Connector receipt path | Two attempts `FAIL`; Chrome 152 compatibility candidate requires a fresh one-call retest |
-| Browser extension | Manifest V3 `0.1.3` installed and paired locally; unpacked and unsigned |
-| Android | JVM/API conformance prototype; not device-invokable |
-| Current MVP deployment | Not publicly deployed |
-| Novelty, patentability, or freedom-to-operate claims | NO-GO under the technical prior-art review; no legal infringement conclusion |
+The successful run used the post-`f7290d9` page and extension content in this
+working tree. The running connector came from `f7290d9`; connector source is
+unchanged by the later UI and cross-realm validation fixes. The browser
+version was not recaptured for the successful session, so this record does not
+inherit the earlier Chrome 152 version observation or claim that a future
+final commit itself was live-run.
+
+| Current component                                    | Status                                                                                                        |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Frozen version 1 web range                           | Existing public baseline, unchanged                                                                           |
+| Scenario 1 page capability                           | `PASS` in one fresh, exact, no-retry external-client run; receipt `d421aaaf-262d-4fbe-81ab-e93acb5efce9`      |
+| Connector receipt path                               | `PASS` for the tested local extension/loopback path, including ledger, list/detail, and dashboard cross-check |
+| Browser extension                                    | Manifest V3 development prototype validated locally; unpacked and unsigned                                    |
+| Android                                              | JVM/API conformance prototype; not device-invokable                                                           |
+| Current MVP deployment                               | Not publicly deployed                                                                                         |
+| Novelty, patentability, or freedom-to-operate claims | NO-GO under the technical prior-art review; no legal infringement conclusion                                  |
 
 ## Why this lab exists
 
@@ -100,9 +105,11 @@ state-only Scenario 1 handler, validates the receipt links and hashes, and
 creates one exportable local receipt. Logical authority closes before any
 awaited work. On success, the page schedules retirement of the physically
 registered but inert tool 50 ms after its callback settles; a post-claim
-failure retires it immediately. This Chrome 152 compatibility shim does not
-observe or prove that the result crossed the browser/client boundary. Chrome
-documents non-cancelling in-flight unregistration beginning in version 153.
+failure retires it immediately. In the dated target run, the result completed
+the external-Chrome → unpacked-extension → loopback-connector path and was
+validated before ledger acknowledgement. That scoped observation is not a
+universal browser result. Chrome documents non-cancelling in-flight
+unregistration beginning in version 153.
 
 This is a page-session demonstrator. It does not claim cross-tab or reload
 replay resistance, server-atomic consumption, executable-byte attestation,
@@ -156,16 +163,15 @@ partitioned by a random device-local lab-session identifier.
 
 The local MVP adds a separate unpacked browser extension, loopback connector,
 and append-only JSONL receipt report. A negotiated page receipt is not a
-connector record until that return path completes. The observed
-`31cac0df-4849-42cc-8f44-05a6bdacd9ea` and
-`fe3d952f-db38-463c-9023-3d36f51bf863` attempts did not complete it. The
-second run is consistent with a Chrome 152 in-flight registration-abort
-failure, but no retained browser trace proves that cause. The compatibility
-shim still needs a fresh exact-build live retest. The extension invokes the
-selected top-level page through explicit `MAIN`-world injection and has no
-`debugger` permission; isolated-world or CDP WebMCP access is not implemented
-or claimed. The Android directory is an isolated conformance prototype and is
-not in the web or connector runtime.
+connector record until that return path completes. On September 1, 2026, one
+fresh generated zero-input Scenario 1 call completed that path exactly once
+with no retry. Receipt `d421aaaf-262d-4fbe-81ab-e93acb5efce9` was validated,
+appended, acknowledged, and cross-checked through the JSONL ledger, list/detail
+methods, and local dashboard. The extension invokes the selected top-level page
+through explicit `MAIN`-world injection and has no `debugger` permission;
+isolated-world or CDP WebMCP access is not implemented or claimed. The Android
+directory is an isolated conformance prototype and is not in the web or
+connector runtime.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 
@@ -214,17 +220,20 @@ The automated suite covers:
   retry behavior, and failure handling.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. A live connector release gate requires a
-fresh browser approval and the end-to-end checks in
+separate Android conformance script. The automated suite passed 123/123 tests,
+typecheck, lint, and production build after the cross-realm result-compatibility
+and approval-dialog fixes. Live connector evidence is recorded separately: the
+September 1 target-client run satisfied the bounded end-to-end checks in
 [docs/GO_NO_GO.md](docs/GO_NO_GO.md).
 
 Automated retirement coverage uses mocked ModelContext behavior; it is not a
-Chrome 152 or Chrome 153 conformance result. A target-client MVP decision needs
-one retained exact-build extension/connector run. Broader compatibility claims
-add separate exact-build gates for in-flight unregistration, result
-serialization and string parsing, Permissions Policy and origin isolation,
-document destruction/navigation and BFCache, duplicate registration ownership,
-and alternate extension worlds. See
+Chrome 152 or Chrome 153 conformance result. The dated external-client run is
+evidence only for its observed browser session, extension content, connector
+content, origin, and session. Its exact browser version was not retained.
+Broader compatibility claims add separate exact-build gates for in-flight
+unregistration, result serialization and string parsing, Permissions Policy
+and origin isolation, document destruction/navigation and BFCache, duplicate
+registration ownership, and alternate extension worlds. See
 [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
 The current verification matrix—including unsupported and unverified items—is in [docs/VERIFICATION.md](docs/VERIFICATION.md).
@@ -246,19 +255,19 @@ Receipts can be downloaded as JSON. There are no update or delete endpoints. Req
 
 ## Deployment
 
-**Do not deploy the current working MVP under the 2026-09-01 decision.** The
-URL at the top of this README is the frozen version 1 baseline. It is not proof
-that the capability negotiator, connector, extension, or Android work was
-deployed.
+**The 2026-09-01 technical MVP GO is not deployment authorization.** The URL at
+the top of this README remains the frozen version 1 baseline. It is not proof
+that the capability negotiator, connector, extension, reporting dashboard, or
+Android work was deployed.
 
 The repository includes `.openai/hosting.json` with a logical `DB` binding and
 generated Drizzle migrations for a possible future web deployment.
 
-1. Replace the current NO-GO with a dated GO record.
+1. Record a separate dated public-deployment decision for the exact artifact.
 2. Run `npm ci` and `npm run verify` on the exact clean release commit.
 3. Create or select a Sites project.
 4. Bind D1 as `DB` and apply the migrations under `drizzle/`.
-5. Deploy the exact validated build output.
+5. Deploy the exact validated build output only after explicit authorization.
 6. Verify `/`, `/api/evidence`, one persisted baseline receipt, and the
    selected WebMCP tool in the exact deployed target client.
 

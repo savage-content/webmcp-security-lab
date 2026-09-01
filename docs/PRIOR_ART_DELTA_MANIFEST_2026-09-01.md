@@ -1,17 +1,26 @@
 # 2026-09-01 prior-art delta review manifest
 
 This documentation-only manifest fixes the exact implementation and test path
-set used for the current-working-tree content anchor in `PRIOR_ART.md`. The
-anchor was calculated from the files' raw bytes while the nested repository was
-at HEAD `b79cf816c2943afc9b2764c7a0bae11d83d2258b`, with 22 tracked modified
-paths and 45 untracked paths after the Chrome 152 compatibility fix:
+set used for the pre-final-commit content anchor in `PRIOR_ART.md`. The anchor
+was calculated from the files' raw bytes in a working tree based on HEAD
+`f7290d907388c146bb164481e598da672bf68203` (`Build WebMCP capability
+negotiator MVP candidate`). At this final pre-commit anchor calculation,
+`git status --short --untracked-files=all` showed 16 modified tracked paths and
+no untracked paths; two are these Markdown review files and are excluded from
+the content hash:
 
-`224522a46d475ce6fe8242c5abcff1c5e397e59628981332fa99e477283eb5a9`
+`2870c4f3182433dcd45b59668fbc2329c9fc47207a564559db6f01c0b13abc9a`
 
 The path list is ordered and uses repository-relative forward-slash spelling.
 It deliberately excludes generated Android build artifacts, `.gitignore`,
 Markdown documentation, and all files outside the reviewed implementation/test
 scope.
+
+The post-live-validation review also inspected
+`components/ui/alert-dialog.tsx` as a supporting presentation primitive. It
+remains outside this previously fixed 45-path scope; the three other reviewed
+delta paths are included below. That explicit exclusion is one reason this
+anchor must not be described as a complete working-tree snapshot.
 
 ```text
 # BEGIN REVIEWED PATHS
@@ -105,8 +114,9 @@ try {
 Expected output:
 
 ```text
-224522a46d475ce6fe8242c5abcff1c5e397e59628981332fa99e477283eb5a9
+2870c4f3182433dcd45b59668fbc2329c9fc47207a564559db6f01c0b13abc9a
 ```
 
 This is a scoped content anchor only. It is not a signature, trusted timestamp,
-complete working-tree snapshot, provenance record, or evidence of authorship.
+complete working-tree snapshot, provenance record, evidence of authorship, or
+patentability, non-infringement, or freedom-to-operate clearance.

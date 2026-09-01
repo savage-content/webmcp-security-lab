@@ -4,11 +4,12 @@
 > public URL remains available only as the frozen version 1 baseline. The
 > completed [prior-art audit](../PRIOR_ART.md) is a NO-GO for novelty,
 > patentability, or freedom-to-operate clearance claims. The current local MVP
-> also failed two connector receipt-return attempts and has not been publicly
-> deployed. The Chrome 152 deferred-retirement fix is not yet live-validated.
-> Recording and submission remain blocked by [GO_NO_GO.md](GO_NO_GO.md). This
-> document is not evidence of originality, priority, legal clearance, or
-> current-MVP deployment.
+> completed one later bounded connector receipt-return run after two earlier
+> failures, but it has not been publicly deployed and does not establish
+> universal compatibility. Recording this frozen script as the current MVP and
+> public submission remain blocked by [GO_NO_GO.md](GO_NO_GO.md). This document
+> is not evidence of originality, priority, legal clearance, or current-MVP
+> deployment.
 
 ## Project title
 
@@ -86,11 +87,11 @@ The recoverable repository history timestamps the application architecture, visu
 
 WebMCP is experimental and client support varies. The lab treats this as
 evidence, not an inconvenience: unsupported and undiscovered states are
-  first-class outputs. Two connector receipt-return attempts failed; the latest
-  sequence is consistent with Chrome 152 cancelling an in-flight execution when
-  its registration retired, but no retained browser trace proves that cause. It
-  requires a fresh approved retest of the compatibility candidate. The extension remains
-unpacked, the Android work is conformance-only, and no current-MVP walkthrough
-or deployment may be published under the dated NO-GO decision.
+first-class outputs. Two connector receipt-return attempts failed; a later
+fresh run completed the local extension-to-connector path, but the successful
+session did not retain a fresh exact browser-version readout and does not prove
+the replay-during-delay or broader compatibility matrix. The extension remains
+unpacked, the Android work is conformance-only, and public deployment or
+submission remains blocked by the dated public-release NO-GO.
 
 This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.

@@ -13,32 +13,35 @@ approval, generate a capability, or invoke the broad source/proposal tools.
 
 ## Live validation status
 
-**2026-09-01: FAIL; fresh approved retest required.** Two unpacked-extension
-requests reached live local page callbacks and produced page-side `PASS`
-receipts `31cac0df-4849-42cc-8f44-05a6bdacd9ea` and
-`fe3d952f-db38-463c-9023-3d36f51bf863`. Neither receipt completed the
-extension/bridge return path. In the latest run, Chrome 152 rejected
-`executeTool()` after the page physically unregistered the capability while the
-call was still in flight. That sequence is consistent with the documented
-pre-Chrome-153 cancellation behavior, but no retained browser trace proves the
-cause. The 50 ms callback-settlement compatibility candidate is not yet
-live-validated.
+**2026-09-01: PASS for one dated local Scenario 1 session.** Extension `0.1.3`
+paired a fresh `http://localhost:3001/` document to exact loopback bridge
+`http://127.0.0.1:48788`. The connector verified an empty hash chain, discovered
+generated zero-input capability
+`get_training_1042_eligibility_once_f7d2fa4e8e8d1e03`, and requested exactly one
+authorized invocation with no retry. Receipt
+`d421aaaf-262d-4fbe-81ab-e93acb5efce9` returned through the bridge and was
+validated and committed as entry `abc6b79c-c4fc-44b4-b2ce-5da7e525b5fa`.
 
-The page receipts are not end-to-end connector `PASS` evidence. Those attempts did not
-prove a connector ledger entry, dashboard record, or MCP receipt summary. The
-one-use grants were consumed, so they must not be retried. Revalidation requires a
-fresh document session or clean reload, a new intent, proposal, exact human
-approval, and a new generated capability. This connector remains a local MVP;
-it has not been publicly deployed.
+The invocation response, JSONL ledger, `list_capability_receipts`,
+`get_capability_receipt_summary`, and the HTTP 200 dashboard report agreed on
+the receipt, contract, receipt, and entry hashes. The dashboard enforced
+`script-src 'none'`. Recorded before and after state were byte identical with
+state hash
+`21269d7ff6b8067868112955cc7b8301bf74a7d165cd109ecd336260bc8bd481`;
+the required result and baseline matched, controlled-handler violations and
+side effects were empty, call number was one, authority was consumed, and fresh
+post-run discovery returned zero tools.
 
-For the latest run, extension `0.1.3` paired the fresh
-`http://localhost:3001/` document to exact loopback bridge
-`http://127.0.0.1:48788`; the connector reported one connected session and
-`list_capability_receipts` returned a valid empty chain before invocation. The
-authorized call was made exactly once with no retry. Chrome rejected the return
-before the extension could persist a completion, so the connector ledger
-remained empty. A fresh page, capability, approval, and one-call authorization
-are required to validate the compatibility candidate.
+Two earlier no-retry attempts remain valid failure evidence: both produced
+page-side `PASS` receipts but did not complete the connector return path. Their
+one-use grants remain consumed and must not be retried. The successful run does
+not prove cross-version, crash-atomic, hosted, or universal-client behavior.
+This connector remains a local MVP and has not been publicly deployed.
+
+The successful session used post-`f7290d9` page and extension content. The
+running connector came from `f7290d9`; connector source is unchanged by the
+later UI and extension validation fixes. The successful browser version was
+not recaptured, and the future final commit itself was not live-run.
 
 ## Security shape
 

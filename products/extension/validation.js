@@ -15,6 +15,15 @@ export const CONNECTOR_BASES = Object.freeze(
 );
 export const MAX_INPUT_SCHEMA_TEXT_LENGTH = 32_768;
 
+export const INSPECTION_FAILURE_CODES = Object.freeze({
+  envelopeInvalid: 'inspection-envelope-invalid',
+  originMismatch: 'inspection-origin-mismatch',
+  executionUrlMismatch: 'inspection-execution-url-mismatch',
+  observedAtInvalid: 'inspection-observed-at-invalid',
+  toolsInvalid: 'inspection-tools-invalid',
+  toolsOversized: 'inspection-tools-oversized',
+});
+
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const BRIDGE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
@@ -335,32 +344,85 @@ function executionUrlMatchesPage(value, expectedExecutionUrl, expectedPageUrl) {
   }
 }
 
+function isCrossRealmPlainRecord(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype === null || prototype === Object.prototype) return true;
+    const constructor = Object.getOwnPropertyDescriptor(
+      prototype,
+      'constructor',
+    )?.value;
+    return (
+      Object.getPrototypeOf(prototype) === null &&
+      typeof constructor === 'function' &&
+      constructor.name === 'Object'
+    );
+  } catch {
+    return false;
+  }
+}
+
+function inspectionFailure(code) {
+  return new Error(`Inspection response rejected (${code}).`);
+}
+
+function normalizeInspectionEnvelope(value) {
+  // MAIN-world executeScript results may retain that realm's Object prototype.
+  // Accept only a plain-record prototype shape, then clone the complete wrapper
+  // into this service-worker realm before applying the existing strict nested
+  // JSON sanitizers. The wrapper itself is created by our injected function;
+  // page-supplied declaration strings remain untrusted data.
+  if (!isCrossRealmPlainRecord(value)) {
+    throw inspectionFailure(INSPECTION_FAILURE_CODES.envelopeInvalid);
+  }
+  try {
+    const normalized = structuredClone(value);
+    if (!isPlainRecord(normalized)) {
+      throw inspectionFailure(INSPECTION_FAILURE_CODES.envelopeInvalid);
+    }
+    return normalized;
+  } catch {
+    throw inspectionFailure(INSPECTION_FAILURE_CODES.envelopeInvalid);
+  }
+}
+
 export function sanitizeInspectionPayload(
   value,
   expectedOrigin,
   expectedPageUrl,
   expectedExecutionUrl,
 ) {
+  const normalized = normalizeInspectionEnvelope(value);
+  if (normalized.origin !== expectedOrigin) {
+    throw inspectionFailure(INSPECTION_FAILURE_CODES.originMismatch);
+  }
   if (
-    !isPlainRecord(value) ||
-    value.origin !== expectedOrigin ||
     !executionUrlMatchesPage(
-      value.executionUrl,
+      normalized.executionUrl,
       expectedExecutionUrl,
       expectedPageUrl,
-    ) ||
-    typeof value.observedAt !== 'string' ||
-    !Number.isFinite(Date.parse(value.observedAt)) ||
-    !Array.isArray(value.tools) ||
-    value.tools.length > 100
+    )
   ) {
-    throw new Error('The page returned an invalid inspection result.');
+    throw inspectionFailure(INSPECTION_FAILURE_CODES.executionUrlMismatch);
+  }
+  if (
+    typeof normalized.observedAt !== 'string' ||
+    !Number.isFinite(Date.parse(normalized.observedAt))
+  ) {
+    throw inspectionFailure(INSPECTION_FAILURE_CODES.observedAtInvalid);
+  }
+  if (!Array.isArray(normalized.tools)) {
+    throw inspectionFailure(INSPECTION_FAILURE_CODES.toolsInvalid);
+  }
+  if (normalized.tools.length > 100) {
+    throw inspectionFailure(INSPECTION_FAILURE_CODES.toolsOversized);
   }
   return {
     origin: expectedOrigin,
     pageUrl: expectedPageUrl,
-    observedAt: value.observedAt,
-    tools: value.tools.map(sanitizeTool).filter(Boolean),
+    observedAt: normalized.observedAt,
+    tools: normalized.tools.map(sanitizeTool).filter(Boolean),
   };
 }
 

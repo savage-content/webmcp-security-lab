@@ -47,13 +47,16 @@ flowchart LR
 The page-side receipt and connector record are distinct evidence states. A
 page `PASS` does not become connector evidence until the return path succeeds,
 the connector validates and appends the receipt, and acknowledgement completes.
-Two 2026-09-01 attempts produced page-side `PASS` receipts
+Two earlier 2026-09-01 attempts produced page-side `PASS` receipts
 `31cac0df-4849-42cc-8f44-05a6bdacd9ea` and
 `fe3d952f-db38-463c-9023-3d36f51bf863`, but both failed before connector
 commitment. The latter is consistent with Chrome 152 cancelling an in-flight
 call when its registration signal is aborted, but no retained browser trace
-proves that cause. The connector path remains unvalidated until the
-compatibility candidate passes a fresh exact-build live run.
+proves that cause. A subsequent fresh no-retry run completed the full path as
+receipt `d421aaaf-262d-4fbe-81ab-e93acb5efce9`: state was byte identical,
+side effects were empty, the one-use lease was consumed, the connector
+committed one hash-chained entry, and post-run discovery returned zero tools.
+This is dated single-session evidence, not a universal compatibility claim.
 
 ## Trust boundaries
 
@@ -70,8 +73,9 @@ compatibility candidate passes a fresh exact-build live run.
 9. **Connector boundary** — the connector is a loopback-only, token-protected
    development process. It may append a returned capability receipt to a local
    JSONL chain only after schema, identity, chronology, state, and hash
-   validation. Unit-tested acknowledgement ordering is not proof of a completed
-   live return path.
+   validation. One completed live return path now confirms that ordering for
+   the observed session; it does not establish crash-atomic or production
+   durability.
 10. **Extension boundary** — the unpacked Manifest V3 extension is a local
     transport adapter bound to one explicitly selected top-level document. Its
     WebMCP calls are injected into that page's `MAIN` world, and its manifest
@@ -213,5 +217,6 @@ connector JSONL reports follow the separate boundaries above.
 2. Functional range, real registration, five scenario handlers, and D1 evidence API.
 3. Tests, migrations, safety documentation, CI, and verification.
 4. Frozen version 1 submission copy, screenshots, demo script, public source,
-   and deployment. The current MVP remains a separate local, blocked release
-   candidate under `docs/GO_NO_GO.md`.
+   and deployment. The current MVP remains a separate local technical
+   candidate; public release and deployment remain blocked under
+   `docs/GO_NO_GO.md`.

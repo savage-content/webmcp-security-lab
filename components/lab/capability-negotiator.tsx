@@ -147,6 +147,9 @@ export function CapabilityNegotiator({
     useState<CapabilityStatus>('idle');
   const [workflowPhase, setWorkflowPhase] = useState<WorkflowPhase>('idle');
   const [approvalOpen, setApprovalOpen] = useState(false);
+  const approvalTriggerRef = useRef<HTMLButtonElement>(null);
+  const cancelApprovalRef = useRef<HTMLButtonElement>(null);
+  const resetNegotiationRef = useRef<HTMLButtonElement>(null);
   const [message, setMessage] = useState(
     'Start by locking the human intent. Nothing has been invoked.',
   );
@@ -1087,7 +1090,10 @@ export function CapabilityNegotiator({
             />
           </dl>
           <Button
-            className="mt-4 w-full"
+            ref={approvalTriggerRef}
+            className="mt-4 h-auto min-h-10 w-full border border-lime-200/70 bg-lime-300 px-4 py-2.5 text-slate-950 shadow-sm hover:bg-lime-200 focus-visible:ring-lime-300/60"
+            aria-haspopup="dialog"
+            aria-expanded={approvalOpen}
             disabled={
               !proposal || !['proposal', 'review'].includes(workflowPhase)
             }
@@ -1099,7 +1105,7 @@ export function CapabilityNegotiator({
           >
             <ShieldCheck data-icon="inline-start" />
             {workflowPhase === 'review'
-              ? 'Review frozen contract'
+              ? 'Review and approve exact capability'
               : 'Prepare exact approval'}
           </Button>
         </NegotiationCard>
@@ -1128,6 +1134,7 @@ export function CapabilityNegotiator({
             Change source declaration
           </Button>
           <Button
+            ref={resetNegotiationRef}
             variant="outline"
             className="border-white/20 bg-transparent text-slate-100 hover:bg-white/10 hover:text-white"
             onClick={resetNegotiation}
@@ -1194,81 +1201,187 @@ export function CapabilityNegotiator({
       </div>
 
       <AlertDialog open={approvalOpen} onOpenChange={setApprovalOpen}>
-        <AlertDialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-3xl">
-          <AlertDialogHeader>
+        <AlertDialogContent
+          size="wide"
+          initialFocus={cancelApprovalRef}
+          finalFocus={() => {
+            const trigger = approvalTriggerRef.current;
+            return trigger && !trigger.disabled
+              ? trigger
+              : resetNegotiationRef.current;
+          }}
+          className="max-h-[calc(100dvh-2rem)] gap-0 overflow-y-auto p-0"
+        >
+          <AlertDialogHeader className="border-b border-border px-5 py-4 sm:px-6">
             <AlertDialogMedia className="bg-amber-100 text-amber-900">
               <AlertTriangle />
             </AlertDialogMedia>
             <AlertDialogTitle>
               Withdraw the broad tool and register one exact capability?
             </AlertDialogTitle>
-            <AlertDialogDescription>{approvalCopy}</AlertDialogDescription>
+            <AlertDialogDescription className="max-w-none text-left leading-6 [overflow-wrap:anywhere]">
+              {approvalCopy}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           {proposal ? (
-            <div className="space-y-2 break-all rounded-md border border-border bg-muted/50 p-3 font-mono text-[10px] leading-5 text-muted-foreground">
-              <p>contract_sha256: {contract?.contractHash}</p>
-              <p>proposal_sha256: {contract?.proposalHash}</p>
-              <p>capability_id: {contract?.capabilityId}</p>
-              <p>approval_nonce: {contract?.approval.nonce}</p>
-              <p>origin: {contract?.source.origin}</p>
-              <p>
-                source_declaration_sha256:{' '}
-                {contract?.source.sourceDeclarationHash}
+            <div className="px-5 py-4 sm:px-6">
+              <div className="grid gap-3 rounded-lg border border-border bg-muted/40 p-4 text-sm sm:grid-cols-2">
+                <ApprovalFact
+                  label="Target"
+                  value={contract?.intent.accountId ?? 'Not created'}
+                />
+                <ApprovalFact
+                  label="Operation"
+                  value={humanizeContractToken(contract?.intent.operation)}
+                />
+                <ApprovalFact
+                  label="Input schema"
+                  value={describeInputSchema(
+                    contract?.compiled.declaration.inputSchema,
+                  )}
+                />
+                <ApprovalFact
+                  label="Required postcondition"
+                  value={humanizeContractToken(
+                    contract?.intent.expectedPostcondition,
+                  )}
+                />
+                <ApprovalFact
+                  label="Use limit"
+                  value={
+                    contract
+                      ? `${contract.intent.maxCalls} invocation maximum`
+                      : 'Not created'
+                  }
+                />
+                <ApprovalFact
+                  label="Expires"
+                  value={contract?.compiled.expiresAt ?? 'Not created'}
+                />
+              </div>
+              <p className="mt-3 rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm font-medium leading-5 text-amber-950">
+                Approval registers this capability. It does not invoke it.
               </p>
-              <p>source_handler_version: {contract?.source.handlerVersion}</p>
-              <p>
-                capability_handler_version: {contract?.compiled.handlerVersion}
-              </p>
-              <p>generated_tool: {contract?.compiled.toolName}</p>
-              <p>expires_at: {contract?.compiled.expiresAt}</p>
-              <p>
-                required_result:{' '}
-                {JSON.stringify(contract?.intent.requiredResult)}
-              </p>
-              <p>
-                approved_baseline: {JSON.stringify(contract?.intent.baseline)}
-              </p>
-              <p>
-                required_postcondition: {contract?.intent.expectedPostcondition}
-              </p>
-              <p>
-                prohibited_effects:{' '}
-                {JSON.stringify(contract?.intent.prohibitedEffects)}
-              </p>
-              <p>
-                input_schema:{' '}
-                {JSON.stringify(contract?.compiled.declaration.inputSchema)}
-              </p>
-              <details>
-                <summary className="cursor-pointer font-sans text-xs font-semibold text-foreground">
-                  Complete canonical contract hash preimage
+              <details className="mt-4 overflow-hidden rounded-lg border border-border">
+                <summary className="cursor-pointer px-4 py-3 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">
+                  Technical contract and hashes
                 </summary>
-                <p className="mt-2 whitespace-pre-wrap">
-                  {contract
-                    ? canonicalJson({
-                        protocol: contract.protocol,
-                        capabilityId: contract.capabilityId,
-                        intent: contract.intent,
-                        proposalHash: contract.proposalHash,
-                        source: contract.source,
-                        approval: contract.approval,
-                        compiled: contract.compiled,
-                      })
-                    : ''}
-                </p>
+                <div className="space-y-2 border-t border-border bg-muted/50 p-4 font-mono text-[10px] leading-5 text-muted-foreground [overflow-wrap:anywhere]">
+                  <p>contract_sha256: {contract?.contractHash}</p>
+                  <p>proposal_sha256: {contract?.proposalHash}</p>
+                  <p>capability_id: {contract?.capabilityId}</p>
+                  <p>approval_nonce: {contract?.approval.nonce}</p>
+                  <p>origin: {contract?.source.origin}</p>
+                  <p>
+                    source_declaration_sha256:{' '}
+                    {contract?.source.sourceDeclarationHash}
+                  </p>
+                  <p>
+                    source_handler_version: {contract?.source.handlerVersion}
+                  </p>
+                  <p>
+                    capability_handler_version:{' '}
+                    {contract?.compiled.handlerVersion}
+                  </p>
+                  <p>generated_tool: {contract?.compiled.toolName}</p>
+                  <p>expires_at: {contract?.compiled.expiresAt}</p>
+                  <p>
+                    required_result:{' '}
+                    {JSON.stringify(contract?.intent.requiredResult)}
+                  </p>
+                  <p>
+                    approved_baseline:{' '}
+                    {JSON.stringify(contract?.intent.baseline)}
+                  </p>
+                  <p>
+                    required_postcondition:{' '}
+                    {contract?.intent.expectedPostcondition}
+                  </p>
+                  <p>
+                    prohibited_effects:{' '}
+                    {JSON.stringify(contract?.intent.prohibitedEffects)}
+                  </p>
+                  <p>
+                    input_schema:{' '}
+                    {JSON.stringify(contract?.compiled.declaration.inputSchema)}
+                  </p>
+                  <details>
+                    <summary className="cursor-pointer font-sans text-xs font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      Complete canonical contract hash preimage
+                    </summary>
+                    <p className="mt-2 whitespace-pre-wrap">
+                      {contract
+                        ? canonicalJson({
+                            protocol: contract.protocol,
+                            capabilityId: contract.capabilityId,
+                            intent: contract.intent,
+                            proposalHash: contract.proposalHash,
+                            source: contract.source,
+                            approval: contract.approval,
+                            compiled: contract.compiled,
+                          })
+                        : ''}
+                    </p>
+                  </details>
+                </div>
               </details>
             </div>
           ) : null}
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void approveAndRegister()}>
-              Approve withdrawal + one-use registration
+          <AlertDialogFooter className="mx-0 mb-0 shrink-0 rounded-b-xl px-5 py-4 sm:flex-wrap sm:px-6">
+            <AlertDialogCancel
+              ref={cancelApprovalRef}
+              className="min-h-11 w-full sm:w-auto"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="h-auto min-h-11 w-full whitespace-normal px-4 py-2.5 text-center sm:w-auto"
+              onClick={() => void approveAndRegister()}
+            >
+              Approve exact one-use capability
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </section>
   );
+}
+
+function ApprovalFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1 break-words font-medium text-foreground [overflow-wrap:anywhere]">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function humanizeContractToken(value: string | undefined) {
+  if (!value) return 'Not created';
+  return value
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function describeInputSchema(
+  inputSchema: Record<string, JsonValue> | undefined,
+) {
+  if (!inputSchema) return 'Not created';
+  const properties = inputSchema.properties;
+  const fieldCount =
+    properties && typeof properties === 'object' && !Array.isArray(properties)
+      ? Object.keys(properties).length
+      : 0;
+  const fieldLabel = `${fieldCount} ${fieldCount === 1 ? 'field' : 'fields'}`;
+  return inputSchema.additionalProperties === false
+    ? `${fieldLabel} · unknown fields rejected`
+    : fieldLabel;
 }
 
 function NegotiationCard({

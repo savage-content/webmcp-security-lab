@@ -47,27 +47,53 @@ also proposes intent/review digests, approval grants, single execution,
 freshness gates, and audit. The remaining possible distinction is only the
 complete WebMCP registration-replacement sequence described above.
 
-## 2026-09-01 current-working-tree delta review
+## 2026-09-01 pre-final-commit delta review
 
-**Decision: unchanged NO-GO.** An independent technical review of the current
-post-`b79cf81` working tree found no basis to broaden the narrow Scenario 1
-finite-search statement above. The platform-neutral capability core, browser
-extension/local connector/dashboard, and Android conformance adapter improve
-portability and integration, but combine mechanisms already disclosed in the
-primary sources below. They do not support claims of novelty, patentability,
-firstness, clean-room development, non-infringement, or freedom to operate.
+**Decision: unchanged NO-GO.** An independent technical review of the
+pre-final-commit working tree, including changes after `b79cf81`, found no
+basis to broaden the narrow Scenario 1 finite-search statement above. The
+platform-neutral capability core, browser extension/local
+connector/dashboard, and Android conformance adapter improve portability and
+integration, but combine mechanisms already disclosed in the primary sources
+below. They do not support claims of novelty, patentability, firstness,
+clean-room development, non-infringement, or freedom to operate.
 
-**Dirty-tree anchor.** Review began at HEAD
-`b79cf816c2943afc9b2764c7a0bae11d83d2258b`; the anchor was refreshed after
-the Chrome 152 compatibility fix with 22 modified tracked paths and 45
-untracked paths. The exact
+**Pre-final-commit content anchor.** The pre-final-commit review snapshot was
+taken from a working tree based on HEAD
+`f7290d907388c146bb164481e598da672bf68203` (`Build WebMCP capability
+negotiator MVP candidate`). At this final pre-commit anchor calculation,
+`git status --short --untracked-files=all` showed 16 modified tracked
+paths and no untracked paths; two are these Markdown review files and are
+excluded from the content hash. The exact
 [45-file implementation/test manifest](docs/PRIOR_ART_DELTA_MANIFEST_2026-09-01.md)
 covering the capability core, connector, extension, dashboard-facing
 integration, and Android adapter hashes to
-`224522a46d475ce6fe8242c5abcff1c5e397e59628981332fa99e477283eb5a9`.
+`2870c4f3182433dcd45b59668fbc2329c9fc47207a564559db6f01c0b13abc9a`.
 The linked manifest fixes the precise path order and reproduction algorithm.
 This is a scoped content anchor only—not a signature, trusted timestamp,
-complete working-tree snapshot, provenance record, or evidence of authorship.
+complete working-tree snapshot, provenance record, evidence of authorship, or
+patentability, non-infringement, or freedom-to-operate clearance.
+
+**Post-live-validation implementation delta.** The approval-dialog changes in
+`components/lab/capability-negotiator.tsx` and the supporting wide-dialog and
+focus behavior in `components/ui/alert-dialog.tsx` improve the clarity,
+responsiveness, and keyboard focus of the existing exact-approval surface.
+The final accessibility hardening makes the whole dialog scroll at extreme
+zoom, returns focus to an enabled reset control when approval disables its
+trigger, and derives summary facts from the frozen contract and input schema
+rather than parallel literals. It preserves the displayed contract facts and
+expandable canonical hash preimage but does not change what authority is
+compiled, approved, consumed, or verified. The extension change in
+`products/extension/validation.js` accepts
+only a plain-record-shaped cross-realm inspection wrapper, clones it into the
+service-worker realm, then applies the existing origin, execution-URL,
+timestamp, tool-count, and nested declaration validation. Its fixed failure
+codes avoid reflecting rejected page strings. The added
+`tests/extension-validation.test.ts` cases emulate a foreign JavaScript realm
+and rejection paths; they are deterministic test evidence, not live-browser
+or extension conformance. These are approval-UX and representation-boundary
+hardening changes, not a new capability, grant, policy, registration,
+verification, or evidence mechanism. They do not change the NO-GO conclusion.
 
 The delta remains a composition of established mechanisms:
 
@@ -175,7 +201,7 @@ establishes on the review date.
   `MAIN`-world injection and no `debugger` permission.
 
 Those implementation statuses require exact-browser-build conformance evidence
-before any broader compatibility claim. They do not alter the dirty-tree
+before any broader compatibility claim. They do not alter the pre-final-commit
 content anchor above because the 45-file manifest excludes Markdown
 documentation.
 

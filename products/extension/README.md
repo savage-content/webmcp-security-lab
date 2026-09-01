@@ -3,21 +3,27 @@
 This Chrome Manifest V3 extension pairs one user-selected HTTP(S) tab with the
 local connector. It is a narrow transport adapter, not an approval surface.
 
-**Validation status (2026-09-01):** Manifest versions `0.1.1` and `0.1.3` were
-loaded as unpacked development extensions for two no-retry attempts. Both
-commands reached the page and produced local page-side `PASS` receipts
-(`31cac0df-4849-42cc-8f44-05a6bdacd9ea` and
-`fe3d952f-db38-463c-9023-3d36f51bf863`), but neither receipt completed return
-transport to the connector. The second run paired `0.1.3` to the exact fresh
-`http://localhost:3001/` document and verified an empty connector ledger first.
-Chrome 152 then rejected `executeTool()` after the page aborted its registration
-signal while the call was still in flight. That sequence is consistent with the
-documented pre-Chrome-153 cancellation behavior, but the run retained no browser
-trace that proves causality. The page lifecycle now uses a 50 ms
-callback-settlement compatibility delay before retirement, but that candidate
-needs a fresh authorized live retest. End-to-end connector delivery remains **not
-validated**. This is not a signed package, Chrome Web Store release, or public
-deployment.
+**Validation status (2026-09-01):** Unpacked manifest `0.1.3` completed one
+fresh external-Chrome, extension, loopback-connector run. After a bounded
+cross-realm normalization fixed discovery of Chrome's `MAIN`-world inspection
+envelope, the bridge discovered generated zero-input capability
+`get_training_1042_eligibility_once_f7d2fa4e8e8d1e03` and invoked it exactly
+once with no retry. Receipt `d421aaaf-262d-4fbe-81ab-e93acb5efce9` returned
+through the bridge, passed connector validation, and was committed as entry
+`abc6b79c-c4fc-44b4-b2ce-5da7e525b5fa`. Before and after state were byte
+identical, the state hash remained
+`21269d7ff6b8067868112955cc7b8301bf74a7d165cd109ecd336260bc8bd481`,
+side effects were empty, call number was one, logical authority was consumed,
+and post-run discovery returned zero tools.
+
+Two earlier no-retry attempts produced page-side `PASS` receipts but did not
+complete connector return transport. The latest earlier failure was consistent
+with Chrome 152 cancelling an in-flight call after registration abort, but no
+retained browser trace proves that cause. The later run completed successfully
+with the 50 ms callback-settlement shim, but replay during that delay remains
+mocked-test evidence and the successful browser version was not recaptured. It
+does not establish universal compatibility. This remains an unpacked local
+prototype, not a signed package, Chrome Web Store release, or public deployment.
 
 ## Load it unpacked
 

@@ -5,16 +5,17 @@
 **Earlier direct-run origin:** `http://localhost:3000`
 **Branch:** `codex/capability-negotiator`
 **Scope:** Scenario 1 direct-client evidence, two failed unpacked-extension
-connector attempts, and one Chrome 152 compatibility candidate, one local
-document at a time
+connector attempts, the Chrome 152 compatibility candidate, and one successful
+external-Chrome connector retest, one local document at a time
 
 This record captures direct observations through a client's WebMCP discovery
-and invocation surface and separately records the later connector attempt. It
-is evidence only for the named local runs, origin, branch, and sessions. It is
-not evidence of universal browser or client support. The disposable browser
-used for the connector attempt reported Chrome `152.0.7977.64`, Chromium
-revision `506c834ecceaa943c5f41e6cfe7f68acb5c45346`. A fresh retest must record
-its own exact client and browser version rather than inherit this observation.
+and invocation surface and separately records the later connector attempts,
+including the successful fresh run. It is evidence only for the named local
+runs, origin, branch, and sessions. It is not evidence of universal browser or
+client support. The disposable browser used for the earlier connector attempt
+reported Chrome `152.0.7977.64`, Chromium revision
+`506c834ecceaa943c5f41e6cfe7f68acb5c45346`. A different run must record its
+own exact client and browser version rather than inherit that observation.
 
 ## Successful one-use path
 
@@ -74,7 +75,7 @@ page reload restored operation. The independent drift and expiry cases were
 therefore run in fresh document sessions. This is a client/session churn limit,
 not evidence that long-lived repeated registration is supported.
 
-## Connector end-to-end attempt
+## First connector end-to-end attempt
 
 Later on 2026-09-01, the unpacked Manifest V3 extension and local connector
 were used for an end-to-end attempt against a live local page. The request
@@ -97,7 +98,8 @@ browser/client version, page origin, extension version, connector commit, UTC
 time, connector response, ledger entry ID, receipt hash, and any console or
 transport error.
 
-The current connector result is **FAIL; fresh approved retest required**. The
+That connector attempt is **FAIL**. It is preserved as historical evidence and
+is not converted into a pass by the later successful fresh session. The
 current MVP has not been publicly deployed.
 
 ## Hardened no-retry attempt and Chrome 152 result-return hypothesis
@@ -147,23 +149,96 @@ hypothesis, not proven causality for this particular failure. The candidate now
 consumes logical authority synchronously and schedules physical retirement 50
 ms after the page callback settles successfully; post-claim failures retire
 immediately. The delay is a Chrome 152 compatibility shim. It does not observe
-or prove browser/client delivery and is deterministic mocked-test evidence only
-until a fresh live run verifies the external result, inert replay rejection
-during the delay, and fresh discovery after retirement. Chrome 153's documented
-platform behavior must be tested separately rather than inferred from the shim.
+or prove browser/client delivery by itself. The successful run below verifies
+an external result and fresh discovery after retirement, but it did not make an
+inert replay attempt during the delay. Replay behavior remains deterministic
+mocked-test evidence only. Chrome 153's documented platform behavior must be
+tested separately rather than inferred from the shim.
 
-The authorized one call was consumed and was not retried. A fresh test requires
-a new page document, locked intent, proposal, exact approval, generated
-capability, verified empty connector baseline, and new one-call authorization.
+The authorized one call was consumed and was not retried. Repeating that
+failed attempt required a new page document, locked intent, proposal, exact
+approval, generated capability, verified empty connector baseline, and new
+one-call authorization.
+
+## Successful external-Chrome connector retest
+
+Later on 2026-09-01, a fresh page at `http://localhost:3001` was paired from
+external Chrome through the unpacked extension to the isolated loopback
+connector. Connector session `a5512afe-c096-4909-97b9-b2b5af1194eb` exposed
+the fresh generated zero-input tool
+`get_training_1042_eligibility_once_f7d2fa4e8e8d1e03`. The human authorized
+exactly one no-retry call for synthetic account `TRAINING-1042`; the connector
+made that one call and invoked no other site capability.
+
+The successful session did not retain a fresh browser-version or Chromium-
+revision readout. It used the same disposable external-Chrome test setup, but
+this record does not inherit the earlier Chrome 152 observation. The live page
+and extension content included the post-`f7290d9` fixes. The running connector
+came from `f7290d9`, and its source is unchanged by those later fixes. This is
+mixed-source provenance for a content-equivalent connector, not evidence that
+a future final commit itself was live-run.
+
+The invocation completed at `2026-09-01T19:23:42.248Z` with receipt
+`d421aaaf-262d-4fbe-81ab-e93acb5efce9`, verdict `PASS`, and `callNumber: 1`.
+Its before and after state both recorded:
+
+```json
+{
+  "accountId": "TRAINING-1042",
+  "eligibility": "eligible",
+  "lastReviewedAt": null,
+  "owner": "Avery Example",
+  "reviewCount": 0,
+  "reviewed": false
+}
+```
+
+The approved baseline and observed state shared SHA-256
+`21269d7ff6b8067868112955cc7b8301bf74a7d165cd109ecd336260bc8bd481`.
+The receipt reported that its required-result, approved-baseline, and
+observed-state byte-identity checks were each `true`; it also recorded zero
+controlled-handler violations, `sideEffects: []`, and logical invalidation
+reason `consumed`.
+
+The connector validated and appended ledger entry
+`abc6b79c-c4fc-44b4-b2ce-5da7e525b5fa`. Its contract SHA-256 was
+`b4b276dd3467cdfdf2baa9e631f9fc58fadd43e78489d07b390b3255390fbf04`,
+receipt SHA-256 was
+`592014b6e87e263fb864fc9b5f58b4f6629a0da7a5b4a7fa0aa6be470f5cece4`,
+and entry SHA-256 was
+`e48af54e9318be5a575c743a70f901137e6ea55c6d6f07fb47c20f42e085d1c5`.
+The one-entry chain verified with `previous: null`.
+
+Both the receipt-list and receipt-detail dashboard routes returned HTTP 200.
+They presented the matching hashes, verdict, and required assessment
+disclaimer under a Content Security Policy containing `script-src 'none'`.
+Fresh post-run page discovery returned zero tools, confirming physical
+retirement after logical consumption without making a second invocation.
+
+This run is page `PASS` / connector `PASS` for the named local session. It is
+the first retained end-to-end evidence here that the browser result crossed the
+extension boundary, was connector-validated, entered the verified ledger, and
+was rendered by the receipt dashboard. It does not retroactively establish a
+successful return for either earlier failed run.
+
+The live sequence also exposed two implementation defects before this success:
+cross-realm inspection envelopes required normalization, and the approval
+dialog made the decision and action difficult to review. Both were corrected
+before the successful invocation. These fixes are part of the live-validation
+record, not evidence of compatibility outside the named browser and session.
 
 ## Exact-build conformance gates
 
-Before a connector-success claim, a fresh run must retain the exact target
+The successful connector claim is limited to the retained session above. Any
+broader browser or connector-compatibility claim must retain the exact target
 browser build, client/extension build, raw client response or rejection,
 relevant console output, connector transcript, and resulting ledger state. It
-must cover in-flight unregistration on that target, callback settlement, the
-external result, replay during the 50 ms shim, fresh discovery after
-retirement, and the extension's implemented top-level `MAIN`-world path.
+must separately cover in-flight unregistration on that target, callback
+settlement, the external result, replay during the 50 ms shim, fresh discovery
+after retirement, and the extension's implemented top-level `MAIN`-world path.
+The successful run proved fresh discovery returned zero tools after retirement;
+it did not make a replay call because the authorization permitted exactly one
+invocation.
 
 Broader browser or cross-version compatibility claims require a separately
 scoped matrix covering Chrome 153-or-later, rejection of circular or otherwise
@@ -181,9 +256,11 @@ risk, not a local PASS or a vulnerability demonstrated by this record.
 
 ## Claim boundary
 
-The observation proves a same-document, local-origin one-use flow in the named
-client. It does not prove cross-tab, reload, multi-client, server-atomic, or
-universal-client replay resistance; executable-byte attestation; browser-level
-network isolation; or durable independently attested receipts.
+The observations prove a same-document, local-origin one-use flow in the named
+clients and one complete extension-to-connector receipt path in session
+`a5512afe-c096-4909-97b9-b2b5af1194eb`. They do not prove cross-tab, reload,
+multi-client, server-atomic, or universal-client replay resistance;
+executable-byte attestation; browser-level network isolation; or durable
+independently attested receipts.
 
 This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
