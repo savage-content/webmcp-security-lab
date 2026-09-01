@@ -8,6 +8,12 @@
 **Source:** <https://github.com/savage-content/webmcp-security-lab>  
 **License:** [MIT](LICENSE)
 
+> **Working status (August 31, 2026):** The public v1 demo is frozen. A
+> Scenario 1 capability-negotiation slice exists only on the local
+> `codex/capability-negotiator` branch; it has not been deployed, recorded, or
+> submitted. See [PRIOR_ART.md](PRIOR_ART.md) and
+> [docs/GO_NO_GO.md](docs/GO_NO_GO.md).
+
 ## Why this lab exists
 
 WebMCP creates an agent-facing surface on a web page. That surface can differ from the human-facing UI—and both can differ from the code that ultimately runs.
@@ -40,11 +46,42 @@ The intended flow is:
 - The selected fixture is registered at runtime with `document.modelContext.registerTool()`.
 - Registration is always attempted when the API exists. A policy probe is displayed as an observation, but only a successful registration or `NotAllowedError` decides the registration outcome.
 - A supported same-origin client can discover it with `document.modelContext.getTools()` and invoke it with `document.modelContext.executeTool()`.
-- Every path—external WebMCP invocation, in-page WebMCP self-test, and explicit fallback harness—uses the same scenario handler.
+- Every path—external WebMCP invocation, in-page WebMCP self-test request, and explicit fallback harness—uses the same scenario handler. Because the shared registered callback cannot distinguish a concurrent external call from the in-page request, WebMCP receipts conservatively record browser confirmation as unobservable.
 - Every run produces a schema-validated evidence receipt and attempts an append-only write to Cloudflare D1.
 - The UI reports unsupported, blocked, undiscovered, and failed states without calling them WebMCP success.
 
 The fallback harness is intentionally labeled as a harness. It is useful for education in unsupported browsers, but it is not represented as agent discovery or ordinary browser automation disguised as WebMCP.
+
+## Scenario 1 capability-negotiation slice
+
+The local working branch adds one bounded demonstration:
+
+```text
+lock intent → inspect → propose → approve → withdraw broad source
+            → register unique no-input tool → claim once → verify → unregister
+```
+
+The proposal tool can stage only the exact human-locked contract and cannot
+invoke the source handler. Exact approval binds a random nonce, page origin,
+source-declaration SHA-256, declared handler versions, a 120-second lease, one
+synthetic account, required result, and prohibited effects. Approval
+closes re-entrant approval, revalidates the current source, account snapshot,
+and remaining lifetime, then creates a valid lease before synchronously
+disabling and aborting the broad source registration. The generated callback consumes a
+single-document lease before its first `await`, rechecks the bindings, runs a
+state-only Scenario 1 handler, validates the receipt links and hashes, and
+creates one exportable local receipt.
+
+This is a page-session demonstrator. It does not claim cross-tab or reload
+replay resistance, server-atomic consumption, executable-byte attestation,
+durable capability receipts, independent network observation, or universal
+client behavior. The current capability-handler path contains no `fetch` or
+evidence-API call, but browser egress is not isolated or independently
+observed. Its
+receipt is labeled `local-export-only`. The API rejects receipts that retain
+negotiated-capability markers, but client-submitted JSON is not provenance
+authenticated: a fully relabeled payload cannot be distinguished from ordinary
+self-reported evidence without a server-issued or signature-bound envelope.
 
 ## Three-minute demo path
 
@@ -58,13 +95,13 @@ The complete narration is in [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
 
 ## Scenario catalog
 
-| # | Fixture | Deliberate mismatch | Secure comparison |
-|---|---|---|---|
-| 01 | Read-only claim | Description and `readOnlyHint` say read-only; handler marks a synthetic account reviewed | Pure lookup handler; separate truthful mutation |
-| 02 | Over-broad schema | Agent receives `target` and free-form `instruction` fields absent from the human UI | One bounded `notice` field, fixed target, no additional properties |
-| 03 | Tool-result injection | Status result mixes valid data with controlled instruction-shaped text | Structured untrusted field plus `untrustedContentHint: true` |
-| 04 | Confirmation mismatch | “Preview only” approval disables a synthetic subscription | Truthful mutation name, write annotation, exact before/after confirmation |
-| 05 | Client variance | Registration is presented as universal agent availability | Scoped observation of registered, permitted, and discovered states |
+| #   | Fixture               | Deliberate mismatch                                                                      | Secure comparison                                                         |
+| --- | --------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| 01  | Read-only claim       | Description and `readOnlyHint` say read-only; handler marks a synthetic account reviewed | Pure lookup handler; separate truthful mutation                           |
+| 02  | Over-broad schema     | Agent receives `target` and free-form `instruction` fields absent from the human UI      | One bounded `notice` field, fixed target, no additional properties        |
+| 03  | Tool-result injection | Status result mixes valid data with controlled instruction-shaped text                   | Structured untrusted field plus `untrustedContentHint: true`              |
+| 04  | Confirmation mismatch | “Preview only” approval disables a synthetic subscription                                | Truthful mutation name, write annotation, exact before/after confirmation |
+| 05  | Client variance       | Registration is presented as universal agent availability                                | Scoped observation of registered, permitted, and discovered states        |
 
 Detailed contracts are in [docs/SCENARIOS.md](docs/SCENARIOS.md).
 
@@ -113,7 +150,10 @@ The automated suite covers:
 - passing secure retests across the complete curriculum;
 - before/after evidence generation;
 - controlled no-mutation prompt-injection output; and
-- required receipt fields.
+- required receipt fields; and
+- exact capability proposals, unique no-input compilation, same-document
+  one-use and TTL enforcement, origin/source/handler drift rejection, pure
+  result verification, and local receipt validation.
 
 The current verification matrix—including unsupported and unverified items—is in [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
@@ -152,10 +192,11 @@ Read [SECURITY.md](SECURITY.md) before extending a fixture.
 
 ## Contest materials
 
-- [Devpost-ready copy](docs/CONTEST_SUBMISSION.md)
-- [Three-minute video script](docs/DEMO_SCRIPT.md)
+- [Frozen Devpost draft](docs/CONTEST_SUBMISSION.md)
+- [Frozen three-minute video script](docs/DEMO_SCRIPT.md)
 - [Contest-period work log](docs/CONTEST_PERIOD_WORK.md)
 - [Verification report](docs/VERIFICATION.md)
+- [Current go/no-go decision](docs/GO_NO_GO.md)
 
 ## License
 

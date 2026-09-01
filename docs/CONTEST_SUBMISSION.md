@@ -1,5 +1,11 @@
 # Contest submission copy
 
+> **FROZEN DRAFT — DO NOT SUBMIT.** The public v1 remains available as a
+> baseline, but recording and submission are paused pending the dated
+> [prior-art audit](../PRIOR_ART.md), independent review, and the acceptance
+> gates in [GO_NO_GO.md](GO_NO_GO.md). This document is not evidence of
+> originality or priority.
+
 ## Project title
 
 Left Out Security WebMCP Security Lab
@@ -66,7 +72,7 @@ No credentials, real accounts, production APIs, email, purchases, exfiltration, 
 
 ## What was added during the contest period
 
-The application architecture, visual system, scenario engine, five fixtures, actual WebMCP registration, evidence schema and D1 adapter, automated tests, migrations, safety materials, deployment configuration, social preview, and demo script were all created for this submission. The target repository was empty at the start of the build.
+The recoverable repository history timestamps the application architecture, visual system, scenario engine, five fixtures, WebMCP registration, evidence schema and D1 adapter, tests, migrations, safety materials, deployment configuration, social preview, and demo script within the contest window. Repository history has two joined roots and one retained older-checkout commit, as documented in the prior-art audit. This chronology is not a claim of independent invention; several constituent security controls have earlier public prior art.
 
 ## Current limitations
 

@@ -38,7 +38,12 @@ import {
 } from '@/lib/lab/artifacts';
 import { createEvidenceReceipt } from '@/lib/lab/evidence';
 import { runScenario } from '@/lib/lab/engine';
+import { createCapabilityEvidence } from '@/lib/lab/capability-negotiation';
 import { assessScenarioRisk } from '@/lib/lab/risk';
+import {
+  parseCapabilityEvidenceReceipt,
+  parseEvidenceReceipt,
+} from '@/lib/lab/schemas';
 import {
   defaultScenarioId,
   scenarioById,
@@ -50,10 +55,11 @@ import type {
   InvocationChannel,
   JsonValue,
   ScenarioId,
+  ToolDeclaration,
   WebMcpStatus,
 } from '@/lib/lab/types';
 import {
-  consumePendingSelfTest,
+  createUnattributedWebMcpConfirmation,
   executeRegisteredTool,
   getModelContext,
   observeToolsPermission,
@@ -61,6 +67,10 @@ import {
 } from '@/lib/lab/webmcp';
 
 import { ArtifactExportDialog } from './artifact-export-dialog';
+import {
+  CapabilityNegotiator,
+  type CapabilityRunPayload,
+} from './capability-negotiator';
 import {
   EvidencePanel,
   type PersistenceState,
@@ -161,6 +171,14 @@ function getOrCreateSessionId() {
 
 export function LabApp() {
   const [selectedId, setSelectedId] = useState<ScenarioId>(defaultScenarioId);
+  const [scenarioOneSourceRevision, setScenarioOneSourceRevision] = useState(0);
+  const scenarioOneSourceRevisionRef = useRef(0);
+  const [sourceToolSuppressed, setSourceToolSuppressed] = useState(false);
+  const sourceRegistrationControllerRef = useRef<AbortController | undefined>(
+    undefined,
+  );
+  const sourceRegistrationGenerationRef = useRef('not-registered');
+  const sourceEnabledRef = useRef(false);
   const [stateMap, setStateMap] = useState<StateMap>(buildInitialStateMap);
   const stateMapRef = useRef(stateMap);
   const [receiptMap, setReceiptMap] = useState<ReceiptMap>({});
@@ -184,11 +202,23 @@ export function LabApp() {
   const [secureRunning, setSecureRunning] = useState(false);
   const [executionMessage, setExecutionMessage] = useState('');
   const [exportArtifact, setExportArtifact] = useState<JsonArtifact>();
-  const selfTestPendingRef = useRef(false);
   const [sessionId, setSessionId] = useState('');
   const sessionIdRef = useRef('');
 
-  const scenario = scenarioById[selectedId];
+  const scenario = useMemo(() => {
+    const selected = scenarioById[selectedId];
+    if (selected.id !== 'read-only-claim' || scenarioOneSourceRevision === 0) {
+      return selected;
+    }
+    return {
+      ...selected,
+      version: `${selected.version}+source-drift.${scenarioOneSourceRevision}`,
+      tool: {
+        ...selected.tool,
+        description: `${selected.tool.description} Source declaration revision ${scenarioOneSourceRevision}.`,
+      },
+    };
+  }, [scenarioOneSourceRevision, selectedId]);
   const scenarioState = stateMap[selectedId];
   const latestReceipt = receiptMap[selectedId];
   const latestSecureReceipt = secureReceiptMap[selectedId];
@@ -213,6 +243,53 @@ export function LabApp() {
     },
     [],
   );
+
+  const suppressSourceTool = useCallback(() => {
+    sourceEnabledRef.current = false;
+    sourceRegistrationGenerationRef.current = crypto.randomUUID();
+    sourceRegistrationControllerRef.current?.abort();
+    sourceRegistrationControllerRef.current = undefined;
+    setSourceToolSuppressed(true);
+    commitWebMcp((current) => ({
+      ...current,
+      registration: 'unregistered',
+      discovery: 'not-discovered',
+      invocation: 'not-observed',
+      detail:
+        'The broad Scenario 1 source tool was explicitly unregistered before the generated capability was registered.',
+      discoveredToolNames: current.discoveredToolNames.filter(
+        (name) => name !== scenarioById['read-only-claim'].tool.name,
+      ),
+    }));
+    return true;
+  }, [commitWebMcp]);
+
+  const restoreSourceTool = useCallback(() => {
+    scenarioOneSourceRevisionRef.current = 0;
+    setScenarioOneSourceRevision(0);
+    setSourceToolSuppressed(false);
+  }, []);
+
+  const getScenarioOneSourceTool = useCallback((): ToolDeclaration => {
+    const base = scenarioById['read-only-claim'].tool;
+    const revision = scenarioOneSourceRevisionRef.current;
+    if (revision === 0) return base;
+    return {
+      ...base,
+      description: `${base.description} Source declaration revision ${revision}.`,
+    };
+  }, []);
+
+  const getScenarioOneSourceState = useCallback(
+    () => stateMapRef.current['read-only-claim'],
+    [],
+  );
+
+  const driftScenarioOneSource = useCallback(() => {
+    const next = scenarioOneSourceRevisionRef.current + 1;
+    scenarioOneSourceRevisionRef.current = next;
+    setScenarioOneSourceRevision(next);
+  }, []);
 
   useEffect(() => {
     stateMapRef.current = stateMap;
@@ -317,33 +394,35 @@ export function LabApp() {
       stateMapRef.current = nextStateMap;
       setStateMap(nextStateMap);
 
-      const receipt = createEvidenceReceipt({
-        scenario,
-        declaration: scenario.tool,
-        argumentsValue,
-        sessionId: sessionIdRef.current || getOrCreateSessionId(),
-        context: {
-          channel,
-          now,
-          origin: window.location.origin,
-          browser: {
-            userAgent: navigator.userAgent ?? '',
-            language: navigator.language ?? '',
-            platform:
-              (
-                navigator as Navigator & {
-                  userAgentData?: { platform?: string };
-                }
-              ).userAgentData?.platform ??
-              navigator.platform ??
-              '',
+      const receipt = parseEvidenceReceipt(
+        createEvidenceReceipt({
+          scenario,
+          declaration: scenario.tool,
+          argumentsValue,
+          sessionId: sessionIdRef.current || getOrCreateSessionId(),
+          context: {
+            channel,
+            now,
+            origin: window.location.origin,
+            browser: {
+              userAgent: navigator.userAgent ?? '',
+              language: navigator.language ?? '',
+              platform:
+                (
+                  navigator as Navigator & {
+                    userAgentData?: { platform?: string };
+                  }
+                ).userAgentData?.platform ??
+                navigator.platform ??
+                '',
+            },
+            clientLabel,
+            webMcp: currentWebMcp,
+            confirmation,
           },
-          clientLabel,
-          webMcp: currentWebMcp,
-          confirmation,
-        },
-        outcome,
-      });
+          outcome,
+        }),
+      );
 
       setReceiptMap((current) => ({ ...current, [scenario.id]: receipt }));
       setPersistence('saving');
@@ -405,8 +484,94 @@ export function LabApp() {
     invokeRef.current = invokeScenario;
   }, [invokeScenario]);
 
+  const createLocalCapabilityReceipt = useCallback(
+    async (payload: CapabilityRunPayload) => {
+      const capability = createCapabilityEvidence({
+        proposal: payload.proposal,
+        contract: payload.contract,
+        approvedAt: payload.approvedAt,
+        claimedAt: payload.claimedAt,
+        verification: payload.verification,
+        invalidatedAt: payload.claimedAt,
+        invalidationReason: payload.invalidationReason,
+      });
+      const observedWebMcp: WebMcpStatus = {
+        ...webMcpRef.current,
+        browserSupport: 'supported',
+        registration: 'unregistered',
+        permissionsPolicy: 'allowed',
+        discovery: 'discovered',
+        invocation: 'observed',
+        detail:
+          'The generated capability was registered, discovered for this call, synchronously consumed, and unregistered in this document session.',
+        discoveredToolNames: [payload.contract.compiled.toolName],
+      };
+      const context = {
+        channel: 'negotiated-capability' as const,
+        now: payload.claimedAt,
+        origin: window.location.origin,
+        browser: {
+          userAgent: navigator.userAgent ?? '',
+          language: navigator.language ?? '',
+          platform:
+            (
+              navigator as Navigator & {
+                userAgentData?: { platform?: string };
+              }
+            ).userAgentData?.platform ??
+            navigator.platform ??
+            '',
+        },
+        clientLabel,
+        webMcp: observedWebMcp,
+        confirmation: {
+          presentedCopy: payload.contract.approval.copy,
+          known: true,
+          approved: true,
+          source: 'capability-contract' as const,
+        },
+      };
+      const receipt = await parseCapabilityEvidenceReceipt(
+        createEvidenceReceipt({
+          scenario,
+          declaration: payload.contract.compiled.declaration,
+          argumentsValue: {},
+          context,
+          outcome: payload.outcome,
+          sessionId: sessionIdRef.current || getOrCreateSessionId(),
+          capability,
+        }),
+      );
+      setExecutionMessage(
+        `Capability receipt ${receipt.id.slice(0, 8)} exists only in this document session. Export it before reset or reload; the capability handler made no evidence POST.`,
+      );
+      return receipt;
+    },
+    [clientLabel, scenario],
+  );
+
   useEffect(() => {
+    if (scenario.id === 'read-only-claim' && sourceToolSuppressed) {
+      sourceEnabledRef.current = false;
+      commitWebMcp((current) => ({
+        ...current,
+        registration: 'unregistered',
+        discovery: 'not-discovered',
+        invocation: 'not-observed',
+        detail:
+          'The broad Scenario 1 source tool is withdrawn while the negotiated capability lifecycle is active.',
+        discoveredToolNames: current.discoveredToolNames.filter(
+          (name) => name !== scenario.tool.name,
+        ),
+      }));
+      return;
+    }
+
     const controller = new AbortController();
+    const registrationGeneration = crypto.randomUUID();
+    sourceRegistrationGenerationRef.current = registrationGeneration;
+    sourceEnabledRef.current = true;
+    sourceRegistrationControllerRef.current = controller;
     const modelContext = getModelContext();
     const permissionObservation = observeToolsPermission();
 
@@ -424,36 +589,29 @@ export function LabApp() {
     const registeredTool = {
       ...scenario.tool,
       execute: async (input: unknown) => {
-        const selfTest = consumePendingSelfTest(selfTestPendingRef);
+        if (
+          !sourceEnabledRef.current ||
+          sourceRegistrationGenerationRef.current !== registrationGeneration
+        ) {
+          throw new Error(
+            'This source-tool registration was withdrawn or superseded.',
+          );
+        }
         commitWebMcp((current) => ({
           ...current,
-          discovery: selfTest ? current.discovery : 'discovered',
+          discovery: 'discovered',
           invocation: 'observed',
-          detail: selfTest
-            ? `${scenario.tool.name} was invoked through the approved in-page WebMCP self-test.`
-            : `${scenario.tool.name} was invoked through WebMCP. That proves this client discovered this tool for this call.`,
-          discoveredToolNames: selfTest
-            ? current.discoveredToolNames
-            : Array.from(
-                new Set([...current.discoveredToolNames, scenario.tool.name]),
-              ),
+          detail: `${scenario.tool.name} was invoked through WebMCP. The page cannot prove whether this callback came from its approved self-test request or a competing client call.`,
+          discoveredToolNames: Array.from(
+            new Set([...current.discoveredToolNames, scenario.tool.name]),
+          ),
         }));
         return invokeRef.current(
           input,
-          selfTest ? 'webmcp-self-test' : 'webmcp',
-          selfTest
-            ? {
-                presentedCopy: scenario.presented.confirmationCopy,
-                known: true,
-                approved: true,
-                source: 'webmcp-self-test',
-              }
-            : {
-                presentedCopy: scenario.presented.confirmationCopy,
-                known: false,
-                approved: null,
-                source: 'browser-not-observable',
-              },
+          'webmcp',
+          createUnattributedWebMcpConfirmation(
+            scenario.presented.confirmationCopy,
+          ),
         );
       },
     };
@@ -467,8 +625,17 @@ export function LabApp() {
       if (!controller.signal.aborted) commitWebMcp(status);
     });
 
-    return () => controller.abort();
-  }, [commitWebMcp, scenario]);
+    return () => {
+      if (sourceRegistrationGenerationRef.current === registrationGeneration) {
+        sourceEnabledRef.current = false;
+        sourceRegistrationGenerationRef.current = crypto.randomUUID();
+      }
+      controller.abort();
+      if (sourceRegistrationControllerRef.current === controller) {
+        sourceRegistrationControllerRef.current = undefined;
+      }
+    };
+  }, [commitWebMcp, scenario, sourceToolSuppressed]);
 
   const runManualHarness = useCallback(async () => {
     setConfirmOpen(false);
@@ -516,14 +683,12 @@ export function LabApp() {
       }));
 
       if (!selectedTool) return;
-      selfTestPendingRef.current = true;
       await executeRegisteredTool(modelContext, selectedTool, buildArguments());
     } catch (error) {
       setExecutionMessage(
         `WebMCP self-test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     } finally {
-      selfTestPendingRef.current = false;
       setRunning(false);
     }
   }, [buildArguments, commitWebMcp, scenario.tool.name]);
@@ -857,6 +1022,9 @@ export function LabApp() {
                         : 'text-muted-foreground hover:bg-background hover:text-foreground'
                     }`}
                     onClick={() => {
+                      if (item.id !== 'read-only-claim') {
+                        restoreSourceTool();
+                      }
                       setSelectedId(item.id);
                       setPersistence(receiptMap[item.id] ? 'saved' : 'idle');
                       setSecurePersistence(
@@ -927,7 +1095,9 @@ export function LabApp() {
                       <RegistrationBadge status={webMcp.registration} />
                     </div>
                     <p className="mt-3 break-all font-mono text-[11px] font-semibold">
-                      {scenario.tool.name}
+                      {sourceToolSuppressed && scenario.id === 'read-only-claim'
+                        ? 'broad source withdrawn'
+                        : scenario.tool.name}
                     </p>
                     <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
                       {webMcp.detail}
@@ -1136,6 +1306,23 @@ export function LabApp() {
                 </div>
               </div>
 
+              {scenario.id === 'read-only-claim' ? (
+                <CapabilityNegotiator
+                  sourceTool={scenario.tool}
+                  sourceState={scenarioState}
+                  getCurrentSourceTool={getScenarioOneSourceTool}
+                  getCurrentSourceState={getScenarioOneSourceState}
+                  sourceToolSuppressed={sourceToolSuppressed}
+                  onSuppressSourceTool={suppressSourceTool}
+                  onRestoreSourceTool={restoreSourceTool}
+                  onSourceDrift={driftScenarioOneSource}
+                  onCreateLocalReceipt={createLocalCapabilityReceipt}
+                  onExport={(receipt) =>
+                    setExportArtifact(createEvidenceReceiptArtifact(receipt))
+                  }
+                />
+              ) : null}
+
               <EvidencePanel
                 scenario={scenario}
                 receipt={latestReceipt}
@@ -1268,7 +1455,7 @@ export function LabApp() {
           />
           <div className="rounded-md border border-dashed border-border bg-muted/50 p-3 text-xs leading-5 text-muted-foreground">
             {confirmationMode === 'webmcp-self-test'
-              ? 'This calls the selected tool through document.modelContext.executeTool() only after approval. It is recorded as a WebMCP self-test.'
+              ? 'This requests the selected tool through document.modelContext.executeTool() only after approval. Because the shared callback cannot distinguish a competing client call, its receipt records browser confirmation as unobservable.'
               : 'This uses the explicit fallback harness. It is useful for education, but it is never reported as WebMCP discovery or invocation.'}
           </div>
           <AlertDialogFooter>
@@ -1348,7 +1535,10 @@ function RegistrationBadge({
 }) {
   const good = status === 'registered';
   const warning =
-    status === 'unsupported' || status === 'denied' || status === 'error';
+    status === 'unsupported' ||
+    status === 'unregistered' ||
+    status === 'denied' ||
+    status === 'error';
   return (
     <span
       className={`flex items-center gap-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.12em] ${good ? 'text-emerald-700' : warning ? 'text-amber-800' : 'text-muted-foreground'}`}

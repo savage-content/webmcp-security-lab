@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  consumePendingSelfTest,
+  createUnattributedWebMcpConfirmation,
   executeRegisteredTool,
   registerPageTool,
   type ModelContextApi,
@@ -15,12 +15,13 @@ const tool = {
 };
 
 describe('WebMCP registration truth', () => {
-  it('lets exactly one invocation consume a pending self-test marker', () => {
-    const marker = { current: true };
-
-    expect(consumePendingSelfTest(marker)).toBe(true);
-    expect(marker.current).toBe(false);
-    expect(consumePendingSelfTest(marker)).toBe(false);
+  it('never attributes a shared callback to the approved self-test request', () => {
+    expect(createUnattributedWebMcpConfirmation('Approve one call.')).toEqual({
+      presentedCopy: 'Approve one call.',
+      known: false,
+      approved: null,
+      source: 'browser-not-observable',
+    });
   });
 
   it('passes self-test arguments to executeTool as an object', async () => {

@@ -1,4 +1,5 @@
 import type {
+  CapabilityNegotiationEvidence,
   EvidenceReceipt,
   RunContext,
   RunOutcome,
@@ -24,6 +25,7 @@ export function createEvidenceReceipt({
   context,
   outcome,
   sessionId,
+  capability,
   id = createId(),
 }: {
   scenario: ScenarioDefinition;
@@ -35,6 +37,7 @@ export function createEvidenceReceipt({
   context: RunContext;
   outcome: RunOutcome;
   sessionId: string;
+  capability?: CapabilityNegotiationEvidence;
   id?: string;
 }): EvidenceReceipt {
   return {
@@ -69,5 +72,6 @@ export function createEvidenceReceipt({
     debrief: outcome.debrief,
     remediation: outcome.remediation,
     limitation: SELF_REPORTED_LIMITATION,
+    ...(capability ? { capability: structuredClone(capability) } : {}),
   };
 }

@@ -29,8 +29,38 @@ flowchart LR
 2. **WebMCP declaration boundary** — name, description, schema, and annotations describe a capability but do not enforce handler behavior.
 3. **Execution boundary** — the shared scenario engine is the only place fixture state changes.
 4. **Persistence boundary** — the API validates and appends complete receipts to D1. It exposes no mutation or deletion path.
-5. **Client-observation boundary** — browser API support, registration, permissions policy, discovery, and invocation are recorded separately. External client behavior is not inferred when the page cannot observe it, and a fallback receipt never counts as WebMCP invocation.
+5. **Client-observation boundary** — browser API support, registration, permissions policy, discovery, and invocation are recorded separately. External client behavior is not inferred when the page cannot observe it, and a fallback receipt never counts as WebMCP invocation. The shared registered callback cannot distinguish the page's approved `executeTool()` request from a competing client invocation, so it never upgrades browser confirmation to known.
 6. **Awareness-policy boundary** — deterministic rules explain why a declaration deserves allow, warn, or ask treatment. They provide guidance and do not replace browser enforcement or professional validation.
+7. **Negotiated-capability boundary** — the Scenario 1 working slice replaces the broad registration only within one document session. A synchronous generation gate and `AbortController` invalidate cached source handles; a monotonic in-memory lease makes one same-realm claim before any awaited work. This is not a cross-tab or server-atomic grant.
+8. **Capability-evidence boundary** — negotiated-capability receipts are created locally after the state-only handler is verified. They are exportable, non-durable, and not independently attested. The ordinary D1 endpoint rejects receipts that retain negotiated-capability markers; because client JSON is not provenance-authenticated, a caller that relabels every marker cannot be distinguished from ordinary self-reported evidence. The current handler path contains no evidence POST, but browser egress is not isolated or independently observed.
+
+## Scenario 1 negotiated lifecycle
+
+```mermaid
+sequenceDiagram
+  participant H as Human
+  participant A as Agent
+  participant P as Page
+  participant W as document.modelContext
+
+  H->>P: Lock exact intent
+  P->>W: Register proposal-only tool
+  A->>P: Stage exact structured proposal
+  P-->>H: Source hash + contract + effects
+  H->>P: Exact approval
+  P->>P: Revalidate source, state, expiry; create valid lease
+  P->>P: Disable source generation
+  P->>W: Abort source + proposal registrations
+  P->>W: Register unique no-input capability
+  A->>W: Invoke once with {}
+  P->>P: Claim monotonic lease; abort capability
+  P->>P: Recheck origin/source/version bindings
+  P->>P: Run state-only Scenario 1 handler
+  P->>P: Verify result + byte-identical state
+  P-->>H: Local export-only linked receipt
+```
+
+The final contract hash covers the complete generated identity and declaration, intent, proposal/source references, approval copy and nonce, declared handler versions, and lifetime. The nested source fingerprint covers the source declaration, origin, and declared source-handler version; neither hash attests executable bytes. A random approval nonce makes otherwise identical approvals compile to different tool names. The broad callback also checks a synchronous registration generation, so a client holding an old tool object receives a rejection after withdrawal even if it can still call the cached JavaScript callback.
 
 ## Scenario contract
 

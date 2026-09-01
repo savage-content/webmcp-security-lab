@@ -1,5 +1,8 @@
 import { appendEvidenceReceipt, listEvidenceReceipts } from '@/db/evidence';
-import { parseEvidenceReceipt } from '@/lib/lab/schemas';
+import {
+  assertDurableEvidenceReceipt,
+  parseEvidenceReceipt,
+} from '@/lib/lab/schemas';
 import type { ScenarioId } from '@/lib/lab/types';
 
 const MAX_RECEIPT_BYTES = 128 * 1024;
@@ -70,7 +73,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const receipt = parseEvidenceReceipt(JSON.parse(bodyText));
+    const receipt = assertDurableEvidenceReceipt(
+      parseEvidenceReceipt(JSON.parse(bodyText)),
+    );
     if (receipt.sessionId !== sessionId) {
       return Response.json(
         { error: 'Receipt session does not match the request session.' },

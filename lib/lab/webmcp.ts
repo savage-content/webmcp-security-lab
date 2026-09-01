@@ -1,4 +1,9 @@
-import type { JsonValue, ToolDeclaration, WebMcpStatus } from './types';
+import type {
+  ConfirmationEvidence,
+  JsonValue,
+  ToolDeclaration,
+  WebMcpStatus,
+} from './types';
 
 export interface RegisteredWebMcpTool {
   name: string;
@@ -26,10 +31,15 @@ export interface ModelContextApi {
   ) => Promise<unknown>;
 }
 
-export function consumePendingSelfTest(marker: { current: boolean }) {
-  const pending = marker.current;
-  marker.current = false;
-  return pending;
+export function createUnattributedWebMcpConfirmation(
+  presentedCopy: string,
+): ConfirmationEvidence {
+  return {
+    presentedCopy,
+    known: false,
+    approved: null,
+    source: 'browser-not-observable',
+  };
 }
 
 export function executeRegisteredTool(
