@@ -55,10 +55,14 @@ import type {
   WebMcpStatus,
 } from '@/lib/lab/types';
 import {
+  LEGACY_CHROMIUM_RESULT_DELIVERY_GRACE_MS,
+  createScenarioOneCapabilityToolResult,
+  decideRegistrationSettlement,
   executeRegisteredTool,
   getModelContext,
   observeToolsPermission,
   registerPageTool,
+  withOneUseRegistrationRetirement,
 } from '@/lib/lab/webmcp';
 
 export interface CapabilityRunPayload {
@@ -606,6 +610,15 @@ export function CapabilityNegotiator({
 
     const controller = new AbortController();
     capabilityControllerRef.current = controller;
+    controller.signal.addEventListener(
+      'abort',
+      () => {
+        if (capabilityControllerRef.current === controller) {
+          capabilityControllerRef.current = undefined;
+        }
+      },
+      { once: true },
+    );
     const capabilityGeneration = crypto.randomUUID();
     capabilityGenerationRef.current = capabilityGeneration;
     capabilityActiveRef.current = true;
@@ -629,182 +642,198 @@ export function CapabilityNegotiator({
       modelContext,
       tool: {
         ...contract.compiled.declaration,
-        execute: async (input) => {
-          if (
-            !capabilityActiveRef.current ||
-            capabilityGenerationRef.current !== capabilityGeneration
-          ) {
-            throw new Error(
-              'This capability registration was consumed, expired, or revoked.',
-            );
-          }
-          const value = normalizeInput(input);
-          if (
-            !value ||
-            typeof value !== 'object' ||
-            Array.isArray(value) ||
-            Object.keys(value as Record<string, unknown>).length > 0
-          ) {
-            throw new Error('This bound capability accepts no inputs.');
-          }
+        execute: withOneUseRegistrationRetirement(
+          controller,
+          async (input, _client, lifecycle) => {
+            if (
+              !capabilityActiveRef.current ||
+              capabilityGenerationRef.current !== capabilityGeneration
+            ) {
+              throw new Error(
+                'This capability registration was consumed, expired, or revoked.',
+              );
+            }
+            const value = normalizeInput(input);
+            if (
+              !value ||
+              typeof value !== 'object' ||
+              Array.isArray(value) ||
+              Object.keys(value as Record<string, unknown>).length > 0
+            ) {
+              throw new Error('This bound capability accepts no inputs.');
+            }
 
-          if (!sourceWithdrawnRef.current) {
-            throw new Error(
-              'The broad source tool is not synchronously withdrawn.',
-            );
-          }
-          const claim = lease.claim();
-          if (!claim?.ok) {
-            const reason = claim?.reason ?? 'revoked';
-            invalidate(
-              reason,
-              `Invocation rejected: the document-session lease is ${reason}.`,
-            );
-            throw new Error(`Capability invalidated: ${reason}.`);
-          }
+            if (!sourceWithdrawnRef.current) {
+              throw new Error(
+                'The broad source tool is not synchronously withdrawn.',
+              );
+            }
+            const claim = lease.claim();
+            if (!claim?.ok) {
+              const reason = claim?.reason ?? 'revoked';
+              invalidate(
+                reason,
+                `Invocation rejected: the document-session lease is ${reason}.`,
+              );
+              throw new Error(`Capability invalidated: ${reason}.`);
+            }
 
-          // Claim and unregister synchronously before any awaited work so two
-          // concurrent calls cannot both pass the one-use check.
-          capabilityActiveRef.current = false;
-          capabilityGenerationRef.current = crypto.randomUUID();
-          controller.abort();
-          if (capabilityControllerRef.current === controller) {
-            capabilityControllerRef.current = undefined;
-          }
-          if (expiryTimerRef.current !== undefined) {
-            window.clearTimeout(expiryTimerRef.current);
-            expiryTimerRef.current = undefined;
-          }
+            // Close the logical authority synchronously before any awaited work
+            // so two concurrent calls cannot both pass the one-use check.
+            // Chrome 152 cancels an in-flight execution if its registration
+            // signal is aborted, so physical retirement happens only after the
+            // successful callback result has had a short settlement grace.
+            lifecycle.markClaimed();
+            capabilityActiveRef.current = false;
+            capabilityGenerationRef.current = crypto.randomUUID();
+            if (expiryTimerRef.current !== undefined) {
+              window.clearTimeout(expiryTimerRef.current);
+              expiryTimerRef.current = undefined;
+            }
 
-          const claimedAt = new Date().toISOString();
-          const sourceGeneration = sourceObservationGenerationRef.current;
-          const stateGeneration = stateObservationGenerationRef.current;
-          const invocationSourceSnapshot = structuredClone(
-            getCurrentSourceTool(),
-          );
-          const invocationStateSnapshot = structuredClone(
-            getCurrentSourceState(),
-          );
-          const binding = await verifyCapabilityBinding({
-            contract,
-            sourceTool: invocationSourceSnapshot,
-            origin: window.location.origin,
-            now: claimedAt,
-            callsClaimed: 0,
-          });
-          if (!mountedRef.current || operationEpochRef.current !== epoch) {
-            throw new Error(
-              'Capability invocation was revoked during binding.',
+            const claimedAt = new Date().toISOString();
+            const sourceGeneration = sourceObservationGenerationRef.current;
+            const stateGeneration = stateObservationGenerationRef.current;
+            const invocationSourceSnapshot = structuredClone(
+              getCurrentSourceTool(),
             );
-          }
-          if (
-            (sourceObservationGenerationRef.current !== sourceGeneration ||
-              canonicalJson(getCurrentSourceTool()) !==
-                canonicalJson(invocationSourceSnapshot)) &&
-            binding.ok
-          ) {
-            invalidate(
-              'source-drift',
-              'Invocation rejected: the source changed during binding verification.',
+            const invocationStateSnapshot = structuredClone(
+              getCurrentSourceState(),
             );
-            throw new Error('Capability invalidated: source-drift.');
-          }
-          if (!binding.ok) {
-            invalidate(
-              binding.reason,
-              `Invocation rejected: ${binding.reason}. The generated tool is no longer registered.`,
-            );
-            throw new Error(`Capability invalidated: ${binding.reason}.`);
-          }
-          if (
-            stateObservationGenerationRef.current !== stateGeneration ||
-            canonicalJson(getCurrentSourceState()) !==
-              canonicalJson(invocationStateSnapshot)
-          ) {
-            invalidate(
-              'state-drift',
-              'Invocation rejected: the synthetic account changed during binding verification.',
-            );
-            throw new Error('Capability invalidated: state-drift.');
-          }
-
-          const { outcome, verification } = await executeScenarioOneCapability({
-            contract,
-            currentState: invocationStateSnapshot,
-            checkedAt: claimedAt,
-          });
-          if (!mountedRef.current || operationEpochRef.current !== epoch) {
-            throw new Error(
-              'Capability invocation was revoked during verification.',
-            );
-          }
-          if (
-            stateObservationGenerationRef.current !== stateGeneration ||
-            canonicalJson(getCurrentSourceState()) !==
-              canonicalJson(invocationStateSnapshot)
-          ) {
-            invalidate(
-              'state-drift',
-              'Invocation rejected: the synthetic account changed during result verification.',
-            );
-            throw new Error('Capability invalidated: state-drift.');
-          }
-          const resultInvalidationReason: CapabilityInvalidationReason =
-            verification.passed ? 'consumed' : 'state-drift';
-          let recorded: EvidenceReceipt;
-          try {
-            recorded = await onCreateLocalReceipt({
-              proposal,
+            const binding = await verifyCapabilityBinding({
               contract,
-              approvedAt,
-              claimedAt,
-              outcome,
-              verification,
-              invalidationReason: resultInvalidationReason,
+              sourceTool: invocationSourceSnapshot,
+              origin: window.location.origin,
+              now: claimedAt,
+              callsClaimed: 0,
             });
-          } catch (error) {
-            invalidate(
-              'handler-drift',
-              `Local evidence integrity validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            if (!mountedRef.current || operationEpochRef.current !== epoch) {
+              throw new Error(
+                'Capability invocation was revoked during binding.',
+              );
+            }
+            if (
+              (sourceObservationGenerationRef.current !== sourceGeneration ||
+                canonicalJson(getCurrentSourceTool()) !==
+                  canonicalJson(invocationSourceSnapshot)) &&
+              binding.ok
+            ) {
+              invalidate(
+                'source-drift',
+                'Invocation rejected: the source changed during binding verification.',
+              );
+              throw new Error('Capability invalidated: source-drift.');
+            }
+            if (!binding.ok) {
+              invalidate(
+                binding.reason,
+                `Invocation rejected: ${binding.reason}. The generated tool is no longer registered.`,
+              );
+              throw new Error(`Capability invalidated: ${binding.reason}.`);
+            }
+            if (
+              stateObservationGenerationRef.current !== stateGeneration ||
+              canonicalJson(getCurrentSourceState()) !==
+                canonicalJson(invocationStateSnapshot)
+            ) {
+              invalidate(
+                'state-drift',
+                'Invocation rejected: the synthetic account changed during binding verification.',
+              );
+              throw new Error('Capability invalidated: state-drift.');
+            }
+
+            const { outcome, verification } =
+              await executeScenarioOneCapability({
+                contract,
+                currentState: invocationStateSnapshot,
+                checkedAt: claimedAt,
+              });
+            if (!mountedRef.current || operationEpochRef.current !== epoch) {
+              throw new Error(
+                'Capability invocation was revoked during verification.',
+              );
+            }
+            if (
+              stateObservationGenerationRef.current !== stateGeneration ||
+              canonicalJson(getCurrentSourceState()) !==
+                canonicalJson(invocationStateSnapshot)
+            ) {
+              invalidate(
+                'state-drift',
+                'Invocation rejected: the synthetic account changed during result verification.',
+              );
+              throw new Error('Capability invalidated: state-drift.');
+            }
+            const resultInvalidationReason: CapabilityInvalidationReason =
+              verification.passed ? 'consumed' : 'state-drift';
+            let recorded: EvidenceReceipt;
+            try {
+              recorded = await onCreateLocalReceipt({
+                proposal,
+                contract,
+                approvedAt,
+                claimedAt,
+                outcome,
+                verification,
+                invalidationReason: resultInvalidationReason,
+              });
+            } catch (error) {
+              invalidate(
+                'handler-drift',
+                `Local evidence integrity validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              );
+              throw error;
+            }
+            if (!mountedRef.current || operationEpochRef.current !== epoch) {
+              throw new Error(
+                'Capability invocation was revoked during receipt validation.',
+              );
+            }
+            setCapabilityStatus('invoked');
+            setReceipt(recorded);
+            setReceiptState('local-export-only');
+            setInvalidationReason(resultInvalidationReason);
+            workflowPhaseRef.current = 'closed';
+            setWorkflowPhase('closed');
+            setMessage(
+              `${outcome.verdict}: ${verification.passed ? 'required result and locked baseline matched' : 'the fixture no longer matched the approved baseline'}. The one-use authority was synchronously consumed; physical registration retirement is scheduled ${LEGACY_CHROMIUM_RESULT_DELIVERY_GRACE_MS} ms after successful callback fulfillment for Chrome 152 result-delivery compatibility. Local receipt ${recorded.id.slice(0, 8)}.`,
             );
-            throw error;
-          }
-          if (!mountedRef.current || operationEpochRef.current !== epoch) {
-            throw new Error(
-              'Capability invocation was revoked during receipt validation.',
-            );
-          }
-          setCapabilityStatus('invoked');
-          setReceipt(recorded);
-          setReceiptState('local-export-only');
-          setInvalidationReason(resultInvalidationReason);
-          workflowPhaseRef.current = 'closed';
-          setWorkflowPhase('closed');
-          setMessage(
-            `${outcome.verdict}: ${verification.passed ? 'required result and locked baseline matched' : 'the fixture no longer matched the approved baseline'}. The one-use tool was unregistered before execution continued. Local receipt ${recorded.id.slice(0, 8)}.`,
-          );
-          return {
-            result: outcome.rawResult,
-            verification,
-            evidence: {
-              receipt_id: recorded.id,
-              persistence: 'local-export-only',
-              contract_hash: contract.contractHash,
-              invalidation_reason: resultInvalidationReason,
+            return createScenarioOneCapabilityToolResult(recorded);
+          },
+          {
+            onClaimedFailure: () => {
+              if (
+                mountedRef.current &&
+                operationEpochRef.current === epoch &&
+                workflowPhaseRef.current !== 'closed'
+              ) {
+                invalidate(
+                  'handler-drift',
+                  'Invocation failed after the one-use authority was consumed. The registration was retired and no connector receipt was established. Reset the negotiation before any retest.',
+                );
+              }
             },
-          };
-        },
+          },
+        ),
       },
       signal: controller.signal,
       permissionObservation,
     });
 
-    if (
-      !mountedRef.current ||
-      operationEpochRef.current !== epoch ||
-      capabilityGenerationRef.current !== capabilityGeneration ||
-      lease.state() !== 'active'
-    ) {
+    const registrationSettlement = decideRegistrationSettlement({
+      mounted: mountedRef.current,
+      epochMatches: operationEpochRef.current === epoch,
+      generationMatches:
+        capabilityGenerationRef.current === capabilityGeneration,
+      leaseState: lease.state(),
+    });
+    if (registrationSettlement === 'preserve-claimed-execution') {
+      // registerTool() may settle after the newly visible tool has already been
+      // invoked. Its callback now owns result delivery and physical retirement.
+      return;
+    }
+    if (registrationSettlement === 'discard-stale-registration') {
       controller.abort();
       lease.invalidate('revoked');
       if (capabilityControllerRef.current === controller) {
@@ -934,7 +963,7 @@ export function CapabilityNegotiator({
       capabilityStatus === 'registered' || capabilityStatus === 'invoked',
     ],
     ['Invoke + verify', Boolean(receipt)],
-    ['Invalidate', Boolean(invalidationReason)],
+    ['Close authority', Boolean(invalidationReason)],
   ] as const;
 
   return (
@@ -1134,7 +1163,7 @@ export function CapabilityNegotiator({
                 Controlled handler checks found{' '}
                 {receipt.capability?.verification.controlledHandlerViolations
                   .length ?? 0}{' '}
-                violations. Invalidation:{' '}
+                violations. Logical authority:{' '}
                 {receipt.capability?.invalidation.reason}.
               </p>
             </div>
@@ -1159,7 +1188,7 @@ export function CapabilityNegotiator({
         />
         <EvidenceFact
           icon={<Unplug />}
-          label="Invalidation"
+          label="Logical authority"
           value={invalidationReason ?? 'Not observed'}
         />
       </div>

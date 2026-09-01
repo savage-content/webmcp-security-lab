@@ -1,10 +1,14 @@
 # Contest submission copy
 
-> **FROZEN DRAFT — DO NOT SUBMIT.** The public v1 remains available as a
-> baseline, but recording and submission are paused pending the dated
-> [prior-art audit](../PRIOR_ART.md), independent review, and the acceptance
-> gates in [GO_NO_GO.md](GO_NO_GO.md). This document is not evidence of
-> originality or priority.
+> **FROZEN VERSION 1 DRAFT — DO NOT SUBMIT AS THE CURRENT MVP.** The existing
+> public URL remains available only as the frozen version 1 baseline. The
+> completed [prior-art audit](../PRIOR_ART.md) is a NO-GO for novelty,
+> patentability, or freedom-to-operate clearance claims. The current local MVP
+> also failed two connector receipt-return attempts and has not been publicly
+> deployed. The Chrome 152 deferred-retirement fix is not yet live-validated.
+> Recording and submission remain blocked by [GO_NO_GO.md](GO_NO_GO.md). This
+> document is not evidence of originality, priority, legal clearance, or
+> current-MVP deployment.
 
 ## Project title
 
@@ -16,13 +20,15 @@ Trust the effect, not the label.
 
 ## Links
 
-- **Live app:** <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>
+- **Frozen version 1 app:** <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>
 - **Open-source repository:** <https://github.com/savage-content/webmcp-security-lab>
 - **Demo video:** add the public YouTube URL after recording
 
 ## One-sentence summary
 
-A controlled WebMCP test range where a human and an agent use the same page while append-only evidence proves whether the visible interface, declared agent capability, and actual behavior match.
+A controlled WebMCP test range where a human and an agent use the same page
+while append-only evidence records whether the visible interface, declared
+agent capability, and actual behavior match.
 
 ## The problem
 
@@ -40,7 +46,8 @@ Every run captures:
 - the exact Declared Agent Surface;
 - the Effective Surface, including raw result and before/after state;
 - a pass/fail verdict, debrief, and remediation; and
-- a downloadable, append-only JSON receipt persisted in D1.
+- a downloadable JSON receipt, with ordinary frozen-version-1 receipts
+  eligible for append-only D1 persistence.
 
 ## Why human + agent collaboration matters
 
@@ -64,7 +71,8 @@ Each includes a secure-design comparison with a narrow schema, truthful descript
 - Zod validation for inputs and complete evidence receipts.
 - Cloudflare D1 plus Drizzle migrations for append-only evidence.
 - Vitest coverage for state transitions, schema boundaries, prompt-injection output, and receipt generation.
-- A Cloudflare Worker-compatible Sites deployment.
+- A Cloudflare Worker-compatible Sites deployment for the frozen version 1
+  baseline. The current MVP has not been publicly deployed.
 
 ## Safety
 
@@ -76,4 +84,13 @@ The recoverable repository history timestamps the application architecture, visu
 
 ## Current limitations
 
-WebMCP is experimental and client support varies. The lab treats this as evidence, not an inconvenience: unsupported and undiscovered states are first-class outputs. A human must still record and publish the final YouTube walkthrough.
+WebMCP is experimental and client support varies. The lab treats this as
+evidence, not an inconvenience: unsupported and undiscovered states are
+  first-class outputs. Two connector receipt-return attempts failed; the latest
+  sequence is consistent with Chrome 152 cancelling an in-flight execution when
+  its registration retired, but no retained browser trace proves that cause. It
+  requires a fresh approved retest of the compatibility candidate. The extension remains
+unpacked, the Android work is conformance-only, and no current-MVP walkthrough
+or deployment may be published under the dated NO-GO decision.
+
+This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.

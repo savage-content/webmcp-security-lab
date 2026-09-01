@@ -59,6 +59,7 @@ import type {
   WebMcpStatus,
 } from '@/lib/lab/types';
 import {
+  LEGACY_CHROMIUM_RESULT_DELIVERY_GRACE_MS,
   createUnattributedWebMcpConfirmation,
   executeRegisteredTool,
   getModelContext,
@@ -498,12 +499,11 @@ export function LabApp() {
       const observedWebMcp: WebMcpStatus = {
         ...webMcpRef.current,
         browserSupport: 'supported',
-        registration: 'unregistered',
+        registration: 'registered',
         permissionsPolicy: 'allowed',
         discovery: 'discovered',
         invocation: 'observed',
-        detail:
-          'The generated capability was registered, discovered for this call, synchronously consumed, and unregistered in this document session.',
+        detail: `The generated capability was registered and discovered for this call. Its one-use authority was synchronously consumed; physical registration retirement is scheduled ${LEGACY_CHROMIUM_RESULT_DELIVERY_GRACE_MS} ms after successful callback fulfillment for Chrome 152 result-delivery compatibility.`,
         discoveredToolNames: [payload.contract.compiled.toolName],
       };
       const context = {

@@ -6,13 +6,185 @@
 
 ## Status and claim boundary
 
-This repository is not ready for a novelty claim or contest submission. The reviewed sources contain conceptual overlap with each individual control now under consideration: least-privilege capability compilation, exact hash-bound approval, one-use and expiring authority, origin and registration binding, lifecycle invalidation, and postcondition verification.
+An independent technical review completed September 1, 2026 reached a
+**NO-GO** for “novel,” “unique,” “first,” “invented,” clean-room,
+patentability, or freedom-to-operate clearance claims. The reviewed sources contain
+substantial overlap with every individual control: least-privilege capability
+compilation, exact hash-bound approval, one-use and expiring authority, origin
+and registration binding, lifecycle invalidation, and postcondition
+verification. This is a technical provenance assessment, not legal advice. It
+does not conclude infringement, non-infringement, patentability, or legal
+freedom to operate.
 
 The only narrow statement supported by this scoped audit is:
 
-> In the finite set of primary sources and search results reviewed during this scoped audit ending September 1, 2026, the audit did not identify an example combining a non-effecting WebMCP proposal, exact human approval, replacement of a broad source tool with a newly registered no-input single-use WebMCP tool, source/origin/build binding, automatic invalidation on use/expiry/drift, and one linked receipt recording the required result and controlled checks for prohibited effects.
+> In the Scenario 1 prototype, a human locks a fixed synthetic read intent and a WebMCP caller may stage a non-effecting proposal. An in-page approval event binds the displayed contract; the page then withdraws the broad source and proposal registrations and registers a newly named, no-input WebMCP tool for that approval instance. Within a 120-second same-document lease, the tool can be claimed once; it atomically consumes logical authority before awaited work, rechecks the current origin, source-declaration hash, declared handler-version labels, and synthetic-state baseline, verifies the expected eligibility result and byte-identical controlled state, and emits a linked local-export-only receipt. After the page callback settles successfully, it schedules retirement of the inert registration following a 50 ms Chrome 152 compatibility delay; that timer does not establish that the result crossed a browser or client boundary. Expiry, revocation, detected declaration/state drift, and post-claim failure retire immediately. A scoped primary-source search completed September 1, 2026 did not identify an earlier example of this entire WebMCP-specific sequence. This is not a claim of invention, firstness, priority, executable-code or build attestation, cross-session replay protection, external effect verification, or independently attested evidence.
 
-That statement is a search result, not a claim of invention, priority, legal clearance, or being “first.” It must be revisited if the implementation does not actually remove the broad source tool or if additional prior art is found.
+That statement is a bounded implementation description plus a finite-search
+result. It must be revisited if the implementation changes or additional prior
+art is found.
+
+## Independent review decision and anchors
+
+- Frozen baseline: `21cff1267a467074dc3f5586584e4a6474190aa7`,
+  August 31, 2026 16:34:02 CDT.
+- Capability branch created: September 1, 2026 04:30:25 UTC.
+- Reviewed implementation commit:
+  `b79cf816c2943afc9b2764c7a0bae11d83d2258b`, September 1, 2026
+  00:37:28 CDT.
+- Repository-history searches place the first implementation occurrences at
+  `b79cf81`; the frozen baseline lacks them. Later working-tree changes were not
+  treated as earlier provenance.
+
+The closest previously omitted source is the May 14, 2026
+[Kubernetes-MCP-Guard Plan–Challenge–Execute RFC](https://github.com/containers/kubernetes-mcp-server/discussions/1150)
+and its [reference implementation](https://github.com/mirusser/Kubernetes-MCP-Guard).
+It already describes and implements a non-mutating plan, exact SHA-256-bound
+human approval, a validity window, a single-use grant, execution-time live-state
+drift rejection, and audit. The related
+[MCP discussion #751](https://github.com/orgs/modelcontextprotocol/discussions/751)
+also proposes intent/review digests, approval grants, single execution,
+freshness gates, and audit. The remaining possible distinction is only the
+complete WebMCP registration-replacement sequence described above.
+
+## 2026-09-01 current-working-tree delta review
+
+**Decision: unchanged NO-GO.** An independent technical review of the current
+post-`b79cf81` working tree found no basis to broaden the narrow Scenario 1
+finite-search statement above. The platform-neutral capability core, browser
+extension/local connector/dashboard, and Android conformance adapter improve
+portability and integration, but combine mechanisms already disclosed in the
+primary sources below. They do not support claims of novelty, patentability,
+firstness, clean-room development, non-infringement, or freedom to operate.
+
+**Dirty-tree anchor.** Review began at HEAD
+`b79cf816c2943afc9b2764c7a0bae11d83d2258b`; the anchor was refreshed after
+the Chrome 152 compatibility fix with 22 modified tracked paths and 45
+untracked paths. The exact
+[45-file implementation/test manifest](docs/PRIOR_ART_DELTA_MANIFEST_2026-09-01.md)
+covering the capability core, connector, extension, dashboard-facing
+integration, and Android adapter hashes to
+`224522a46d475ce6fe8242c5abcff1c5e397e59628981332fa99e477283eb5a9`.
+The linked manifest fixes the precise path order and reproduction algorithm.
+This is a scoped content anchor only—not a signature, trusted timestamp,
+complete working-tree snapshot, provenance record, or evidence of authorship.
+
+The delta remains a composition of established mechanisms:
+
+- The core's canonical serialization, context-bound digest, TTL, one-shot
+  consumption, execution-time drift check, outcome verification, and linked
+  receipt chronology overlap [RFC 8785 JSON Canonicalization](https://www.rfc-editor.org/rfc/rfc8785.html),
+  [Macaroons](https://research.google/pubs/macaroons-cookies-with-contextual-caveats-for-decentralized-authorization-in-the-cloud/),
+  the May 2026 [Plan–Challenge–Execute RFC](https://github.com/containers/kubernetes-mcp-server/discussions/1150),
+  [MCP discussion #751](https://github.com/orgs/modelcontextprotocol/discussions/751),
+  and [TraceGrant](https://arxiv.org/abs/2608.21126). Earlier patent publications
+  also disclose single-use, operation-bound authorization and reviewed,
+  expiring grants with audit links: [US20090136042A1](https://patents.google.com/patent/US20090136042A1)
+  and [US9231955B1](https://patents.google.com/patent/US9231955).
+- The extension/connector path composes documented Chrome
+  [`activeTab`](https://developer.chrome.com/docs/extensions/develop/concepts/activeTab),
+  [`scripting`](https://developer.chrome.com/docs/extensions/reference/api/scripting),
+  and [extension-service-worker](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle)
+  patterns with the [WebMCP imperative API](https://developer.chrome.com/docs/ai/webmcp/imperative-api),
+  [MCP tools](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)
+  and [Streamable HTTP transport](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports),
+  plus pairing-code/poll/expiry concepts standardized in
+  [RFC 8628](https://www.rfc-editor.org/info/rfc8628/). Chrome separately
+  documents [native messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging)
+  as an extension-to-local-host channel, and a browser-extension to
+  local-connector path with policy and heartbeat appears in
+  [US20260073060A1](https://patents.google.com/patent/US20260073060A1/en).
+- The local JSONL hash chain and read-only dashboard do not turn the receipts
+  into externally anchored or signed evidence. Hash-chained secure audit logs
+  predate this work in [Schneier–Kelsey (1998)](https://www.usenix.org/conference/7th-usenix-security-symposium/cryptographic-support-secure-logs-untrusted-machines),
+  while [RFC 9943](https://www.rfc-editor.org/info/rfc9943/) specifies stronger
+  transparency-service receipts and append-only verification.
+- The Android adapter re-expresses the same lifecycle using Android
+  [`AppFunctionService`](https://developer.android.com/reference/android/app/appfunctions/AppFunctionService),
+  caller package/signing context, and an atomic one-shot transition; Android's
+  [AppFunction integration guide](https://developer.android.com/ai/appfunctions/add-appfunctions),
+  AOSP's [one-shot callback implementation](https://android.googlesource.com/platform/frameworks/base.git/+/031e5cd3445a44d34153b4e2bf9e9a3e46aa40af/core/java/android/app/appfunctions/SafeOneTimeExecuteAppFunctionCallback.java),
+  and Java's [`AtomicReference.compareAndSet`](https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/concurrent/atomic/AtomicReference.html)
+  supply the underlying platform patterns. The reviewed manifest intentionally
+  lacks AppFunction discovery metadata, and the Kotlin and TypeScript canonical
+  encodings/protocol labels differ, so this tree demonstrates an adapter and
+  semantic duplication—not device-level discoverability or cross-language
+  wire-format conformance.
+
+### Chromium implementation-status delta
+
+**Decision: unchanged NO-GO.** A primary-source check dated September 1, 2026
+adds browser-version constraints and prior-art overlap; it does not create a
+novelty, patentability, clean-room, non-infringement, or freedom-to-operate
+basis. Chromium issue reports describe upstream platform behavior, not local
+lab observations. The labels below report only what the linked primary source
+establishes on the review date.
+
+- **Verified fixed or shipped:** Chrome documents that, as of Chrome 153,
+  unregistering a tool no longer cancels or breaks an in-flight execution; the
+  earlier behavior and design resolution are recorded in
+  [WebMCP issue 218](https://github.com/webmachinelearning/webmcp/issues/218).
+  The local 50 ms timer begins after the page callback settles, not after
+  browser/client delivery is observed, and is therefore a Chrome 152
+  compatibility shim rather than a novel delivery guarantee. For supplied
+  issue `508265320`, Chromium shipped
+  [`RegisteredTool.annotations`](https://chromium.googlesource.com/chromium/src/+/5ec2cc8326da2cc6ba44ba8862ecce546b80bf17)
+  and, for supplied issue `543815035`, changed unserializable tool results to
+  [reject execution](https://chromium.googlesource.com/external/w3c/web-platform-tests/+/refs/tags/merge_pr_61896).
+  Supplied issue `508306795` does not establish type preservation: the current
+  WebMCP IDL returns
+  [`Promise<DOMString>`](https://github.com/webmachinelearning/webmcp/blob/main/index.bs),
+  while Chromium's IPC definition says the result remains
+  [a string for now](https://chromium.googlesource.com/chromium/src/third_party/+/bb1b18ef2fe0187aae661293395192319aa3b3f2/blink/public/mojom/content_extraction/script_tools.mojom).
+  These are platform mechanics; annotations remain advisory and result parsing
+  still requires local validation.
+- **Verified open upstream risks:** Chromium issue
+  [526451590](https://issues.chromium.org/issues/526451590) records declarative
+  form-tool registration through a sandbox lacking `allow-scripts`; current
+  [form registration source](https://chromium.googlesource.com/chromium/src/+/HEAD/third_party/blink/renderer/core/html/forms/html_form_element.cc)
+  contains no scripts-sandbox gate. Issue
+  [508285989](https://issues.chromium.org/issues/508285989) records a missing
+  `toolchange` notification when document destruction implicitly removes tools.
+  Issue [535256664](https://issues.chromium.org/issues/535256664/resources)
+  leaves browser actor-stack integration for user interaction open. The current
+  lab implements imperative, same-document tools and page-local approval; it
+  does not demonstrate or cure those declarative, cross-document, or
+  browser-actor behaviors.
+- **Corrected or not independently verified by the supplied tracker ID:**
+  current Blink
+  [checks the `tools` Permissions Policy](https://chromium.googlesource.com/chromium/src/+/main/third_party/blink/renderer/core/script_tools/model_context.cc)
+  for declarative registration but silently returns when disabled, so issue
+  `507724727` is an error-reporting gap, not a current permission bypass. The
+  same source now gates ModelContext on an origin-keyed agent cluster; the
+  status of supplied issue `521181015` was not independently retrievable. A
+  stale AbortSignal/duplicate-name removal class was
+  [fixed under issue 543349473](https://chromium.googlesource.com/external/github.com/web-platform-tests/wpt/+/refs/tags/merge_pr_61868),
+  not verified under supplied issue `492668960`. The WebMCP
+  [security questionnaire](https://github.com/webmachinelearning/webmcp/blob/main/security-privacy-questionnaire.md)
+  states intended BFCache behavior, and a related navigation/BFCache race was
+  [fixed under issue 492477322](https://chromium.googlesource.com/chromium/src/+/93215cb6533b7bf6caca38b9bf09b3c44cddd82e%5E%21/);
+  supplied issue `510487685` was not independently tied to that fix.
+  Tip-of-tree CDP exposes an experimental
+  [WebMCP domain](https://chromedevtools.github.io/devtools-protocol/tot/WebMCP/),
+  but the official [`chrome.debugger` domain list](https://developer.chrome.com/docs/extensions/reference/api/debugger)
+  does not document WebMCP access; supplied issue `504443396` therefore does
+  not establish extension access. Current Blink source accounts for callbacks
+  executing in an isolated world, but supplied issue `509555845` does not prove
+  that an extension isolated world can discover the page's
+  `document.modelContext`. The reviewed extension retains explicit top-level
+  `MAIN`-world injection and no `debugger` permission.
+
+Those implementation statuses require exact-browser-build conformance evidence
+before any broader compatibility claim. They do not alter the dirty-tree
+content anchor above because the 45-file manifest excludes Markdown
+documentation.
+
+This is a bounded technical overlap review, not legal advice. Patent publication
+links are used only as technical disclosures; this review did not perform claim
+construction, an exhaustive prior-art or patent-family/prosecution/status search,
+jurisdiction and ownership mapping, an anticipation/obviousness opinion, an
+infringement analysis, or an FTO opinion. Qualified patent counsel must perform
+those legal analyses before any patentability, non-infringement, or FTO statement.
 
 ## Recoverable project chronology
 
@@ -76,8 +248,14 @@ This record is incomplete. Some task messages and tool outputs are summarized or
 - [OpenPort](https://arxiv.org/abs/2602.20196) covers authorization-dependent discovery, least-privilege scopes, human review, time-bounded execution, impact binding, idempotency, and optional execution-time state witnesses.
 - [Dynamic Capability Scoping](https://arxiv.org/abs/2607.22445), [Task-Conditioned Least-Privilege Learning](https://arxiv.org/abs/2608.18351), [SkillScope](https://arxiv.org/abs/2605.05868), and [AgenTRIM](https://arxiv.org/abs/2601.12449) cover task-conditioned authority envelopes, dynamic least privilege, constrained action graphs, replay, deterministic effect checks, and minimized tool surfaces.
 - [DCC dynamic-tool issue #462](https://github.com/dcc-mcp/dcc-mcp-core/issues/462) describes agent-composed ephemeral, session-scoped tools with TTL, deregistration, and approval for elevated permissions.
+- [Kubernetes-MCP-Guard](https://github.com/mirusser/Kubernetes-MCP-Guard), its [May 14, 2026 RFC](https://github.com/containers/kubernetes-mcp-server/discussions/1150), and [MCP discussion #751](https://github.com/orgs/modelcontextprotocol/discussions/751) are especially close: non-effecting planning, exact digest-bound approval, TTL, single-use execution, live-state drift rejection, requester/approver binding, and append-only audit all predate this branch.
 - [Maqam](https://github.com/AjnasNB/maqam) binds one-time human approval to a run, tool, canonical input hash, call ceiling, and origin scope, then records receipts and rejects altered inputs or replay.
 - [Macaroons](https://research.google/pubs/macaroons-cookies-with-contextual-caveats-for-decentralized-authorization-in-the-cloud/) established attenuable credentials with contextual caveats in 2014.
+
+Implementation libraries also overlap with exact-input authorization,
+confirmation, audit, or cleanup patterns: [AbsoluteJS WebMCP](https://absolutejs.com/documentation/webmcp),
+[Agent-Native WebMCP](https://www.agent-native.com/docs/webmcp/), and
+[webmcp-tools](https://github.com/josharsh/webmcp-tools/blob/main/README.md).
 
 ### Closest challenge implementations
 
@@ -95,13 +273,25 @@ A one-off scoped local comparison reportedly used the audited baseline and the l
 - The comparison reported that local identifiers and phrases including `WMC-001`–`WMC-005`, “Presented → Declared → Effective,” “Trust the effect, not the label,” and the five scenario IDs were absent from Varden.
 - Separate direct searches reportedly found no direct public match for the three-surface phrase, “The Effective Surface is the security truth,” “Trust the effect, not the label,” or the Scenario 1 read-only/mutation wording in the reviewed result set; the exact query log and result set were not retained.
 
-This does not establish clean-room development. Exact matching will not detect paraphrase, renamed logic, conceptual influence, deleted or historical content, issues, discussions, private work, or unindexed material. The cited snapshot hashes were reported as predating the local commits, but their commit dates and verification output are not retained here. No legal conclusion is offered.
+This does not establish clean-room development. The unretained comparison is
+not independently reproducible and therefore cannot support a clean-room
+claim. Exact matching would not detect paraphrase, renamed logic, conceptual
+influence, deleted or historical content, issues, discussions, private work,
+or unindexed material. The cited snapshot hashes were reported as predating
+the local commits, but their commit dates and verification output are not
+retained here. No legal conclusion is offered.
 
 ## Claims removed or prohibited
 
 The audited baseline contains ordinary technical uses of “first” and “unique,” but no use of “first,” “novel,” “unique implementation,” “industry-leading,” or equivalent language as an originality claim. No baseline originality claim needed removal.
 
-Future documentation and submission material must not claim that this project invented dynamic registration, attenuation, task contracts, exact approval, origin/hash binding, one-use TTL grants, drift detection, or effect verification. “This scoped review did not identify the combined implementation described above” is the strongest permitted comparison statement until the search record is preserved and an independent review says otherwise.
+Future documentation and submission material must not claim that this project
+invented dynamic registration, attenuation, task contracts, exact approval,
+origin/hash binding, one-use TTL grants, drift detection, effect verification,
+or their combination. “This scoped review did not identify an earlier example
+of the entire WebMCP-specific sequence described above” is the strongest
+permitted comparison statement. “Capability Delta” also predates this work as
+a term and must not be presented as original terminology.
 
 ## Implementation gate for the vertical slice
 
@@ -109,11 +299,16 @@ The Scenario 1 slice qualifies for reassessment only if it demonstrates all of t
 
 1. A human locks a fixed synthetic target, prohibited effects, one-call ceiling, and expiry.
 2. An agent can submit only a non-effecting structured proposal that cannot widen that intent.
-3. Human approval identifies the exact contract, source-declaration fingerprint, origin, declared handler/build version, expected result, and prohibited effects.
+3. Human approval identifies the exact contract, source-declaration fingerprint, origin, declared handler-version labels, expected result, and prohibited effects.
 4. Approval unregisters the broad source tool before registering a uniquely named, no-input replacement tool.
 5. The replacement consumes its single claim atomically before execution and uses a trusted, versioned closure rather than a mutable name lookup.
-6. Invocation recomputes origin and source/build fingerprints and rejects drift, expiry, replay, or mismatch.
+6. Invocation recomputes origin and the descriptive source fingerprint and rejects declaration/version-label drift, expiry, replay, or mismatch.
 7. The verifier checks only the Scenario 1 expected result, byte-identical synthetic state, and controlled handler invariants; it does not claim general functional equivalence or independent network observation.
-8. One receipt links the proposal hash, approval, generated registration identity, origin, invocation, before/after state, verification, and unregistration reason.
+8. One receipt links the proposal hash, approval, generated registration identity, origin, invocation, before/after state, verification, and logical authority-invalidation reason. Physical registration retirement is a separate post-compatibility-delay discovery observation and does not attest result delivery.
 
-Until that gate is met and the prior-art comparison is independently reviewed, the go/no-go decision remains **NO-GO for recording or submission**.
+The page-side same-document lifecycle was demonstrated in the Codex in-app
+browser on September 1, 2026, and the prior-art comparison received the
+independent review recorded here. The Chrome 152 compatibility shim and
+connector return path still require fresh exact-build evidence. Nothing here
+authorizes an originality claim or public launch. The dated product
+publish-readiness decision remains in `docs/GO_NO_GO.md`.

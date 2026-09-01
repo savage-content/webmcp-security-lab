@@ -462,14 +462,16 @@ export const evidenceReceiptSchema = z
 
       if (
         receipt.scenario.id !== 'read-only-claim' ||
-        receipt.client.webMcp.registration !== 'unregistered' ||
+        !['registered', 'unregistered'].includes(
+          receipt.client.webMcp.registration,
+        ) ||
         receipt.client.webMcp.invocation !== 'observed'
       ) {
         context.addIssue({
           code: 'custom',
           path: ['client', 'webMcp'],
           message:
-            'Negotiated evidence must record the Scenario 1 tool as invoked and unregistered.',
+            'Negotiated evidence must record the Scenario 1 tool as invoked and its registration as present-at-result or retired.',
         });
       }
     }

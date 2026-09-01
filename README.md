@@ -4,15 +4,37 @@
 
 > A controlled, open-source WebMCP test range that compares what a human sees, what an agent is told, and what a page-scoped tool actually does.
 
-**Live demo:** <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>  
-**Source:** <https://github.com/savage-content/webmcp-security-lab>  
+**Frozen version 1 demo:** <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>
+
+**Source:** <https://github.com/savage-content/webmcp-security-lab>
+
 **License:** [MIT](LICENSE)
 
-> **Working status (August 31, 2026):** The public v1 demo is frozen. A
-> Scenario 1 capability-negotiation slice exists only on the local
-> `codex/capability-negotiator` branch; it has not been deployed, recorded, or
-> submitted. See [PRIOR_ART.md](PRIOR_ART.md) and
-> [docs/GO_NO_GO.md](docs/GO_NO_GO.md).
+> **Working status (September 1, 2026): NO-GO for publishing the current
+> working tree as a validated MVP.** Two authorized one-use calls produced
+> local page-side `PASS` receipts, most recently
+> `fe3d952f-db38-463c-9023-3d36f51bf863`, but neither receipt completed the
+> extension-to-connector return path. The latest no-retry attempt exposed a
+> Chrome 152 result-return failure consistent with an in-flight registration
+> abort, but no retained browser trace proves that cause. The candidate closes
+> logical authority synchronously and schedules retirement of the inert
+> registration 50 ms after the page callback settles. This compatibility shim
+> does not observe result delivery and remains mocked-test evidence until a
+> fresh approved exact-build live retest succeeds. The extension remains unpacked
+> development software, the Android work is conformance-only, and none of the
+> current MVP has been publicly deployed, recorded, or submitted. See
+> [TARGET_CLIENT_VALIDATION.md](docs/TARGET_CLIENT_VALIDATION.md),
+> [PRIOR_ART.md](PRIOR_ART.md), and [docs/GO_NO_GO.md](docs/GO_NO_GO.md).
+
+| Current component | Status |
+| --- | --- |
+| Frozen version 1 web range | Existing public baseline only |
+| Scenario 1 page capability | Two local page-side `PASS` receipts; neither is connector proof |
+| Connector receipt path | Two attempts `FAIL`; Chrome 152 compatibility candidate requires a fresh one-call retest |
+| Browser extension | Manifest V3 `0.1.3` installed and paired locally; unpacked and unsigned |
+| Android | JVM/API conformance prototype; not device-invokable |
+| Current MVP deployment | Not publicly deployed |
+| Novelty, patentability, or freedom-to-operate claims | NO-GO under the technical prior-art review; no legal infringement conclusion |
 
 ## Why this lab exists
 
@@ -47,7 +69,11 @@ The intended flow is:
 - Registration is always attempted when the API exists. A policy probe is displayed as an observation, but only a successful registration or `NotAllowedError` decides the registration outcome.
 - A supported same-origin client can discover it with `document.modelContext.getTools()` and invoke it with `document.modelContext.executeTool()`.
 - Every path—external WebMCP invocation, in-page WebMCP self-test request, and explicit fallback harness—uses the same scenario handler. Because the shared registered callback cannot distinguish a concurrent external call from the in-page request, WebMCP receipts conservatively record browser confirmation as unobservable.
-- Every run produces a schema-validated evidence receipt and attempts an append-only write to Cloudflare D1.
+- Every baseline fixture run produces a schema-validated evidence receipt and
+  attempts an append-only write to Cloudflare D1. Negotiated-capability
+  receipts are deliberately `local-export-only`; a connector receipt reaches
+  its separate local JSONL ledger only after successful transport, validation,
+  append, and acknowledgement.
 - The UI reports unsupported, blocked, undiscovered, and failed states without calling them WebMCP success.
 
 The fallback harness is intentionally labeled as a harness. It is useful for education in unsupported browsers, but it is not represented as agent discovery or ordinary browser automation disguised as WebMCP.
@@ -58,7 +84,8 @@ The local working branch adds one bounded demonstration:
 
 ```text
 lock intent → inspect → propose → approve → withdraw broad source
-            → register unique no-input tool → claim once → verify → unregister
+            → register unique no-input tool → atomically consume once
+            → verify + return from callback → schedule inert registration retirement
 ```
 
 The proposal tool can stage only the exact human-locked contract and cannot
@@ -70,7 +97,12 @@ and remaining lifetime, then creates a valid lease before synchronously
 disabling and aborting the broad source registration. The generated callback consumes a
 single-document lease before its first `await`, rechecks the bindings, runs a
 state-only Scenario 1 handler, validates the receipt links and hashes, and
-creates one exportable local receipt.
+creates one exportable local receipt. Logical authority closes before any
+awaited work. On success, the page schedules retirement of the physically
+registered but inert tool 50 ms after its callback settles; a post-claim
+failure retires it immediately. This Chrome 152 compatibility shim does not
+observe or prove that the result crossed the browser/client boundary. Chrome
+documents non-cancelling in-flight unregistration beginning in version 153.
 
 This is a page-session demonstrator. It does not claim cross-tab or reload
 replay resistance, server-atomic consumption, executable-byte attestation,
@@ -107,7 +139,9 @@ Detailed contracts are in [docs/SCENARIOS.md](docs/SCENARIOS.md).
 
 ## Architecture
 
-The app is a Vinext/React site that emits Cloudflare Worker-compatible ESM. Scenario state remains isolated in the browser; immutable evidence receipts are persisted to D1 behind a small storage boundary.
+The baseline app is a Vinext/React site that emits Cloudflare Worker-compatible
+ESM. Scenario state remains isolated in the browser; ordinary baseline evidence
+receipts may be persisted to D1 behind a small storage boundary.
 
 ```text
 Human UI ───────┐
@@ -116,13 +150,28 @@ WebMCP execute ─┘                              │
                                               └──> validated receipt ──> D1 append
 ```
 
-Only the selected fixture is registered. An `AbortController` unregisters it when the user changes scenarios or leaves the page. The ledger is partitioned by a random device-local lab-session identifier; D1 remains the source of truth.
+Only the selected fixture is registered. An `AbortController` unregisters it
+when the user changes scenarios or leaves the page. The baseline D1 ledger is
+partitioned by a random device-local lab-session identifier.
+
+The local MVP adds a separate unpacked browser extension, loopback connector,
+and append-only JSONL receipt report. A negotiated page receipt is not a
+connector record until that return path completes. The observed
+`31cac0df-4849-42cc-8f44-05a6bdacd9ea` and
+`fe3d952f-db38-463c-9023-3d36f51bf863` attempts did not complete it. The
+second run is consistent with a Chrome 152 in-flight registration-abort
+failure, but no retained browser trace proves that cause. The compatibility
+shim still needs a fresh exact-build live retest. The extension invokes the
+selected top-level page through explicit `MAIN`-world injection and has no
+`debugger` permission; isolated-world or CDP WebMCP access is not implemented
+or claimed. The Android directory is an isolated conformance prototype and is
+not in the web or connector runtime.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 
 ## Local development
 
-Requirements: Node.js 22.13 or newer and npm.
+Requirements: Node.js 24 or newer and npm.
 
 ```bash
 npm ci
@@ -133,12 +182,16 @@ Open <http://localhost:3000>.
 
 The application always works as an educational range through its explicitly labeled harness. To exercise the actual WebMCP path, use a browser/client that exposes `document.modelContext`. Chrome documents an origin trial and a local `chrome://flags/#enable-webmcp-testing` flag; support is experimental and must be checked in the exact client being demonstrated. See the [Chrome WebMCP overview](https://developer.chrome.com/docs/ai/webmcp) and the [WebMCP proposal](https://github.com/webmachinelearning/webmcp).
 
+The local connector and unpacked-extension instructions are in
+[products/connector/README.md](products/connector/README.md) and
+[products/extension/README.md](products/extension/README.md). The Android
+conformance boundary is in
+[android-conformance/README.md](android-conformance/README.md).
+
 ## Tests and verification
 
 ```bash
-npm test
-npm run lint
-npm run build
+npm run verify
 ```
 
 The automated suite covers:
@@ -149,11 +202,30 @@ The automated suite covers:
 - schema validation for vulnerable and secure tool contracts;
 - passing secure retests across the complete curriculum;
 - before/after evidence generation;
-- controlled no-mutation prompt-injection output; and
-- required receipt fields; and
+- controlled no-mutation prompt-injection output;
+- required receipt fields;
 - exact capability proposals, unique no-input compilation, same-document
   one-use and TTL enforcement, origin/source/handler drift rejection, pure
-  result verification, and local receipt validation.
+  result verification, and local receipt validation;
+- connector authentication, discovery-only inspection, exact one-use
+  invocation authority, receipt validation, JSONL chain integrity, and
+  acknowledgement ordering; and
+- unpacked-extension manifest authority, document binding, bounded transport,
+  retry behavior, and failure handling.
+
+`npm run verify` does not claim live connector success and does not run the
+separate Android conformance script. A live connector release gate requires a
+fresh browser approval and the end-to-end checks in
+[docs/GO_NO_GO.md](docs/GO_NO_GO.md).
+
+Automated retirement coverage uses mocked ModelContext behavior; it is not a
+Chrome 152 or Chrome 153 conformance result. A target-client MVP decision needs
+one retained exact-build extension/connector run. Broader compatibility claims
+add separate exact-build gates for in-flight unregistration, result
+serialization and string parsing, Permissions Policy and origin isolation,
+document destruction/navigation and BFCache, duplicate registration ownership,
+and alternate extension worlds. See
+[docs/VERIFICATION.md](docs/VERIFICATION.md).
 
 The current verification matrix—including unsupported and unverified items—is in [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
@@ -174,15 +246,25 @@ Receipts can be downloaded as JSON. There are no update or delete endpoints. Req
 
 ## Deployment
 
-The repository includes `.openai/hosting.json` with a logical `DB` binding and generated Drizzle migrations.
+**Do not deploy the current working MVP under the 2026-09-01 decision.** The
+URL at the top of this README is the frozen version 1 baseline. It is not proof
+that the capability negotiator, connector, extension, or Android work was
+deployed.
 
-1. Run `npm test` and `npm run build`.
-2. Create or select a Sites project.
-3. Bind D1 as `DB` and apply the migrations under `drizzle/`.
-4. Deploy the exact validated build output.
-5. Verify `/`, `/api/evidence`, one persisted receipt, and the selected WebMCP tool in the target client.
+The repository includes `.openai/hosting.json` with a logical `DB` binding and
+generated Drizzle migrations for a possible future web deployment.
 
-No secrets are required.
+1. Replace the current NO-GO with a dated GO record.
+2. Run `npm ci` and `npm run verify` on the exact clean release commit.
+3. Create or select a Sites project.
+4. Bind D1 as `DB` and apply the migrations under `drizzle/`.
+5. Deploy the exact validated build output.
+6. Verify `/`, `/api/evidence`, one persisted baseline receipt, and the
+   selected WebMCP tool in the exact deployed target client.
+
+The web range requires no application secrets, but any hosted connector would
+require a new authentication, authorization, storage, monitoring, privacy, and
+security design. The loopback access-token MVP is not a production control.
 
 ## Safety boundary
 
@@ -201,3 +283,5 @@ Read [SECURITY.md](SECURITY.md) before extending a fixture.
 ## License
 
 Copyright © 2026 Left Out Security. Released under the [MIT License](LICENSE).
+
+This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.

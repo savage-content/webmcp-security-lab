@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LeftOut capability bridge</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">LeftOut Security</p>
+      <h1>Capability bridge</h1>
+      <p class="intro">
+        Pair this tab with the loopback connector. Pairing does not approve or
+        invoke a site tool.
+      </p>
+
+      <section class="page" aria-labelledby="page-heading">
+        <h2 id="page-heading">Active page</h2>
+        <p id="page-origin" class="mono">Checking…</p>
+      </section>
+
+      <form id="pair-form">
+        <label for="connector">Local connector</label>
+        <select id="connector" name="connector">
+          <option value="http://127.0.0.1:8788">127.0.0.1:8788</option>
+          <option value="http://localhost:8788">localhost:8788</option>
+          <option value="http://127.0.0.1:48788">127.0.0.1:48788</option>
+          <option value="http://localhost:48788">localhost:48788</option>
+        </select>
+
+        <label for="pair-code">One-time pairing code</label>
+        <input
+          id="pair-code"
+          name="pairCode"
+          type="text"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          pattern="[0-9]{8}"
+          maxlength="8"
+          placeholder="12345678"
+          required
+        />
+        <button id="pair-button" type="submit" disabled>Pair active tab</button>
+      </form>
+
+      <div id="status" class="status" role="status" aria-live="polite">
+        Not paired.
+      </div>
+
+      <dl id="connection" class="connection" hidden>
+        <div>
+          <dt>Origin</dt>
+          <dd id="connection-origin" class="mono"></dd>
+        </div>
+        <div>
+          <dt>Session</dt>
+          <dd id="connection-session" class="mono"></dd>
+        </div>
+        <div>
+          <dt>Last command</dt>
+          <dd id="connection-command">None</dd>
+        </div>
+      </dl>
+
+      <button id="forget-button" class="secondary" type="button" hidden>
+        Forget local pairing
+      </button>
+
+      <p class="limit">
+        This bridge can inspect declarations or invoke one already approved,
+        generated Scenario 1 no-input capability. It cannot create approval or
+        invoke broad and proposal tools.
+      </p>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

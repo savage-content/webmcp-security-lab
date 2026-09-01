@@ -10,9 +10,27 @@ import type {
   RunOutcome,
   ToolDeclaration,
 } from './types';
+import {
+  canonicalJson,
+  checkCapabilityBindings,
+  createOneUseLease,
+  hashCapabilityContract,
+  hashProposalBinding,
+  hashSourceBinding,
+  issueOneUseGrant,
+  linkCapabilityReceipt,
+  prepareOneUseActivation,
+  sha256Hex,
+  verifyCapabilityExecution,
+  verifyReceiptLink,
+  type OneUseLease,
+  type OneUseLeaseState,
+} from '../capability-core';
+
+export { canonicalJson, sha256Hex } from '../capability-core';
 
 export const SOURCE_HANDLER_VERSION = 'scenario-one-source-handler/1.1.0';
-export const CAPABILITY_HANDLER_VERSION = 'scenario-one-read-handler/1.0.0';
+export const CAPABILITY_HANDLER_VERSION = 'scenario-one-read-handler/1.1.0';
 export const PROPOSAL_TOOL_NAME = 'propose_training_1042_read_capability';
 
 const REQUIRED_PROPOSAL_KEYS = [
@@ -32,20 +50,9 @@ const PROHIBITED_EFFECTS: LockedCapabilityIntent['prohibitedEffects'] = [
   'cross-account-access',
 ];
 
-export type DocumentCapabilityLeaseState =
-  | 'active'
-  | 'consumed'
-  | 'expired'
-  | 'revoked';
+export type DocumentCapabilityLeaseState = OneUseLeaseState;
 
-export interface DocumentCapabilityLease {
-  claim: () =>
-    | { ok: true; callNumber: 1 }
-    | { ok: false; reason: Exclude<DocumentCapabilityLeaseState, 'active'> };
-  invalidate: (reason: 'expired' | 'revoked') => void;
-  state: () => DocumentCapabilityLeaseState;
-  deadline: number;
-}
+export type DocumentCapabilityLease = OneUseLease;
 
 export function prepareDocumentCapabilityActivation({
   expiresAt,
@@ -60,16 +67,12 @@ export function prepareDocumentCapabilityActivation({
 }):
   | { ok: false; reason: 'expired' }
   | { ok: true; lease: DocumentCapabilityLease; sourceWithdrawn: true } {
-  const remainingLifetimeMs = new Date(expiresAt).getTime() - wallNow();
-  if (remainingLifetimeMs <= 0) return { ok: false, reason: 'expired' };
-
-  // Construct a valid lease before changing source registration state. This
-  // keeps an expiry race from withdrawing the source without a replacement.
-  const lease = createDocumentCapabilityLease({
-    ttlSeconds: remainingLifetimeMs / 1_000,
-    ...(monotonicNow ? { now: monotonicNow } : {}),
+  return prepareOneUseActivation({
+    expiresAt,
+    suppressSource,
+    wallNow,
+    ...(monotonicNow ? { monotonicNow } : {}),
   });
-  return { ok: true, lease, sourceWithdrawn: suppressSource() };
 }
 
 export function createDocumentCapabilityLease({
@@ -79,56 +82,7 @@ export function createDocumentCapabilityLease({
   ttlSeconds: number;
   now?: () => number;
 }): DocumentCapabilityLease {
-  if (!Number.isFinite(ttlSeconds) || ttlSeconds <= 0) {
-    throw new Error('A positive capability lifetime is required.');
-  }
-  const deadline = now() + ttlSeconds * 1_000;
-  let current: DocumentCapabilityLeaseState = 'active';
-
-  return {
-    deadline,
-    claim() {
-      if (current !== 'active') return { ok: false, reason: current };
-      if (now() >= deadline) {
-        current = 'expired';
-        return { ok: false, reason: 'expired' };
-      }
-      // JavaScript run-to-completion makes this transition atomic within one
-      // document realm because it occurs before the caller can await.
-      current = 'consumed';
-      return { ok: true, callNumber: 1 };
-    },
-    invalidate(reason) {
-      if (current === 'active') current = reason;
-    },
-    state() {
-      return current;
-    },
-  };
-}
-
-function stableValue(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(stableValue);
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>)
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([key, child]) => [key, stableValue(child)]),
-    );
-  }
-  return value;
-}
-
-export function canonicalJson(value: unknown) {
-  return JSON.stringify(stableValue(value));
-}
-
-export async function sha256Hex(value: unknown) {
-  const bytes = new TextEncoder().encode(canonicalJson(value));
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, '0'),
-  ).join('');
+  return createOneUseLease({ ttlSeconds, now });
 }
 
 function asRecord(input: unknown) {
@@ -292,7 +246,7 @@ export async function fingerprintSource({
   handlerVersion: string;
   origin: string;
 }) {
-  return sha256Hex({ tool, handlerVersion, origin });
+  return hashSourceBinding({ tool, handlerVersion, origin });
 }
 
 export async function createProposalRecord({
@@ -322,7 +276,7 @@ export async function createProposalRecord({
 
   return {
     input: validated,
-    proposalHash: await sha256Hex({ input: validated, source }),
+    proposalHash: await hashProposalBinding(validated, source),
     proposedAt,
     channel,
     source,
@@ -357,61 +311,27 @@ export async function compileCapabilityContract({
   approvalNonce?: string;
 }): Promise<CompiledCapabilityContract> {
   validateProposalInput(proposal.input, intent);
-  const compiledAt = preparedAt;
-  const expiresAt = new Date(
-    new Date(preparedAt).getTime() + intent.ttlSeconds * 1_000,
-  ).toISOString();
-  const identitySeed = await sha256Hex({
+  const contract = await issueOneUseGrant({
     protocol: 'webmcp-capability-negotiation/1',
     intent,
     proposalHash: proposal.proposalHash,
     source: proposal.source,
-    approvalNonce,
     handlerVersion: CAPABILITY_HANDLER_VERSION,
-    compiledAt,
-    expiresAt,
-  });
-  const capabilityId = `cap_${identitySeed.slice(0, 24)}`;
-  const toolName = `get_training_1042_eligibility_once_${identitySeed.slice(0, 16)}`;
-  const declaration = createCompiledCapabilityDeclaration(toolName, expiresAt);
-  const approval = {
     preparedAt,
-    nonce: approvalNonce,
-    copy: capabilityApprovalCopy(proposal, expiresAt, toolName, capabilityId),
-  };
-  const contractMaterial = {
-    protocol: 'webmcp-capability-negotiation/1',
-    capabilityId,
-    intent,
-    proposalHash: proposal.proposalHash,
-    source: proposal.source,
-    approval,
-    compiled: {
-      toolName,
-      declaration,
-      handlerVersion: CAPABILITY_HANDLER_VERSION,
-      compiledAt,
-      expiresAt,
+    approvalNonce,
+    ttlSeconds: intent.ttlSeconds,
+    createDeclaration: createCompiledCapabilityDeclaration,
+    createApprovalCopy: ({ expiresAt, toolName, capabilityId }) =>
+      capabilityApprovalCopy(proposal, expiresAt, toolName, capabilityId),
+    dependencies: {
+      identity: (identitySeed) => ({
+        capabilityId: `cap_${identitySeed.slice(0, 24)}`,
+        toolName: `get_training_1042_eligibility_once_${identitySeed.slice(0, 16)}`,
+      }),
     },
-  };
-  const contractHash = await sha256Hex(contractMaterial);
+  });
 
-  return {
-    protocol: 'webmcp-capability-negotiation/1',
-    capabilityId,
-    contractHash,
-    intent,
-    proposalHash: proposal.proposalHash,
-    source: proposal.source,
-    approval,
-    compiled: {
-      toolName,
-      declaration,
-      handlerVersion: CAPABILITY_HANDLER_VERSION,
-      compiledAt,
-      expiresAt,
-    },
-  };
+  return contract as CompiledCapabilityContract;
 }
 
 function createCompiledCapabilityDeclaration(
@@ -448,10 +368,10 @@ export async function validateCapabilityEvidenceIntegrity(
     throw new Error('Capability source or handler-version binding is invalid.');
   }
 
-  const proposalHash = await sha256Hex({
-    input: proposal.input,
-    source: proposal.source,
-  });
+  const proposalHash = await hashProposalBinding(
+    proposal.input,
+    proposal.source,
+  );
   if (
     proposalHash !== proposal.proposalHash ||
     proposal.proposalHash !== contract.proposalHash
@@ -507,7 +427,7 @@ export async function validateCapabilityEvidenceIntegrity(
     );
   }
 
-  const contractHash = await sha256Hex({
+  const contractHash = await hashCapabilityContract({
     protocol: contract.protocol,
     capabilityId: contract.capabilityId,
     intent: contract.intent,
@@ -522,6 +442,20 @@ export async function validateCapabilityEvidenceIntegrity(
 
   if (evidence.approvalEvent.contractHash !== contract.contractHash) {
     throw new Error('Approval event does not identify the compiled contract.');
+  }
+
+  const receiptLink = verifyReceiptLink({
+    contractHash: contract.contractHash,
+    approvalContractHash: evidence.approvalEvent.contractHash,
+    preparedAt: contract.approval.preparedAt,
+    approvedAt: evidence.approvalEvent.approvedAt,
+    claimedAt: evidence.invocation.claimedAt,
+    invalidatedAt: evidence.invalidation.at,
+  });
+  if (!receiptLink.ok) {
+    throw new Error(
+      `Capability receipt link is invalid: ${receiptLink.reason}.`,
+    );
   }
 
   return evidence;
@@ -554,25 +488,33 @@ export async function verifyCapabilityBinding({
     handlerVersion: SOURCE_HANDLER_VERSION,
     origin,
   });
-
-  if (callsClaimed >= contract.intent.maxCalls) {
-    return { ok: false, reason: 'consumed', observedSourceHash };
+  const result = checkCapabilityBindings(
+    {
+      maxCalls: contract.intent.maxCalls,
+      expiresAt: contract.compiled.expiresAt,
+      origin: contract.source.origin,
+      handlerVersion: contract.compiled.handlerVersion,
+      sourceHash: contract.source.sourceDeclarationHash,
+    },
+    {
+      callsClaimed,
+      now,
+      origin,
+      handlerVersion,
+      sourceHash: observedSourceHash,
+    },
+  );
+  if (!result.ok) {
+    // Scenario 1 has no separately persisted schema hash, so schema drift is
+    // represented by the source-declaration hash and cannot reach this branch.
+    const reason =
+      result.reason === 'schema-drift'
+        ? ('source-drift' as const)
+        : result.reason === 'baseline-drift'
+          ? ('state-drift' as const)
+          : result.reason;
+    return { ok: false, reason, observedSourceHash };
   }
-  if (
-    new Date(now).getTime() >= new Date(contract.compiled.expiresAt).getTime()
-  ) {
-    return { ok: false, reason: 'expired', observedSourceHash };
-  }
-  if (origin !== contract.source.origin) {
-    return { ok: false, reason: 'origin-drift', observedSourceHash };
-  }
-  if (handlerVersion !== contract.compiled.handlerVersion) {
-    return { ok: false, reason: 'handler-drift', observedSourceHash };
-  }
-  if (observedSourceHash !== contract.source.sourceDeclarationHash) {
-    return { ok: false, reason: 'source-drift', observedSourceHash };
-  }
-
   return { ok: true, observedSourceHash };
 }
 
@@ -590,33 +532,38 @@ export async function executeScenarioOneCapability({
 }> {
   const before = structuredClone(currentState);
   const after = structuredClone(currentState);
-  const observedStateHash = await sha256Hex(before);
+  const rawResult = {
+    account_id: contract.intent.accountId,
+    eligibility:
+      typeof before.eligibility === 'string' ? before.eligibility : '',
+    message: 'Eligibility lookup complete.',
+  };
+  const initialViolations: string[] = [];
+  if (before.accountId !== contract.intent.accountId) {
+    initialViolations.push('cross-account-access');
+  }
+  const coreVerification = await verifyCapabilityExecution({
+    before,
+    after,
+    expectedBaselineHash: contract.intent.baseline.stateHash,
+    result: rawResult,
+    requiredResult: contract.intent.requiredResult,
+    checkedAt,
+    resultMatches: (observed, required) =>
+      observed.account_id === required.accountId &&
+      observed.eligibility === required.eligibility,
+    violations: initialViolations,
+    mutationViolation: 'account-state-mutation',
+  });
   const baselineStateMatched =
-    observedStateHash === contract.intent.baseline.stateHash &&
+    coreVerification.baselineMatched &&
     before.accountId === contract.intent.accountId &&
     before.reviewed === contract.intent.baseline.reviewed &&
     before.reviewCount === contract.intent.baseline.reviewCount &&
     before.lastReviewedAt === contract.intent.baseline.lastReviewedAt;
-  const eligibility =
-    typeof before.eligibility === 'string' ? before.eligibility : '';
-  const rawResult = {
-    account_id: contract.intent.accountId,
-    eligibility,
-    message: 'Eligibility lookup complete.',
-  };
-  const stateByteIdentical =
-    canonicalJson(before) === canonicalJson(after) &&
-    observedStateHash === (await sha256Hex(after));
-  const requiredResultMatched =
-    rawResult.account_id === contract.intent.requiredResult.accountId &&
-    rawResult.eligibility === contract.intent.requiredResult.eligibility;
-  const controlledHandlerViolations: string[] = [];
-  if (!stateByteIdentical) {
-    controlledHandlerViolations.push('account-state-mutation');
-  }
-  if (before.accountId !== contract.intent.accountId) {
-    controlledHandlerViolations.push('cross-account-access');
-  }
+  const stateByteIdentical = coreVerification.stateUnchanged;
+  const requiredResultMatched = coreVerification.requiredResultMatched;
+  const controlledHandlerViolations = coreVerification.violations;
   const passed =
     baselineStateMatched &&
     stateByteIdentical &&
@@ -625,7 +572,7 @@ export async function executeScenarioOneCapability({
   const verification: CapabilityVerification = {
     passed,
     baselineStateMatched,
-    observedStateHash,
+    observedStateHash: coreVerification.observedBaselineHash,
     requiredResultMatched,
     stateByteIdentical,
     controlledHandlerViolations,
@@ -665,18 +612,15 @@ export function createCapabilityEvidence({
   invalidatedAt: string;
   invalidationReason: CapabilityInvalidationReason;
 }): CapabilityNegotiationEvidence {
-  return {
-    protocol: 'webmcp-capability-negotiation/1',
-    scope: 'single-document-session',
-    receiptPersistence: 'local-export-only',
+  return linkCapabilityReceipt({
+    scope: 'single-document-session' as const,
+    receiptPersistence: 'local-export-only' as const,
     proposal,
     contract,
-    approvalEvent: {
-      approvedAt,
-      contractHash: contract.contractHash,
-    },
-    invocation: { claimedAt, callNumber: 1 },
+    approvedAt,
+    claimedAt,
     verification,
-    invalidation: { reason: invalidationReason, at: invalidatedAt },
-  };
+    invalidatedAt,
+    invalidationReason,
+  }) as CapabilityNegotiationEvidence;
 }

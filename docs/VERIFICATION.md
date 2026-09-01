@@ -1,7 +1,9 @@
 # Verification report
 
 **Report date:** 2026-09-01
-**Scope:** frozen version 1.0.2 browser evidence plus the local, undeployed `codex/capability-negotiator` branch
+**Scope:** frozen version 1.0.2 browser evidence plus the local, undeployed
+`codex/capability-negotiator` web, connector, unpacked-extension, and Android
+conformance working tree
 
 This report separates deterministic code evidence, browser-observed behavior, and claims that remain outside the observed client and session.
 
@@ -10,14 +12,48 @@ This report separates deterministic code evidence, browser-observed behavior, an
 | Check                 | Result               | Evidence                                                                                                                                                                                                    |
 | --------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Runtime               | Pass                 | Node.js 24.19.0                                                                                                                                                                                             |
-| Dependency install    | Pass                 | `npm ci` completed from the committed lockfile                                                                                                                                                              |
-| Automated tests       | Pass                 | 45 tests across 6 files                                                                                                                                                                                     |
-| TypeScript            | Pass                 | `npx tsc --noEmit`                                                                                                                                                                                          |
+| Dependency install    | Pass                 | `npm ci` completed in a clean temporary copy from the current working-tree lockfile; a release claim still requires a clean commit containing that lockfile                                                 |
+| Automated tests       | Pass                 | 121 tests across 13 Vitest files in the Chrome 152 compatibility working-tree and clean-copy candidate gates                                                                                              |
+| TypeScript            | Pass                 | `npm run typecheck`                                                                                                                                                                                         |
 | Lint                  | Pass                 | `npm run lint`                                                                                                                                                                                              |
 | Production build      | Pass                 | Vinext generated `/` and `/api/evidence`                                                                                                                                                                    |
 | Scenario catalog      | Pass                 | Five unique declarations; vulnerable and secure defaults validate                                                                                                                                           |
 | Receipt compatibility | Pass                 | Older receipts default missing WebMCP invocation state to `not-observed`                                                                                                                                    |
-| Capability slice      | Pass (deterministic) | Exact proposal validation, unique full-contract hashing, one-use lease, expiry-before-withdrawal ordering, binding checks, state-only result verification, cross-field receipt checks, and tamper rejection |
+| Capability slice      | Pass (deterministic) | Exact proposal validation, unique full-contract hashing, one-use lease, early-invocation settlement, mocked legacy-Chromium retirement, binding checks, state-only verification, receipt links, and tamper rejection |
+
+These clean code gates do not override the connector live-transport failure or
+authorize publication. Android conformance uses a separate local verification
+script and is not part of `npm run verify`.
+
+The first in-place `npm ci` attempt was blocked by an operating-system file
+lock on the ignored `node_modules/miniflare/dist/local-explorer-ui` directory.
+No process was terminated. A clean temporary copy of the same working-tree
+source and lockfile installed successfully under Node.js 24.19.0; `npm run
+verify` then passed typecheck, all 110 tests, lint, and the production build.
+The subsequent security and Android-core hardening run passed all 117 tests,
+typecheck, targeted lint and formatting, and the production build. The final
+port-isolated candidate then passed a fresh `npm ci`, all 117 tests,
+typecheck, lint, production build, and the separate Android verification gate
+before being loaded for live validation.
+
+After the live Chrome 152 return failure produced an unverified
+unregistration-race hypothesis, a new clean candidate
+passed a fresh Node.js 24.19.0 `npm ci`, exact `npm test` with all 121 tests,
+exact `npm run verify` (typecheck, the same 121 tests, lint, and production
+build), and the separate Android verification gate. This candidate has not yet
+received a live one-call retest.
+
+## MVP component status
+
+| Component | Result | Evidence boundary |
+| --- | --- | --- |
+| Frozen version 1 URL | Published baseline | The existing public site does not contain or validate the current working MVP. |
+| Scenario 1 page invocation | **Pass, local only** | Two calls reached page-side `PASS`, most recently receipt `fe3d952f-db38-463c-9023-3d36f51bf863`; neither is connector proof. |
+| Connector receipt transport | **Fail; retest required** | Neither page receipt was returned, validated, appended, acknowledged, and reported through the connector in one completed run. The latest failure occurred at Chrome 152 result return. |
+| Extension | Limited | Manifest V3 version `0.1.3` was loaded unpacked and paired to the exact local retest page; no signed or store-distributed package was tested. |
+| Android | Conformance only | JVM behavior and the API-36 boundary do not establish generated AppFunction metadata or on-device discovery and invocation. |
+| Public deployment of current MVP | Not performed | Hosting configuration and the frozen version 1 deployment are not deployment evidence for this working tree. |
+| Novelty, patentability, or freedom-to-operate claim | **No-go** | The technical prior-art review permits no such claim and supplies no legal infringement conclusion or clearance. |
 
 ## Evidence-integrity checks
 
@@ -33,7 +69,11 @@ The scenario engine derives each verdict from those invariants. Choosing a secur
 
 ## Focused browser verification
 
-The observations below belong to the frozen v1 baseline. The new capability-negotiation UI has not been deployed or recorded and therefore has no target-client browser evidence yet.
+The frozen v1 observations remain below. Scenario 1 also has direct local
+target-client evidence on the working branch. The full bounded record is in
+[TARGET_CLIENT_VALIDATION.md](TARGET_CLIENT_VALIDATION.md); it is not
+deployment or demo-recording evidence and does not generalize beyond the named
+client/session.
 
 | Check                    | Result | Evidence                                                                                                                                |
 | ------------------------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------- |
@@ -46,14 +86,73 @@ The observations below belong to the frozen v1 baseline. The new capability-nego
 | Browser console          | Pass   | No warning or error was observed; development-only Vite and React informational messages were present.                                  |
 | Narrow layout            | Pass   | A 390 × 844 live check showed no horizontal overflow or clipped interactive controls.                                                   |
 
+## Scenario 1 target-client verification
+
+| Check | Result | Direct observation in the Codex in-app browser |
+| --- | --- | --- |
+| Source discovery | Pass | The client initially discovered `check_training_eligibility`, then discovered the exact proposal after intent lock. |
+| Authority replacement | Pass | Exact approval removed both broad and proposal tools and exposed only one uniquely named, no-input generated tool. |
+| Single invocation | Pass | The generated tool ran once and produced receipt `29bf9903-4dec-44e7-a147-8bb94c73850b` with matching before/after state and no controlled violations. |
+| Replay rejection | Pass (earlier build) | A cached handle rejected as stale; after physical retirement, fresh discovery returned no tools. This predates the deferred-retirement candidate and does not test its inert-during-grace behavior. |
+| Drift invalidation | Pass | A source-declaration change removed an unused grant; fresh and cached access both failed without invoking it. |
+| Expiry invalidation | Pass | The grant remained discoverable before its 120-second deadline and was absent immediately afterward without invocation. |
+| Browser console | Pass | No warnings or errors were present after the validation runs. |
+| Narrow layout | Pass | Requested 390 × 844; measured page and scroll widths both 375 CSS pixels, with no horizontal overflow. |
+| Accessibility smoke | Pass | No unlabeled interactive elements or duplicate IDs were found. |
+| Re-registration churn | Limited | After several dynamic cycles in one document, the client rejected further configuration as over its supported limit; a clean reload restored testing. |
+
+## Connector live-transport verification
+
+| Check | Result | Direct observation |
+| --- | --- | --- |
+| Extension packaging | Limited | The bridge was loaded as an unpacked development extension, not a signed or store-published package. |
+| Hardened retest baseline | Pass (before-state only) | Extension `0.1.3` paired `http://localhost:3001/` to isolated bridge port `48788`; the connector reported one connected session and the receipt chain was valid and empty before invocation. |
+| Page invocation | Pass | The authorized no-retry capability ran once and produced receipt `fe3d952f-db38-463c-9023-3d36f51bf863` with page-side verdict `PASS`, a byte-identical state hash, and zero controlled violations. |
+| Receipt return transport | Fail | The extension observed `executeTool()` reject after the page callback created its receipt; it stored no completion and the connector ledger remained empty. An in-flight registration abort is the leading hypothesis, not a retained-trace result. |
+| Deferred-retirement candidate | Pass (deterministic only) | 121 tests include synchronous logical consumption, early invocation before registration settlement, delayed successful retirement, immediate retirement on claimed failure, and a mocked legacy-Chromium abort-before-settlement rejection. Fresh exact-build validation remains required. |
+| Connector validation and append | Not established | No successful acknowledgement proved that the exact receipt was validated and appended. |
+| Dashboard and MCP summaries | Not established | The attempt did not prove a matching dashboard entry or receipt-summary tool result. |
+| Overall connector path | **Fail; fresh retest required** | The consumed grant cannot be retried. A new page session, approval, and generated capability are required. |
+
+The detailed bounded record and acceptance criteria for the next run are in
+[TARGET_CLIENT_VALIDATION.md](TARGET_CLIENT_VALIDATION.md).
+
+The before-state row proves installation, exact-document pairing, polling, and
+a zero-receipt baseline. The one authorized call was consumed without retry.
+The lifecycle fix was implemented afterward, so it requires a fresh page,
+capability, approval, and one-call authorization.
+
 ## WebMCP observation rules
 
 - Only `document.modelContext` is feature-detected.
 - Registration is attempted even when advisory policy enumeration is ambiguous.
-- A resolved `registerTool()` proves registration for this document; a real `NotAllowedError` records policy denial.
+- A resolved imperative `registerTool()` proves registration for this document; a real `NotAllowedError` records imperative policy denial. Declarative registration has separate error-reporting behavior and is outside this lab path.
 - Discovery alone never counts as invocation.
 - Only the registered WebMCP callback marks invocation `observed`; the fallback harness does not.
 - Capability evidence is scoped to the named browser, client, session, and observation time. No other client is inferred or certified.
+
+## Exact-build Chromium conformance gate
+
+The following primary-source statuses constrain the next live gate. “Upstream
+fixed” or “open” does not mean the local connector has passed; “unverified”
+means this working tree lacks a retained exact-build artifact for the behavior.
+
+| Platform behavior | Upstream status on 2026-09-01 | Required local evidence |
+| --- | --- | --- |
+| Unregister during in-flight execution | **Fixed/documented in Chrome 153** by the [imperative API documentation](https://developer.chrome.com/docs/ai/webmcp/imperative-api#unregister_tools) and [WebMCP issue 218](https://github.com/webmachinelearning/webmcp/issues/218); Chrome 152 cause remains **unverified for the recorded run** | Pin Chrome 152 and 153-or-later builds; retain the raw execution result/rejection and timestamps for callback settlement, abort, replay, and fresh discovery. |
+| Non-JSON-serializable result | **Fixed upstream** to reject execution in the [Web Platform Tests change](https://chromium.googlesource.com/external/w3c/web-platform-tests/+/refs/tags/merge_pr_61896); **unverified locally in a real browser** | Return a circular/nonserializable value and preserve the exact browser/client rejection. |
+| Result wire type | Current WebMCP [IDL returns `DOMString`](https://github.com/webmachinelearning/webmcp/blob/main/index.bs), and Chromium [uses a string result for now](https://chromium.googlesource.com/chromium/src/third_party/+/bb1b18ef2fe0187aae661293395192319aa3b3f2/blink/public/mojom/content_extraction/script_tools.mojom) | Preserve the raw returned value and prove exact JSON parsing, schema validation, receipt identity, and rejection of malformed or substituted content. |
+| Permissions and origin isolation | Current [Blink source](https://chromium.googlesource.com/chromium/src/+/main/third_party/blink/renderer/core/script_tools/model_context.cc) checks the `tools` policy and origin-keyed agent cluster; supplied tracker-status claims remain partly **unverified** | Pin the build and test imperative denial with policy disabled plus origin-keyed-agent-cluster/`document.domain` denial. Do not report declarative silent return as a permission bypass. |
+| Destruction, navigation, and BFCache | Missing destruction `toolchange` is **open** in [508285989](https://issues.chromium.org/issues/508285989); supplied BFCache issue `510487685` is **unverified**, while the [WebMCP security questionnaire](https://github.com/webmachinelearning/webmcp/blob/main/security-privacy-questionnaire.md) states intended behavior | Test fresh discovery and events after document destruction, navigation, BFCache suspension, and restoration; never infer removal only from an event. |
+| Duplicate names and stale abort ownership | A matching bug class is **fixed under 543349473** by this [WPT change](https://chromium.googlesource.com/external/github.com/web-platform-tests/wpt/+/refs/tags/merge_pr_61868); supplied issue `492668960` is **unverified** | Register invalid and valid same-name tools with a stale signal, then prove the stale owner cannot remove the valid registration. |
+| Declarative sandbox | **Open upstream** in [526451590](https://issues.chromium.org/issues/526451590); outside the implemented imperative scope | Do not claim a PASS. Add a separately authorized declarative/cross-frame test only if product scope expands. |
+| Extension and privileged adapters | Tip-of-tree CDP has an experimental [WebMCP domain](https://chromedevtools.github.io/devtools-protocol/tot/WebMCP/), but [`chrome.debugger`](https://developer.chrome.com/docs/extensions/reference/api/debugger) does not document WebMCP in its allowed domains; extension-realm issue `509555845` is **unverified** | Retain top-level `MAIN`-world injection and no `debugger` permission. Test isolated-world or CDP access separately before claiming either. |
+
+Browser annotations are shipped metadata but remain advisory; they do not
+replace handler, authority, identity, or postcondition enforcement. Browser
+actor-stack integration for user interaction remains open in
+[535256664](https://issues.chromium.org/issues/535256664/resources), so the
+lab relies only on its explicitly page-local approval event.
 
 ## Known limitations
 
@@ -67,5 +166,12 @@ The observations below belong to the frozen v1 baseline. The new capability-nego
 - Its capability receipt is local and export-only; it is not sent to D1, independently attested, or tamper-evident after export.
 - The current negotiated handler contains no `fetch`, and a unit spy observes none on that path. Browser network authority is not isolated, so the receipt does not claim independent egress observation.
 - The D1 route rejects structurally marked negotiated receipts, but client JSON has no trusted provenance. A fully relabeled payload is treated as ordinary self-reported evidence.
+- A page-side `PASS` receipt does not prove connector delivery. Both observed
+  return attempts failed before end-to-end receipt commitment was established.
+- The extension is unpacked development software. No signed package, Chrome
+  Web Store review, upgrade path, or distribution validation has occurred.
+- The Android directory is a process-local conformance prototype. It is not a
+  discoverable or device-invokable AppFunction and is not part of the web MVP.
+- The current MVP working tree has not been publicly deployed.
 
 This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.

@@ -2,7 +2,10 @@
 
 ## Product goal
 
-The lab lets a human and an agent act on the same page while preserving enough evidence to compare three security surfaces. It is a working range, not a JSON mockup or remote MCP server.
+The frozen version 1 lab lets a human and an agent act on the same page while
+preserving enough evidence to compare three security surfaces. The current
+working tree adds a local connector, unpacked extension, and isolated Android
+conformance prototype. None of those additions has been publicly deployed.
 
 ## System shape
 
@@ -23,16 +26,62 @@ flowchart LR
   P --> G[Downloadable policy artifact]
 ```
 
+That diagram is the frozen version 1 web/D1 boundary. The local MVP adds a
+separate path:
+
+```mermaid
+flowchart LR
+  U[Human approval in page] --> P[Scenario 1 page capability]
+  M[Local MCP client] --> C[Loopback connector]
+  C --> B[Loopback browser bridge]
+  B --> X[Unpacked MV3 extension]
+  X --> P
+  P --> X
+  X --> B
+  B --> C
+  C --> L[(Local JSONL receipt chain)]
+  C --> R[Local dashboard and MCP summaries]
+  K[Android conformance prototype] -. no runtime connection .- P
+```
+
+The page-side receipt and connector record are distinct evidence states. A
+page `PASS` does not become connector evidence until the return path succeeds,
+the connector validates and appends the receipt, and acknowledgement completes.
+Two 2026-09-01 attempts produced page-side `PASS` receipts
+`31cac0df-4849-42cc-8f44-05a6bdacd9ea` and
+`fe3d952f-db38-463c-9023-3d36f51bf863`, but both failed before connector
+commitment. The latter is consistent with Chrome 152 cancelling an in-flight
+call when its registration signal is aborted, but no retained browser trace
+proves that cause. The connector path remains unvalidated until the
+compatibility candidate passes a fresh exact-build live run.
+
 ## Trust boundaries
 
 1. **Human presentation boundary** — text, controls, and approval copy may be inaccurate in a vulnerable fixture.
-2. **WebMCP declaration boundary** — name, description, schema, and annotations describe a capability but do not enforce handler behavior.
+2. **WebMCP declaration boundary** — name, description, schema, and annotations describe a capability but do not enforce handler behavior, authority, or actor identity.
 3. **Execution boundary** — the shared scenario engine is the only place fixture state changes.
-4. **Persistence boundary** — the API validates and appends complete receipts to D1. It exposes no mutation or deletion path.
+4. **Baseline persistence boundary** — the web API validates and appends
+   ordinary frozen-version-1 receipts to D1. It exposes no mutation or deletion
+   path.
 5. **Client-observation boundary** — browser API support, registration, permissions policy, discovery, and invocation are recorded separately. External client behavior is not inferred when the page cannot observe it, and a fallback receipt never counts as WebMCP invocation. The shared registered callback cannot distinguish the page's approved `executeTool()` request from a competing client invocation, so it never upgrades browser confirmation to known.
 6. **Awareness-policy boundary** — deterministic rules explain why a declaration deserves allow, warn, or ask treatment. They provide guidance and do not replace browser enforcement or professional validation.
-7. **Negotiated-capability boundary** — the Scenario 1 working slice replaces the broad registration only within one document session. A synchronous generation gate and `AbortController` invalidate cached source handles; a monotonic in-memory lease makes one same-realm claim before any awaited work. This is not a cross-tab or server-atomic grant.
+7. **Negotiated-capability boundary** — the Scenario 1 working slice replaces the broad registration only within one document session. A synchronous generation gate invalidates cached handles, and a monotonic in-memory lease atomically closes logical authority before any awaited work. After the page callback settles successfully, the now-inert capability registration is scheduled for retirement through its `AbortController` after a 50 ms Chrome 152 compatibility delay; post-claim failure retires it immediately. The timer does not observe browser/client delivery. Chrome documents non-cancelling in-flight unregistration beginning in version 153. This is not a cross-tab or server-atomic grant.
 8. **Capability-evidence boundary** — negotiated-capability receipts are created locally after the state-only handler is verified. They are exportable, non-durable, and not independently attested. The ordinary D1 endpoint rejects receipts that retain negotiated-capability markers; because client JSON is not provenance-authenticated, a caller that relabels every marker cannot be distinguished from ordinary self-reported evidence. The current handler path contains no evidence POST, but browser egress is not isolated or independently observed.
+9. **Connector boundary** — the connector is a loopback-only, token-protected
+   development process. It may append a returned capability receipt to a local
+   JSONL chain only after schema, identity, chronology, state, and hash
+   validation. Unit-tested acknowledgement ordering is not proof of a completed
+   live return path.
+10. **Extension boundary** — the unpacked Manifest V3 extension is a local
+    transport adapter bound to one explicitly selected top-level document. Its
+    WebMCP calls are injected into that page's `MAIN` world, and its manifest
+    intentionally has no `debugger` permission. Isolated-world ModelContext
+    access and the experimental CDP WebMCP domain are alternate, unimplemented
+    adapter surfaces. The extension is not an approval surface, signed package,
+    store release, or public deployment.
+11. **Android boundary** — the Android directory shares protocol concepts but
+    has no runtime connection to the web page or connector. Its JVM and API-36
+    checks do not establish generated AppFunction metadata or device behavior.
 
 ## Scenario 1 negotiated lifecycle
 
@@ -53,10 +102,13 @@ sequenceDiagram
   P->>W: Abort source + proposal registrations
   P->>W: Register unique no-input capability
   A->>W: Invoke once with {}
-  P->>P: Claim monotonic lease; abort capability
+  P->>P: Atomically consume lease; close logical authority
   P->>P: Recheck origin/source/version bindings
   P->>P: Run state-only Scenario 1 handler
   P->>P: Verify result + byte-identical state
+  P->>P: Return verified result + linked receipt from callback
+  Note over P,W: Start 50 ms compatibility timer after callback settles
+  P->>W: Retire registration through AbortSignal
   P-->>H: Local export-only linked receipt
 ```
 
@@ -88,7 +140,25 @@ await document.modelContext.registerTool(tool, {
 
 The callback delegates to the same scenario engine used by the fallback harness. Only the registered callback marks WebMCP invocation as observed. Aborting the controller when the scenario changes removes the old registration. No `navigator.modelContext` alias is used.
 
-The app may also display `document.permissionsPolicy.allowsFeature('tools')`, but that enumeration is advisory because behavior has varied in experimental clients. It never short-circuits registration. A resolved `registerTool()` call proves registration and permission for that document; a thrown `NotAllowedError` proves policy denial. Browser support, registration, policy, discovery, and invocation remain separate states.
+The app may also display `document.permissionsPolicy.allowsFeature('tools')`, but that enumeration is advisory because behavior has varied in experimental clients. It never short-circuits registration. A resolved imperative `registerTool()` call proves registration and permission for that document; a thrown `NotAllowedError` proves imperative policy denial. Declarative registration can silently return when the policy is disabled and is outside this lab path. Browser support, registration, policy, discovery, and invocation remain separate states.
+
+## Browser-platform conformance boundary
+
+The page/connector architecture does not absorb experimental browser behavior
+into its security claims. Chrome 153's documented non-cancelling unregister,
+string result contract, serialization rejection, permissions-policy and
+origin-keyed-agent-cluster gates, document destruction, navigation, BFCache,
+and duplicate-name ownership all require exact-build tests before a broader
+compatibility statement. The next gate is specified in
+[VERIFICATION.md](VERIFICATION.md).
+
+Current upstream status also bounds architectural scope: declarative
+sandboxing and document-destruction notifications have open Chromium issues;
+browser actor-stack interaction is not used for approval; and raw CDP WebMCP
+does not establish `chrome.debugger` access. The implemented adapter remains
+top-level `MAIN`-world injection with no debugger permission. Annotations are
+transported hints only, and the connector treats every returned receipt as
+untrusted input requiring strict parsing and validation.
 
 ## Shared risk and policy engine
 
@@ -104,7 +174,19 @@ Meaningful mismatches map to `ask`, scoped support uncertainty maps to `warn`, a
 
 ## Evidence data model
 
-The downloadable receipt is the canonical evidence record. D1 stores the complete serialized receipt plus indexed columns for id, lab session, scenario, timestamp, invocation channel, and verdict.
+For ordinary frozen-version-1 scenarios, the downloadable receipt is the
+canonical evidence record and D1 may store its complete serialization plus
+indexed columns for id, lab session, scenario, timestamp, invocation channel,
+and verdict. Negotiated receipts are `local-export-only` at the page. Their
+`capability.invalidation` timestamp records when the lease ceased granting
+authority; it does not attest when the browser physically removed the
+registration. When the page callback produces a successful result, the receipt
+therefore records the registration as present; neither callback settlement nor
+the later timer attests that a browser/client received the result. Fresh
+post-delay discovery must observe physical retirement separately. The local
+connector maintains a separate JSONL report
+only after successful return
+transport and validation; the two stores must not be conflated.
 
 Secure builder retests run the narrowed declaration against a fresh synthetic fixture and produce a distinct `secure-retest` receipt. A retest receives `PASS` only when its declaration, arguments, approval evidence, state transition, result, and side effects satisfy that scenario’s invariants. Every generated receipt and policy artifact carries the required self-reported-readiness limitation.
 
@@ -118,11 +200,18 @@ Indexes match the actual read patterns:
 
 ## Session model
 
-Fixture state is held in memory and is resettable. A random UUID in browser storage identifies the device-local lab ledger; it does not authorize any account or hold product data. Evidence remains authoritative in D1 and survives page reloads. Ledger requests must provide the same UUID in `X-Lab-Session`, and the receipt must match it.
+Fixture state is held in memory and is resettable. A random UUID in browser
+storage identifies the device-local baseline ledger; it does not authorize any
+account or hold product data. Ordinary baseline evidence persisted to D1 may
+survive page reloads. Ledger requests must provide the same UUID in
+`X-Lab-Session`, and the receipt must match it. Negotiated page receipts and
+connector JSONL reports follow the separate boundaries above.
 
 ## Delivery phases
 
 1. Architecture, contracts, and visual system.
 2. Functional range, real registration, five scenario handlers, and D1 evidence API.
 3. Tests, migrations, safety documentation, CI, and verification.
-4. Submission copy, screenshots, demo script, public source, and deployment.
+4. Frozen version 1 submission copy, screenshots, demo script, public source,
+   and deployment. The current MVP remains a separate local, blocked release
+   candidate under `docs/GO_NO_GO.md`.

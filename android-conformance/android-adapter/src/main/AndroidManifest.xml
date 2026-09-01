@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.leftout.security.capability.android">
+    <uses-sdk android:minSdkVersion="36" android:targetSdkVersion="36" />
+
+    <application
+        android:allowBackup="false"
+        android:hasCode="true"
+        android:label="LeftOut Capability Conformance">
+        <service
+            android:name="com.leftout.security.capability.android.CapabilityAppFunctionService"
+            android:exported="true"
+            android:permission="android.permission.BIND_APP_FUNCTION_SERVICE">
+            <intent-filter>
+                <action android:name="android.app.appfunctions.AppFunctionService" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

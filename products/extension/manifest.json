@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "LeftOut WebMCP Capability Bridge",
+  "version": "0.1.3",
+  "description": "Pairs one active browser tab with the local capability connector.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": [
+    "http://127.0.0.1:8788/*",
+    "http://localhost:8788/*",
+    "http://127.0.0.1:48788/*",
+    "http://localhost:48788/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Pair WebMCP capability bridge",
+    "default_popup": "popup.html"
+  }
+}

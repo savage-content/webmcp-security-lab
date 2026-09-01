@@ -37,3 +37,6 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
+/products/connector/runtime-data/
+/products/extension/.live-profile-*/
+/android-conformance/build/

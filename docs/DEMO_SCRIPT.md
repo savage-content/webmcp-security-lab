@@ -2,6 +2,12 @@
 
 **Target runtime:** 2:45–2:55
 
+> **FROZEN VERSION 1 SCRIPT — DO NOT RECORD OR PUBLISH AS THE CURRENT MVP.**
+> Two connector receipt-return attempts failed, and the Chrome 152
+> deferred-retirement fix is not yet live-validated. The extension is unpacked,
+> the Android work is conformance-only, and the current MVP is not publicly
+> deployed. See [GO_NO_GO.md](GO_NO_GO.md).
+
 ## 0:00–0:25 — Heads-up before action
 
 > This page just offered my agent a WebMCP tool. Before anything runs, Left Out Security gives me a calm heads-up: the tool name, inputs, safety claims, permission and registration state, and the exact rule that deserves attention. Detection is automatic. Invocation is not.
@@ -34,10 +40,14 @@ Scroll to Builder fix and run the secure retest. Show `PASS` and the appended le
 
 ## 2:20–2:40 — Reusable policy
 
-> The same risk engine exports an allow, warn, ask, or block policy artifact. That is the shared foundation for a future Ghostery-style browser companion, while today’s complete experience works directly inside ChatGPT’s browser.
+> The same risk engine exports an allow, warn, ask, or block policy artifact.
+> That is a foundation for future browser tooling; it is not evidence that the
+> current connector completed end-to-end receipt transport.
 
 Show the policy-artifact button and briefly switch to Scenario 02 so the live tool and rule change to `update_short_notice` / `WMC-002`.
 
 ## 2:40–2:55 — Close
 
 > Five controlled fixtures. Real page-defined WebMCP. One experience for people and builders. Trust the effect, not the label.
+
+This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.

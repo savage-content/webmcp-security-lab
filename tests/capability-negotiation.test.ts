@@ -247,11 +247,12 @@ describe('Scenario 1 capability negotiation', () => {
       webMcp: {
         api: 'document.modelContext',
         browserSupport: 'supported',
-        registration: 'unregistered',
+        registration: 'registered',
         permissionsPolicy: 'allowed',
         discovery: 'discovered',
         invocation: 'observed',
-        detail: 'Observed in test.',
+        detail:
+          'Observed at callback fulfillment before physical registration retirement.',
         discoveredToolNames: [contract.compiled.toolName],
       },
       confirmation: {
