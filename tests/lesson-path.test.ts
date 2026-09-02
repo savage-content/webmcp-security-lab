@@ -14,6 +14,10 @@ const capabilityLessonSource = readFileSync(
   resolve('components/lab/capability-negotiator.tsx'),
   'utf8',
 );
+const generatedCapabilitySource = readFileSync(
+  resolve('components/lab/use-generated-lesson-capability.ts'),
+  'utf8',
+);
 
 describe('beginner WebMCP lesson path', () => {
   it('covers every fixture in the intended five-lesson order', () => {
@@ -101,22 +105,50 @@ describe('beginner WebMCP lesson path', () => {
   it('gives the human a plain-language agent handoff and a visible safety debrief', () => {
     const normalizedGuide = guidedLessonSource.replace(/\s+/gu, ' ');
     expect(normalizedGuide).toContain(
-      'Run the one approved practice action once. Do not retry or invoke any other site action.',
+      'Run the one approved profile-banner update once. Do not invoke any other Site Tool and do not retry.',
     );
     expect(normalizedGuide).toContain(
-      'Use the LeftOut local relay to run the one approved action once, without retrying.',
+      'Using the LeftOut local relay, run the one protected profile-banner update once. Do not retry.',
     );
+    expect(guidedLessonSource).toContain('Copy request for my agent');
     expect(guidedLessonSource).toContain('No technical details to copy');
     expect(normalizedGuide).toContain(
       'If the page or action is ambiguous, it stops without invoking anything.',
     );
     expect(guidedLessonSource).not.toContain('Generated action');
-    expect(guidedLessonSource).not.toContain('compiled.toolName');
+    expect(guidedLessonSource).toContain('Technical binding details');
+    expect(guidedLessonSource).toContain('compiled.toolName');
     expect(guidedLessonSource).toContain(
       'What was fixed — and why it is safer',
     );
     expect(guidedLessonSource).toContain('{copy.redFlag}');
     expect(guidedLessonSource).toContain('{copy.rule}');
     expect(guidedLessonSource).toContain('{copy.why}');
+  });
+
+  it('recovers from expired approval without a dead button or repeated lesson steps', () => {
+    const normalizedGuide = guidedLessonSource.replace(/\s+/gu, ' ');
+    expect(guidedLessonSource).toContain('getApprovalWindowStatus');
+    expect(normalizedGuide).toContain('Approval expired before anything ran.');
+    expect(guidedLessonSource).toContain('Create fresh approval review');
+    expect(guidedLessonSource).toContain('Review a fresh approval');
+    expect(generatedCapabilitySource).toContain('prepareFresh');
+  });
+
+  it('closes the approval dialog before revealing the agent handoff', () => {
+    const normalizedGuide = guidedLessonSource.replace(/\s+/gu, ' ');
+    expect(normalizedGuide).toContain(
+      'const currentWindow = getApprovalWindowStatus( capability.contract?.compiled.expiresAt, Date.now(), );',
+    );
+    expect(normalizedGuide).toContain(
+      'if (currentWindow.expired) { setClockMs(Date.now()); return; }',
+    );
+    expect(normalizedGuide).toContain(
+      'setConfirmOpen(false); setStage(3); void capability.approveAndRegister();',
+    );
+    expect(guidedLessonSource).toContain('Technical binding details');
+    expect(guidedLessonSource).toContain(
+      'Approve banner update — does not run',
+    );
   });
 });

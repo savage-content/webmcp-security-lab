@@ -156,8 +156,7 @@ export function useGeneratedLessonCapability({
     [],
   );
 
-  const prepare = useCallback(async () => {
-    if (!['idle', 'error', 'closed'].includes(status)) return undefined;
+  const freezeFreshContract = useCallback(async () => {
     const epoch = epochRef.current + 1;
     epochRef.current = epoch;
     setStatus('preparing');
@@ -215,7 +214,28 @@ export function useGeneratedLessonCapability({
       }
       return undefined;
     }
-  }, [clientLabel, scenario.id, status]);
+  }, [clientLabel, scenario.id]);
+
+  const prepare = useCallback(async () => {
+    if (!['idle', 'error', 'closed'].includes(status)) return undefined;
+    return freezeFreshContract();
+  }, [freezeFreshContract, status]);
+
+  const prepareFresh = useCallback(async () => {
+    if (!['review', 'closed', 'error'].includes(status)) return undefined;
+    closeRegistration(
+      'idle',
+      'The previous review is closed. Creating a fresh exact action now.',
+    );
+    sourceWithdrawnRef.current = false;
+    onRestoreSourceTool();
+    setProposal(undefined);
+    setContract(undefined);
+    setApprovedAt(undefined);
+    setReceipt(undefined);
+    setRegistration(undefined);
+    return freezeFreshContract();
+  }, [closeRegistration, freezeFreshContract, onRestoreSourceTool, status]);
 
   const registerApprovedCapability = useCallback(async () => {
     if (!proposal || !contract || status !== 'review') return;
@@ -479,6 +499,7 @@ export function useGeneratedLessonCapability({
     receipt,
     registration,
     prepare,
+    prepareFresh,
     approveAndRegister,
     reset,
   };
