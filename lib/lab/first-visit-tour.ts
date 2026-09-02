@@ -20,8 +20,9 @@ export const firstVisitTourSteps = [
     anchor: '#setup',
     title: 'Choose the path that matches your browser.',
     description:
-      'Use native Site Tools in the ChatGPT or Codex built-in browser, try the advanced LeftOut Local Guard, or learn without invoking anything. These are separate paths.',
-    action: 'Most people should keep the recommended built-in browser path selected.',
+      'The page checks whether this browser exposes the Site Tools API. Use it when detected, choose the advanced Local Guard only when its HUD is connected, or take the always-available learning path.',
+    action:
+      'Confirm the recommended viable path here. A missing Site Tools API can never be the default live path.',
   },
   {
     stage: 'Observe',
@@ -37,7 +38,8 @@ export const firstVisitTourSteps = [
     title: 'Inspect the real authority, then narrow it.',
     description:
       'Each lesson shows the visible promise, the declared inputs, and the possible effect. The Membrane practice reduces that broad offer to one exact task, one target, and one use.',
-    action: 'Prepare the approval only after the allowed and forbidden effects are clear.',
+    action:
+      'Prepare the approval only after the allowed and forbidden effects are clear.',
   },
   {
     stage: 'Run',
@@ -45,7 +47,8 @@ export const firstVisitTourSteps = [
     title: 'Approval prepares one action—it still does not run it.',
     description:
       'The lesson gives you one plain-language request for your agent. Run it once, without retries or follow-on actions. The read-only path can finish without invoking anything.',
-    action: 'Stop if the client shows a different action, target, or effect than you approved.',
+    action:
+      'Stop if the client shows a different action, target, or effect than you approved.',
   },
   {
     stage: 'Verify',
@@ -53,7 +56,7 @@ export const firstVisitTourSteps = [
     title: 'Verify the effect, close authority, and keep the receipt.',
     description:
       'The result compares before and after state, checks side effects, and records what this page or Local Guard actually observed. A suspicious result can become a privacy-safe issue draft; nothing is published automatically.',
-    action: 'Read PASS or FAIL, then continue to the next lesson or review the evidence.',
+    action:
+      'Read PASS or FAIL, then continue to the next lesson or review the evidence.',
   },
 ] as const satisfies ReadonlyArray<FirstVisitTourStep>;
-

@@ -73,7 +73,10 @@ describe('beginner WebMCP lesson path', () => {
     const normalizedGuide = guidedLessonSource.replace(/\s+/gu, ' ');
     expect(guidedLessonSource).toContain('First time here?');
     expect(guidedLessonSource).toContain('Use Site Tools directly');
-    expect(guidedLessonSource).toContain('Use Sol or Terra');
+    expect(guidedLessonSource).toContain('Use this detected session');
+    expect(guidedLessonSource).toContain(
+      'this observation is not a universal-support claim',
+    );
     expect(guidedLessonSource).toContain('LeftOut Local Guard');
     expect(guidedLessonSource).toContain('Use the local relay');
     expect(normalizedGuide).toContain(
@@ -134,12 +137,31 @@ describe('beginner WebMCP lesson path', () => {
     );
   });
 
+  it('persists only the novice checkpoint and gates lessons on a viable setup', () => {
+    expect(labAppSource).toContain('NOVICE_JOURNEY_STORAGE_KEY');
+    expect(labAppSource).toContain('createNoviceJourneyCheckpoint');
+    expect(labAppSource).toContain('Confirm a viable setup first.');
+    expect(labAppSource).toContain(
+      'No approval or live authority was restored.',
+    );
+    expect(labAppSource).toContain('Last receipt checkpoint:');
+    expect(labAppSource).toContain('Preview safe report');
+    expect(labAppSource).toContain('Save full receipt');
+  });
+
   it('does not offer retry-shaped handoff controls outside the ready state', () => {
     expect(guidedLessonSource).toContain(
       "const canRequestAgent = capability.status === 'ready'",
     );
     expect(guidedLessonSource).toContain("capability.status === 'failed'");
     expect(guidedLessonSource).toContain('Reset this synthetic lesson');
+  });
+
+  it('keeps the fallback learning path genuinely read-only', () => {
+    expect(capabilityLessonSource).toContain(
+      'This path stops before approval or registration of a',
+    );
+    expect(capabilityLessonSource).toContain('Read-only inspection complete');
   });
 
   it('discards stale permit handoffs and late registration evidence', () => {

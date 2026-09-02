@@ -147,7 +147,10 @@ export function LedgerPanel({
             />
           </ol>
 
-          <details className="mt-5 overflow-hidden rounded-lg border border-border">
+          <details
+            id="report-preview"
+            className="mt-5 scroll-mt-24 overflow-hidden rounded-lg border border-border"
+          >
             <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
               Preview a practice safety report
             </summary>

@@ -53,6 +53,16 @@ import {
   parseEvidenceReceipt,
 } from '@/lib/lab/schemas';
 import {
+  createNoviceJourneyCheckpoint,
+  isExperienceModeSelectable,
+  isExperienceModeViable,
+  NOVICE_JOURNEY_STORAGE_KEY,
+  parseNoviceJourneyCheckpoint,
+  recommendExperienceMode,
+  type ExperienceMode,
+  type SiteToolsSupport,
+} from '@/lib/lab/novice-journey';
+import {
   defaultScenarioId,
   scenarioById,
   scenarios,
@@ -87,7 +97,7 @@ import {
   GuidedSecurityLesson,
   LessonPicker,
 } from './guided-security-lesson';
-import { ExperienceChooser, type ExperienceMode } from './experience-chooser';
+import { ExperienceChooser } from './experience-chooser';
 import { FirstVisitTour } from './first-visit-tour';
 import type { LessonCapabilityRunPayload } from './use-generated-lesson-capability';
 import {
@@ -193,7 +203,16 @@ function getOrCreateSessionId() {
 
 export function LabApp() {
   const [experienceMode, setExperienceMode] =
-    useState<ExperienceMode>('site-tools');
+    useState<ExperienceMode>('read-only');
+  const [setupConfirmed, setSetupConfirmed] = useState(false);
+  const [localGuardReady, setLocalGuardReady] = useState(false);
+  const [siteToolsSupport, setSiteToolsSupport] =
+    useState<SiteToolsSupport>('checking');
+  const [journeyHydrated, setJourneyHydrated] = useState(false);
+  const [persistedCompletedLessonIds, setPersistedCompletedLessonIds] =
+    useState<Set<ScenarioId>>(() => new Set());
+  const [lastReceiptId, setLastReceiptId] = useState<string>();
+  const [recoveryMessage, setRecoveryMessage] = useState<string>();
   const [tourRequestKey, setTourRequestKey] = useState(0);
   const [selectedId, setSelectedId] = useState<ScenarioId>(defaultScenarioId);
   const [scenarioOneSourceRevision, setScenarioOneSourceRevision] = useState(0);
@@ -265,7 +284,7 @@ export function LabApp() {
     [clientLabel, scenario],
   );
   const completedLessonIds = useMemo(() => {
-    const completed = new Set<ScenarioId>();
+    const completed = new Set<ScenarioId>(persistedCompletedLessonIds);
     for (const item of scenarios) {
       if (
         secureReceiptMap[item.id]?.verdict === 'PASS' ||
@@ -278,7 +297,7 @@ export function LabApp() {
       }
     }
     return completed;
-  }, [ledger, secureReceiptMap]);
+  }, [ledger, persistedCompletedLessonIds, secureReceiptMap]);
   const nextScenario = useMemo(() => {
     const index = scenarios.findIndex((item) => item.id === scenario.id);
     return index >= 0 ? scenarios[index + 1] : undefined;
@@ -363,16 +382,116 @@ export function LabApp() {
     let active = true;
     const userAgent = navigator.userAgent ?? '';
     const storedSessionId = getOrCreateSessionId();
+    const detectedSupport: SiteToolsSupport = getModelContext()?.registerTool
+      ? 'available'
+      : 'unavailable';
+    let storedJourney: ReturnType<typeof parseNoviceJourneyCheckpoint>;
+    try {
+      storedJourney = parseNoviceJourneyCheckpoint(
+        window.localStorage.getItem(NOVICE_JOURNEY_STORAGE_KEY),
+      );
+    } catch {
+      storedJourney = undefined;
+    }
     queueMicrotask(() => {
       if (!active) return;
       setClientLabel(describeBrowser(userAgent));
       sessionIdRef.current = storedSessionId;
       setSessionId(storedSessionId);
+      setSiteToolsSupport(detectedSupport);
+      if (storedJourney) {
+        const requiresGuardReconnect = storedJourney.mode === 'local-guard';
+        const receiptCheckpoint = storedJourney.lastReceiptId
+          ? ` Last receipt checkpoint: ${storedJourney.lastReceiptId.slice(0, 8)}.`
+          : '';
+        const storedModeViable = isExperienceModeViable(
+          storedJourney.mode,
+          detectedSupport,
+          false,
+        );
+        const restoredMode = requiresGuardReconnect
+          ? 'local-guard'
+          : storedModeViable
+            ? storedJourney.mode
+            : recommendExperienceMode(detectedSupport);
+        setExperienceMode(restoredMode);
+        setSetupConfirmed(
+          !requiresGuardReconnect &&
+            storedModeViable &&
+            storedJourney.setupConfirmed,
+        );
+        setSelectedId(storedJourney.selectedLessonId);
+        setPersistedCompletedLessonIds(
+          new Set(storedJourney.completedLessonIds),
+        );
+        setLastReceiptId(storedJourney.lastReceiptId);
+        setRecoveryMessage(
+          requiresGuardReconnect
+            ? `Reconnect the Local Guard and confirm that its HUD says “Connected.” No approval or live authority was restored.${receiptCheckpoint}`
+            : storedModeViable
+              ? `Restored Lesson ${scenarioById[storedJourney.selectedLessonId].ordinal} and ${storedJourney.completedLessonIds.length} completed lesson${storedJourney.completedLessonIds.length === 1 ? '' : 's'}. No approval or live authority was restored.${receiptCheckpoint}`
+              : `Your previous Site Tools setup is unavailable here. Choose a viable path; no approval or live authority was restored.${receiptCheckpoint}`,
+        );
+      } else {
+        setExperienceMode(recommendExperienceMode(detectedSupport));
+        setSetupConfirmed(false);
+      }
+      setJourneyHydrated(true);
     });
     return () => {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    const registrationUnavailable = ['unsupported', 'denied', 'error'].includes(
+      webMcp.registration,
+    );
+    if (!registrationUnavailable) return;
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setSiteToolsSupport('unavailable');
+      if (experienceMode === 'site-tools') {
+        setExperienceMode('read-only');
+        setSetupConfirmed(false);
+        setRecoveryMessage(
+          'This page could not register a Site Tool in the current browser or policy. Choose the read-only path or a connected Local Guard; nothing was approved or run.',
+        );
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [experienceMode, webMcp.registration]);
+
+  useEffect(() => {
+    if (!journeyHydrated) return;
+    const checkpoint = createNoviceJourneyCheckpoint({
+      mode: experienceMode,
+      setupConfirmed,
+      selectedLessonId: selectedId,
+      completedLessonIds: scenarios
+        .filter((item) => completedLessonIds.has(item.id))
+        .map((item) => item.id),
+      lastReceiptId,
+    });
+    try {
+      window.localStorage.setItem(
+        NOVICE_JOURNEY_STORAGE_KEY,
+        JSON.stringify(checkpoint),
+      );
+    } catch {
+      // The lesson remains usable when browser storage is unavailable.
+    }
+  }, [
+    completedLessonIds,
+    experienceMode,
+    journeyHydrated,
+    lastReceiptId,
+    selectedId,
+    setupConfirmed,
+  ]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -402,6 +521,20 @@ export function LabApp() {
       cancelled = true;
     };
   }, [sessionId]);
+
+  const recordNoviceReceipt = useCallback(
+    (scenarioId: ScenarioId, receipt: EvidenceReceipt) => {
+      setLastReceiptId(receipt.id);
+      if (receipt.verdict !== 'PASS') return;
+      setPersistedCompletedLessonIds((current) => {
+        if (current.has(scenarioId)) return current;
+        const next = new Set(current);
+        next.add(scenarioId);
+        return next;
+      });
+    },
+    [],
+  );
 
   const buildArguments = useCallback(() => {
     const args = structuredClone(scenario.defaultArguments);
@@ -638,11 +771,12 @@ export function LabApp() {
         ...current,
         'read-only-claim': receipt,
       }));
+      recordNoviceReceipt('read-only-claim', receipt);
       setExecutionMessage(
         `Capability receipt ${receipt.id.slice(0, 8)} exists only in this document session. Export it before reset or reload; the capability handler made no evidence POST.`,
       );
     },
-    [],
+    [recordNoviceReceipt],
   );
 
   const createLocalLessonCapabilityReceipt = useCallback(
@@ -724,11 +858,12 @@ export function LabApp() {
         ...current,
         [scenario.id]: receipt,
       }));
+      recordNoviceReceipt(scenario.id, receipt);
       setExecutionMessage(
         `Page receipt ${receipt.id.slice(0, 8)} returned to the caller. The page made no evidence POST; only the connector can validate and store its own linked entry.`,
       );
     },
-    [scenario.id],
+    [recordNoviceReceipt, scenario.id],
   );
 
   useEffect(() => {
@@ -926,6 +1061,7 @@ export function LabApp() {
         ...current,
         [scenario.id]: receipt,
       }));
+      recordNoviceReceipt(scenario.id, receipt);
 
       let persisted = false;
       try {
@@ -1035,8 +1171,51 @@ export function LabApp() {
     }
   }, [scenario]);
 
+  const changeExperienceMode = useCallback(
+    (nextMode: ExperienceMode) => {
+      if (!isExperienceModeSelectable(nextMode, siteToolsSupport)) return;
+      if (nextMode === experienceMode) return;
+      restoreSourceTool();
+      setExperienceMode(nextMode);
+      setLocalGuardReady(false);
+      setSetupConfirmed(false);
+      setRecoveryMessage(
+        'Setup changed. Confirm this path to continue. Any unused approval was closed and will not be restored.',
+      );
+    },
+    [experienceMode, restoreSourceTool, siteToolsSupport],
+  );
+
+  const changeLocalGuardReadiness = useCallback((ready: boolean) => {
+    setLocalGuardReady(ready);
+    if (!ready) setSetupConfirmed(false);
+  }, []);
+
+  const confirmExperienceMode = useCallback(() => {
+    if (
+      !isExperienceModeViable(experienceMode, siteToolsSupport, localGuardReady)
+    )
+      return;
+    setSetupConfirmed(true);
+    setRecoveryMessage(undefined);
+  }, [experienceMode, localGuardReady, siteToolsSupport]);
+
+  const openPracticeReport = useCallback(() => {
+    const report = document.getElementById(
+      'report-preview',
+    ) as HTMLDetailsElement | null;
+    if (report) report.open = true;
+    report?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, []);
+
   const selectGuidedLesson = useCallback(
     (nextId: ScenarioId) => {
+      if (!setupConfirmed) {
+        document
+          .getElementById('setup')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
       if (nextId !== selectedId) restoreSourceTool();
       setSelectedId(nextId);
       setPersistence(receiptMap[nextId] ? 'saved' : 'idle');
@@ -1048,7 +1227,13 @@ export function LabApp() {
           ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 0);
     },
-    [receiptMap, restoreSourceTool, secureReceiptMap, selectedId],
+    [
+      receiptMap,
+      restoreSourceTool,
+      secureReceiptMap,
+      selectedId,
+      setupConfirmed,
+    ],
   );
 
   const startGuidedLesson = useCallback(() => {
@@ -1120,6 +1305,14 @@ export function LabApp() {
       <FirstVisitTour
         key={tourRequestKey}
         forceOpen={tourRequestKey > 0}
+        mode={experienceMode}
+        setupConfirmed={setupConfirmed}
+        siteToolsSupport={siteToolsSupport}
+        clientLabel={clientLabel}
+        localGuardReady={localGuardReady}
+        onModeChange={changeExperienceMode}
+        onLocalGuardReadyChange={changeLocalGuardReadiness}
+        onConfirmSetup={confirmExperienceMode}
         onFinish={startGuidedLesson}
       />
 
@@ -1209,14 +1402,37 @@ export function LabApp() {
             </article>
           ))}
         </div>
-        <ExperienceChooser mode={experienceMode} onChange={setExperienceMode} />
-        <FirstRunGuide mode={experienceMode} />
-        <LessonPicker
-          scenarios={scenarios}
-          selectedId={selectedId}
-          completedIds={completedLessonIds}
-          onSelect={selectGuidedLesson}
+        <ExperienceChooser
+          mode={experienceMode}
+          confirmed={setupConfirmed}
+          siteToolsSupport={siteToolsSupport}
+          clientLabel={clientLabel}
+          localGuardReady={localGuardReady}
+          recoveryMessage={recoveryMessage}
+          onChange={changeExperienceMode}
+          onLocalGuardReadyChange={changeLocalGuardReadiness}
+          onConfirm={confirmExperienceMode}
         />
+        {setupConfirmed ? (
+          <>
+            <FirstRunGuide mode={experienceMode} />
+            <LessonPicker
+              scenarios={scenarios}
+              selectedId={selectedId}
+              completedIds={completedLessonIds}
+              onSelect={selectGuidedLesson}
+            />
+          </>
+        ) : (
+          <div className="mt-5 rounded-xl border border-amber-300/55 bg-amber-50 p-5 text-amber-950">
+            <p className="text-sm font-semibold">Lessons are waiting</p>
+            <p className="mt-1 text-xs leading-5">
+              Confirm a supported setup above. This gate prevents the page from
+              sending a first-time visitor into instructions their browser
+              cannot complete.
+            </p>
+          </div>
+        )}
       </section>
 
       <section
@@ -1224,7 +1440,35 @@ export function LabApp() {
         className="mx-auto max-w-[1480px] scroll-mt-20 px-5 pb-8 lg:px-8 lg:pb-12"
       >
         <div className="overflow-hidden rounded-xl border border-foreground bg-card shadow-[7px_7px_0_0_var(--accent-strong)]">
-          {scenario.id === 'read-only-claim' ? (
+          {!setupConfirmed ? (
+            <div
+              id="lesson"
+              className="scroll-mt-20 bg-slate-950 p-6 text-slate-100 sm:p-8"
+            >
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-lime-300">
+                Before Lesson 1
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold">
+                Confirm a viable setup first.
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                The lab has not approved or run a lesson action, and no one-use
+                capability has been registered. Return to the setup check and
+                confirm the path detected for this browser.
+              </p>
+              <Button
+                variant="secondary"
+                className="mt-5"
+                onClick={() =>
+                  document
+                    .getElementById('setup')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+              >
+                Return to setup
+              </Button>
+            </div>
+          ) : scenario.id === 'read-only-claim' ? (
             <CapabilityNegotiator
               key={`${scenario.id}:${experienceMode}`}
               experienceMode={experienceMode}
@@ -1340,6 +1584,61 @@ export function LabApp() {
               }
             />
           )}
+
+          {setupConfirmed && latestSecureReceipt ? (
+            <section
+              id="lesson-complete"
+              aria-labelledby="lesson-complete-heading"
+              className="border-t border-lime-300/25 bg-slate-900 px-5 py-6 text-slate-100 sm:px-8"
+            >
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-lime-300">
+                    {latestSecureReceipt.verdict === 'PASS'
+                      ? 'Lesson checkpoint saved'
+                      : 'Review required'}
+                  </p>
+                  <h2
+                    id="lesson-complete-heading"
+                    className="mt-1 text-xl font-semibold"
+                  >
+                    {latestSecureReceipt.verdict} · Receipt{' '}
+                    {latestSecureReceipt.id.slice(0, 8)}
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-300">
+                    Your lesson position and this receipt ID are remembered on
+                    this device. The approval and one-use authority are closed
+                    and will never resume after reload.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      setExportArtifact(
+                        createEvidenceReceiptArtifact(latestSecureReceipt),
+                      )
+                    }
+                  >
+                    Save full receipt
+                  </Button>
+                  <Button variant="outline" onClick={openPracticeReport}>
+                    <ScanSearch data-icon="inline-start" />
+                    Preview safe report
+                  </Button>
+                  {nextScenario && latestSecureReceipt.verdict === 'PASS' ? (
+                    <Button
+                      className="bg-lime-300 text-slate-950 hover:bg-lime-200"
+                      onClick={() => selectGuidedLesson(nextScenario.id)}
+                    >
+                      Continue to Lesson {nextScenario.ordinal}
+                      <ArrowRight data-icon="inline-end" />
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+          ) : null}
 
           <details id="advanced-lab" className="group border-t border-white/10">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-4 bg-slate-900 px-5 py-4 text-left text-slate-100 outline-none transition-colors hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lime-300 sm:px-8">

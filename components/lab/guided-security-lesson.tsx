@@ -43,7 +43,7 @@ import {
   type LessonCapabilityRunPayload,
   useGeneratedLessonCapability,
 } from './use-generated-lesson-capability';
-import type { ExperienceMode } from './experience-chooser';
+import type { ExperienceMode } from '@/lib/lab/novice-journey';
 
 type LessonStage = 1 | 2 | 3 | 4;
 
@@ -58,10 +58,10 @@ export function FirstRunGuide({ mode }: { mode: ExperienceMode }) {
               'Use this page inside ChatGPT Work or Codex. Site Tools run from the page that registered them and stop being available when you leave it.',
           },
           {
-            label: 'Model',
-            title: 'Use Sol or Terra',
+            label: 'Check',
+            title: 'Use this detected session',
             detail:
-              'Current Site Tools support is model- and workspace-dependent. Luna is a negative control; Enterprise and Edu are not supported.',
+              'The setup check found the Site Tools page API here. Model, workspace, policy, registration, and session are still separate facts; this observation is not a universal-support claim.',
           },
           {
             label: 'Practice',

@@ -3,6 +3,7 @@
 import {
   ArrowLeft,
   ArrowRight,
+  CheckCircle2,
   CircleHelp,
   Eye,
   ShieldCheck,
@@ -25,8 +26,15 @@ import {
   ProgressValue,
 } from '@/components/ui/progress';
 import { firstVisitTourSteps } from '@/lib/lab/first-visit-tour';
+import {
+  experienceOptions,
+  getExperienceTitle,
+  isExperienceModeViable,
+  type ExperienceMode,
+  type SiteToolsSupport,
+} from '@/lib/lab/novice-journey';
 
-const TOUR_STORAGE_KEY = 'left-out-site-tools-first-visit-v1';
+const TOUR_STORAGE_KEY = 'left-out-site-tools-first-visit-v2';
 
 type StoredTourState = {
   completed: boolean;
@@ -66,15 +74,39 @@ function storeTourState(state: StoredTourState) {
 
 export function FirstVisitTour({
   forceOpen,
+  mode,
+  setupConfirmed,
+  siteToolsSupport,
+  clientLabel,
+  localGuardReady,
+  onModeChange,
+  onLocalGuardReadyChange,
+  onConfirmSetup,
   onFinish,
 }: {
   forceOpen: boolean;
+  mode: ExperienceMode;
+  setupConfirmed: boolean;
+  siteToolsSupport: SiteToolsSupport;
+  clientLabel: string;
+  localGuardReady: boolean;
+  onModeChange: (mode: ExperienceMode) => void;
+  onLocalGuardReadyChange: (ready: boolean) => void;
+  onConfirmSetup: () => void;
   onFinish: () => void;
 }) {
   const [open, setOpen] = useState(forceOpen);
   const [stepIndex, setStepIndex] = useState(0);
   const step = firstVisitTourSteps[stepIndex];
   const lastStep = stepIndex === firstVisitTourSteps.length - 1;
+  const choosingSetup = step.stage === 'Choose';
+  const selectedModeViable = isExperienceModeViable(
+    mode,
+    siteToolsSupport,
+    localGuardReady,
+  );
+  const setupChoiceReady =
+    siteToolsSupport !== 'checking' && selectedModeViable;
 
   useEffect(() => {
     const stored = readStoredTour();
@@ -112,6 +144,10 @@ export function FirstVisitTour({
   }
 
   function goForward() {
+    if (choosingSetup) {
+      if (!setupChoiceReady) return;
+      if (!setupConfirmed) onConfirmSetup();
+    }
     if (lastStep) {
       storeTourState({ completed: true, step: stepIndex });
       setOpen(false);
@@ -161,14 +197,14 @@ export function FirstVisitTour({
           </div>
 
           <div className="max-h-[calc(100vh-13rem)] overflow-y-auto px-5 py-5 sm:px-6">
-            <Progress value={((stepIndex + 1) / firstVisitTourSteps.length) * 100}>
+            <Progress
+              value={((stepIndex + 1) / firstVisitTourSteps.length) * 100}
+            >
               <ProgressLabel className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-800">
                 {step.stage}
               </ProgressLabel>
               <ProgressValue className="font-mono text-[10px]">
-                {() =>
-                  `Step ${stepIndex + 1} of ${firstVisitTourSteps.length}`
-                }
+                {() => `Step ${stepIndex + 1} of ${firstVisitTourSteps.length}`}
               </ProgressValue>
             </Progress>
 
@@ -180,6 +216,76 @@ export function FirstVisitTour({
                 {step.description}
               </DialogDescription>
             </DialogHeader>
+
+            {choosingSetup ? (
+              <fieldset className="mt-5 grid gap-2 sm:grid-cols-3">
+                <legend className="sr-only">
+                  Choose a setup for this walkthrough
+                </legend>
+                {experienceOptions.map((option) => {
+                  const selected = option.id === mode;
+                  const selectable =
+                    option.id !== 'site-tools' ||
+                    siteToolsSupport === 'available';
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      disabled={!selectable}
+                      aria-pressed={selected}
+                      className={`min-h-24 rounded-lg border p-3 text-left text-xs leading-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                        selected
+                          ? 'border-emerald-700 bg-emerald-50 text-emerald-950'
+                          : 'border-border bg-card hover:bg-muted/50'
+                      } disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-55`}
+                      onClick={() => onModeChange(option.id)}
+                    >
+                      <span className="flex items-start justify-between gap-2">
+                        <span className="font-semibold">{option.title}</span>
+                        {selected ? (
+                          <CheckCircle2
+                            className="mt-0.5 size-4 shrink-0 text-emerald-700"
+                            aria-label="Selected"
+                          />
+                        ) : null}
+                      </span>
+                      <span className="mt-1 block text-[11px] text-muted-foreground">
+                        {option.id === 'site-tools'
+                          ? siteToolsSupport === 'available'
+                            ? 'Site Tools API detected in this page.'
+                            : siteToolsSupport === 'checking'
+                              ? 'Checking this page…'
+                              : 'Not detected in this browser.'
+                          : option.id === 'local-guard'
+                            ? 'Requires the separate connected Local Guard.'
+                            : 'Always available; no tool invocation.'}
+                      </span>
+                    </button>
+                  );
+                })}
+                {mode === 'local-guard' ? (
+                  <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-amber-300/50 bg-amber-50 p-3 text-xs leading-5 text-amber-950 sm:col-span-3">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 size-4 accent-emerald-800"
+                      checked={localGuardReady}
+                      onChange={(event) =>
+                        onLocalGuardReadyChange(event.currentTarget.checked)
+                      }
+                    />
+                    <span>
+                      My separate Local Guard HUD currently says “Connected.”
+                      The tour will not assume pairing survived a reload.
+                    </span>
+                  </label>
+                ) : null}
+                <p className="rounded-lg border border-border bg-muted/35 p-3 text-xs leading-5 text-muted-foreground sm:col-span-3">
+                  Detected client: <strong>{clientLabel}</strong>. Selected:{' '}
+                  <strong>{getExperienceTitle(mode)}</strong>. This choice does
+                  not approve or invoke a tool.
+                </p>
+              </fieldset>
+            ) : null}
 
             <div className="mt-5 flex items-start gap-3 rounded-lg border border-emerald-700/25 bg-emerald-50 p-4 text-sm leading-6 text-emerald-950">
               <Eye className="mt-1 size-4 shrink-0" aria-hidden="true" />
@@ -206,8 +312,18 @@ export function FirstVisitTour({
                 <ArrowLeft data-icon="inline-start" />
                 Back
               </Button>
-              <Button type="button" onClick={goForward}>
-                {lastStep ? 'Finish and start Lesson 1' : 'Next'}
+              <Button
+                type="button"
+                disabled={choosingSetup && !setupChoiceReady}
+                onClick={goForward}
+              >
+                {lastStep
+                  ? 'Finish and start Lesson 1'
+                  : choosingSetup
+                    ? setupConfirmed
+                      ? 'Keep this setup'
+                      : 'Use this setup'
+                    : 'Next'}
                 <ArrowRight data-icon="inline-end" />
               </Button>
             </div>

@@ -74,7 +74,7 @@ import {
   registerPageTool,
   withOneUseRegistrationRetirement,
 } from '@/lib/lab/webmcp';
-import type { ExperienceMode } from './experience-chooser';
+import type { ExperienceMode } from '@/lib/lab/novice-journey';
 
 export interface CapabilityRunPayload {
   proposal: CapabilityProposalRecord;
@@ -1397,21 +1397,43 @@ export function CapabilityNegotiator({
                     TRAINING-1042. The AI cannot choose another account, add
                     instructions, or use the permission twice.
                   </p>
-                  <Button
-                    ref={approvalTriggerRef}
-                    className="mt-5 bg-lime-300 text-slate-950 hover:bg-lime-200"
-                    aria-haspopup="dialog"
-                    aria-expanded={approvalOpen}
-                    onClick={() => setApprovalOpen(true)}
-                    disabled={workflowPhase !== 'review'}
-                  >
-                    <ShieldCheck data-icon="inline-start" />
-                    Review the exact approval
-                  </Button>
-                  <p className="mt-3 text-xs text-slate-400">
-                    Approval creates a five-minute, one-use permission. It does
-                    not run the check.
-                  </p>
+                  {experienceMode === 'read-only' ? (
+                    <div className="mt-5 rounded-lg border border-sky-300/25 bg-sky-300/8 p-4 text-sm leading-6 text-sky-100">
+                      <p className="font-semibold">
+                        Read-only inspection complete
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-slate-300">
+                        This path stops before approval or registration of a
+                        generated one-use capability. Choose a detected live
+                        setup above when you want an agent to run the protected
+                        practice action.
+                      </p>
+                      <a
+                        href="#setup"
+                        className="mt-3 inline-flex min-h-10 items-center rounded-md border border-sky-300/30 px-3 text-xs font-semibold text-sky-100"
+                      >
+                        Review setup choices
+                      </a>
+                    </div>
+                  ) : (
+                    <>
+                      <Button
+                        ref={approvalTriggerRef}
+                        className="mt-5 bg-lime-300 text-slate-950 hover:bg-lime-200"
+                        aria-haspopup="dialog"
+                        aria-expanded={approvalOpen}
+                        onClick={() => setApprovalOpen(true)}
+                        disabled={workflowPhase !== 'review'}
+                      >
+                        <ShieldCheck data-icon="inline-start" />
+                        Review the exact approval
+                      </Button>
+                      <p className="mt-3 text-xs text-slate-400">
+                        Approval creates a five-minute, one-use permission. It
+                        does not run the check.
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -1472,8 +1494,9 @@ export function CapabilityNegotiator({
                           built-in browser.
                         </li>
                         <li>
-                          2. Use Sol or Terra; model and workspace availability
-                          are separate from page registration.
+                          2. Continue in the same compatible session detected
+                          above; that one observation is not proof of universal
+                          support.
                         </li>
                         <li>
                           3. Send this exact request to the same agent: “
