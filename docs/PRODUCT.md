@@ -13,7 +13,7 @@ The product succeeds when a first-time user can explain four facts afterward:
 3. A narrow permission can limit one action, target, lifetime, and use count.
 4. A receipt verifies one observed run; it does not prove the whole site is safe.
 
-## One learning journey, two live paths
+## One learning journey, three paths
 
 The five lessons share one learning sequence, but the live handoff is explicit:
 
@@ -53,13 +53,20 @@ run → Verify**. At every stage, the interface answers:
 Schemas, hashes, ports, source drift, and recovery controls are optional
 technical evidence, not prerequisites for learning.
 
+On a first visit, a resumable six-step dialog explains **Choose → Observe →
+Inspect → Run → Verify/report** before handing the learner to Lesson 1. It
+registers, approves, and invokes nothing. A persistent **First-time tour**
+control can replay it without clearing lesson evidence.
+
 Current alpha coverage is deliberately visible: all five lessons can produce a
 page-scoped one-use capability. The Local Guard path is wired end to end through
 the extension, relay, receipt, and reporting workbench; a fresh Chrome 152 run
 completed all five lessons with one zero-input call per lesson and no retries.
 The direct built-in Site Tools path is implemented in the page but still needs a
 live, model-captured Sol/Terra acceptance run. First-time human, accessibility,
-and broader cross-client acceptance remain outstanding.
+and broader cross-client acceptance remain outstanding. The first-visit tour
+has automated content coverage and a desktop-browser interaction pass, but it
+has not yet completed formal screen-reader or mobile acceptance.
 
 ### Protect
 

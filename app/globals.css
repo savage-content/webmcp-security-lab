@@ -144,6 +144,15 @@
 }
 
 @layer components {
+  .first-visit-tour-target {
+    position: relative;
+    z-index: 60;
+    border-radius: var(--radius-xl);
+    outline: 4px solid var(--accent-strong);
+    outline-offset: 5px;
+    box-shadow: 0 0 0 10px color-mix(in oklch, var(--background) 78%, transparent);
+  }
+
   .nav-link {
     @apply font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground;
   }

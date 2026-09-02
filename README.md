@@ -42,12 +42,12 @@ public deployment, or another client.
 
 | Current component                                    | Status                                                                                                   |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Frozen version 1 web range                           | Existing public baseline, unchanged                                                                      |
+| Public learning range                                | Current guided beginner experience deployed on the LeftOut lab site                                      |
 | Five guided page capabilities                        | `PASS` in one fresh Chrome 152 sequence; one exact call per lesson and no retries                        |
 | Connector receipt path                               | `PASS` for five validated receipts, the hash chain, local redacted draft, and zero feed-eligible records |
 | Browser extension                                    | Manifest V3 development prototype validated locally; unpacked and unsigned                               |
 | Android                                              | JVM/API conformance prototype; not device-invokable                                                      |
-| Current MVP deployment                               | Not publicly deployed                                                                                    |
+| Current MVP deployment                               | Public learning site deployed; extension and connector remain separate local alphas                       |
 | Novelty, patentability, or freedom-to-operate claims | NO-GO under the technical prior-art review; no legal infringement conclusion                             |
 
 ## Why this lab exists
@@ -90,9 +90,13 @@ dedicated privacy and security review.
 
 ## The guided experience
 
-The first-time path uses four human phrases—**Understand, Approve, Agent run,
-Verify**—and one primary action at each stage. Ports, hashes, schemas, drift
-controls, and manual recovery remain under technical disclosures.
+The first visit opens a six-step, two-minute walkthrough—**Welcome, Choose,
+Observe, Inspect, Run, Verify**—and then hands the learner to Lesson 1. The tour
+does not register, approve, or invoke a tool, can be skipped, and can always be
+replayed. The lesson itself uses four human phrases—**Understand, Approve,
+Agent run, Verify**—and one primary action at each stage. Ports, hashes,
+schemas, drift controls, and manual recovery remain under technical
+disclosures.
 
 The page now distinguishes implementation from evidence: every lesson can hand
 its one-use top-level registration directly to the agent in ChatGPT/Codex's

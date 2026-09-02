@@ -86,6 +86,7 @@ import {
   LessonPicker,
 } from './guided-security-lesson';
 import { ExperienceChooser, type ExperienceMode } from './experience-chooser';
+import { FirstVisitTour } from './first-visit-tour';
 import type { LessonCapabilityRunPayload } from './use-generated-lesson-capability';
 import {
   EvidencePanel,
@@ -191,6 +192,7 @@ function getOrCreateSessionId() {
 export function LabApp() {
   const [experienceMode, setExperienceMode] =
     useState<ExperienceMode>('site-tools');
+  const [tourRequestKey, setTourRequestKey] = useState(0);
   const [selectedId, setSelectedId] = useState<ScenarioId>(defaultScenarioId);
   const [scenarioOneSourceRevision, setScenarioOneSourceRevision] = useState(0);
   const scenarioOneSourceRevisionRef = useRef(0);
@@ -980,6 +982,10 @@ export function LabApp() {
     selectGuidedLesson('read-only-claim');
   }, [selectGuidedLesson]);
 
+  const startFirstVisitTour = useCallback(() => {
+    setTourRequestKey((current) => current + 1);
+  }, []);
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border bg-background/92 backdrop-blur-xl">
@@ -1038,6 +1044,12 @@ export function LabApp() {
         </div>
       </header>
 
+      <FirstVisitTour
+        key={tourRequestKey}
+        forceOpen={tourRequestKey > 0}
+        onFinish={startGuidedLesson}
+      />
+
       <section
         id="top"
         className="border-b border-border bg-[linear-gradient(to_right,var(--grid-line)_1px,transparent_1px),linear-gradient(to_bottom,var(--grid-line)_1px,transparent_1px)] bg-[size:28px_28px]"
@@ -1064,10 +1076,10 @@ export function LabApp() {
               <Button
                 size="lg"
                 className="h-11 px-4"
-                onClick={startGuidedLesson}
+                onClick={startFirstVisitTour}
               >
                 <FlaskConical data-icon="inline-start" />
-                Choose a setup and start
+                Start the 2-minute walkthrough
                 <ArrowRight data-icon="inline-end" />
               </Button>
               <span className="flex items-center gap-2 text-xs text-muted-foreground">

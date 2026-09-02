@@ -72,8 +72,9 @@ export function HeadsUpPanel({
 
   return (
     <aside
+      id="observe"
       aria-labelledby="webmcp-heads-up-title"
-      className="overflow-hidden rounded-xl border border-foreground bg-card shadow-[6px_6px_0_0_var(--foreground)]"
+      className="scroll-mt-20 overflow-hidden rounded-xl border border-foreground bg-card shadow-[6px_6px_0_0_var(--foreground)]"
     >
       <div className="flex items-center justify-between gap-3 border-b border-border bg-foreground px-4 py-3 text-background">
         <div className="flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em]">
