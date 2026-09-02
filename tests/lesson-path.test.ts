@@ -18,6 +18,10 @@ const generatedCapabilitySource = readFileSync(
   resolve('components/lab/use-generated-lesson-capability.ts'),
   'utf8',
 );
+const labAppSource = readFileSync(
+  resolve('components/lab/lab-app.tsx'),
+  'utf8',
+);
 
 describe('beginner WebMCP lesson path', () => {
   it('covers every fixture in the intended five-lesson order', () => {
@@ -102,6 +106,124 @@ describe('beginner WebMCP lesson path', () => {
     );
   });
 
+  it('gives Lesson 1 a copyable exact agent handoff instead of a dead-end instruction', () => {
+    const normalizedCapability = capabilityLessonSource.replace(/\s+/gu, ' ');
+    expect(normalizedCapability).toContain(
+      'Run the one approved eligibility check for TRAINING-1042 once. Do not invoke another Site Tool and do not retry.',
+    );
+    expect(normalizedCapability).toContain(
+      'Using the LeftOut local relay, run the one protected eligibility check for TRAINING-1042 once. Do not retry.',
+    );
+    expect(capabilityLessonSource).toContain('Copy request for my agent');
+    expect(capabilityLessonSource).toContain("['3', 'Ask agent']");
+    expect(capabilityLessonSource).toContain(
+      'Copied — return to this browser’s chat and send it.',
+    );
+    expect(capabilityLessonSource).toContain(
+      'Copy was blocked — select the exact request above',
+    );
+  });
+
+  it('revokes live authority when the learner changes client paths', () => {
+    expect(labAppSource).toContain('key={`${scenario.id}:${experienceMode}`}');
+    expect(generatedCapabilitySource).toContain(
+      "leaseRef.current?.invalidate('revoked')",
+    );
+    expect(generatedCapabilitySource).toContain(
+      'if (sourceWithdrawnRef.current) onRestoreSourceTool()',
+    );
+  });
+
+  it('does not offer retry-shaped handoff controls outside the ready state', () => {
+    expect(guidedLessonSource).toContain(
+      "const canRequestAgent = capability.status === 'ready'",
+    );
+    expect(guidedLessonSource).toContain("capability.status === 'failed'");
+    expect(guidedLessonSource).toContain('Reset this synthetic lesson');
+  });
+
+  it('discards stale permit handoffs and late registration evidence', () => {
+    const normalizedGenerated = generatedCapabilitySource.replace(/\s+/gu, ' ');
+    expect(normalizedGenerated).toContain(
+      "setStatus('offering'); setMessage( 'The exact action is registered.",
+    );
+    expect(normalizedGenerated).toContain(
+      "leaseRef.current === lease && lease.state() === 'active'",
+    );
+    expect(normalizedGenerated).toContain('handoffIsCurrent');
+    expect(
+      normalizedGenerated.indexOf('setRegistration(statusResult)'),
+    ).toBeGreaterThan(
+      normalizedGenerated.indexOf(
+        "if (settlement === 'discard-stale-registration')",
+      ),
+    );
+  });
+
+  it('compares current synthetic state again before a receipt commit', () => {
+    const normalizedGenerated = generatedCapabilitySource.replace(/\s+/gu, ' ');
+    expect(generatedCapabilitySource).toContain(
+      'The consumed capability stopped because the synthetic state changed during verification.',
+    );
+    expect(generatedCapabilitySource).toContain(
+      'The consumed capability stopped because the synthetic state changed after approval.',
+    );
+    expect(labAppSource).toContain(
+      'The synthetic state changed while the receipt was being verified.',
+    );
+    expect(
+      normalizedGenerated.indexOf('onCommitReceipt(payload, recorded)'),
+    ).toBeGreaterThan(
+      normalizedGenerated.indexOf(
+        "throw new Error( 'The receipt arrived after this lesson was closed.'",
+      ),
+    );
+
+    const scenarioOneCreatorStart = labAppSource.indexOf(
+      'const createLocalCapabilityReceipt',
+    );
+    const scenarioOneCommitStart = labAppSource.indexOf(
+      'const commitLocalCapabilityReceipt',
+    );
+    const scenarioOneCreator = labAppSource.slice(
+      scenarioOneCreatorStart,
+      scenarioOneCommitStart,
+    );
+    expect(scenarioOneCreator).not.toContain('setSecureReceiptMap');
+    expect(scenarioOneCreator).not.toContain('setExecutionMessage');
+
+    const normalizedScenarioOne = capabilityLessonSource.replace(/\s+/gu, ' ');
+    expect(normalizedScenarioOne).toContain(
+      'recorded = await onCreateLocalReceipt(payload)',
+    );
+    expect(
+      normalizedScenarioOne.indexOf('onCommitLocalReceipt(payload, recorded)'),
+    ).toBeGreaterThan(
+      normalizedScenarioOne.indexOf(
+        'Capability invocation was revoked during receipt validation.',
+      ),
+    );
+    expect(labAppSource).toContain(
+      'The Scenario 1 state changed while the receipt was being verified.',
+    );
+  });
+
+  it('rechecks the frozen lesson after async approval validation and before activation', () => {
+    const normalizedGenerated = generatedCapabilitySource.replace(/\s+/gu, ' ');
+    const validation = normalizedGenerated.indexOf(
+      'const beforeActivation = await validateLessonCapabilityBinding',
+    );
+    const secondStateCheck = normalizedGenerated.indexOf(
+      'The frozen contract closed safely because the lesson changed during approval validation.',
+    );
+    const activation = normalizedGenerated.indexOf(
+      'const activation = prepareOneUseActivation',
+    );
+    expect(validation).toBeGreaterThan(-1);
+    expect(secondStateCheck).toBeGreaterThan(validation);
+    expect(activation).toBeGreaterThan(secondStateCheck);
+  });
+
   it('gives the human a plain-language agent handoff and a visible safety debrief', () => {
     const normalizedGuide = guidedLessonSource.replace(/\s+/gu, ' ');
     expect(normalizedGuide).toContain(
@@ -111,7 +233,10 @@ describe('beginner WebMCP lesson path', () => {
       'Using the LeftOut local relay, run the one protected profile-banner update once. Do not retry.',
     );
     expect(guidedLessonSource).toContain('Copy request for my agent');
-    expect(guidedLessonSource).toContain('No technical details to copy');
+    expect(guidedLessonSource).toContain(
+      'Copy was blocked — select the exact request above',
+    );
+    expect(guidedLessonSource).toContain('No tool IDs or hashes needed');
     expect(normalizedGuide).toContain(
       'If the page or action is ambiguous, it stops without invoking anything.',
     );

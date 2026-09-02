@@ -43,9 +43,11 @@ import {
 } from '@/lib/lab/artifacts';
 import { createEvidenceReceipt } from '@/lib/lab/evidence';
 import { runScenario } from '@/lib/lab/engine';
+import { deliverCurrentHandoff } from '@/lib/lab/capability-handoff';
 import { createCapabilityEvidence } from '@/lib/lab/capability-negotiation';
 import { createLessonCapabilityEvidence } from '@/lib/lab/lesson-capabilities';
 import { assessScenarioRisk } from '@/lib/lab/risk';
+import { planStateRevisionCommit } from '@/lib/lab/state-revision';
 import {
   parseCapabilityEvidenceReceipt,
   parseEvidenceReceipt,
@@ -204,6 +206,12 @@ export function LabApp() {
   const sourceEnabledRef = useRef(false);
   const [stateMap, setStateMap] = useState<StateMap>(buildInitialStateMap);
   const stateMapRef = useRef(stateMap);
+  const stateRevisionMapRef = useRef(
+    Object.fromEntries(scenarios.map((item) => [item.id, 0])) as Record<
+      ScenarioId,
+      number
+    >,
+  );
   const [receiptMap, setReceiptMap] = useState<ReceiptMap>({});
   const [secureReceiptMap, setSecureReceiptMap] = useState<ReceiptMap>({});
   const [persistence, setPersistence] = useState<PersistenceState>('idle');
@@ -326,6 +334,21 @@ export function LabApp() {
     [],
   );
 
+  const getScenarioOneStateRevision = useCallback(
+    () => stateRevisionMapRef.current['read-only-claim'],
+    [],
+  );
+
+  const getCurrentScenarioState = useCallback(
+    () => stateMapRef.current[scenario.id],
+    [scenario.id],
+  );
+
+  const getCurrentScenarioStateRevision = useCallback(
+    () => stateRevisionMapRef.current[scenario.id],
+    [scenario.id],
+  );
+
   const driftScenarioOneSource = useCallback(() => {
     const next = scenarioOneSourceRevisionRef.current + 1;
     scenarioOneSourceRevisionRef.current = next;
@@ -432,6 +455,7 @@ export function LabApp() {
         ...stateMapRef.current,
         [scenario.id]: outcome.after,
       };
+      stateRevisionMapRef.current[scenario.id] += 1;
       stateMapRef.current = nextStateMap;
       setStateMap(nextStateMap);
 
@@ -582,6 +606,34 @@ export function LabApp() {
           capability,
         }),
       );
+      return receipt;
+    },
+    [clientLabel, scenario],
+  );
+
+  const commitLocalCapabilityReceipt = useCallback(
+    (payload: CapabilityRunPayload, receipt: EvidenceReceipt) => {
+      const commit = planStateRevisionCommit({
+        expected: {
+          revision: payload.stateRevision,
+          state: payload.outcome.before,
+        },
+        currentRevision: stateRevisionMapRef.current['read-only-claim'],
+        currentState: stateMapRef.current['read-only-claim'],
+        nextState: payload.outcome.after,
+      });
+      if (!commit) {
+        throw new Error(
+          'The Scenario 1 state changed while the receipt was being verified.',
+        );
+      }
+      const nextStateMap = {
+        ...stateMapRef.current,
+        'read-only-claim': commit.state,
+      };
+      stateRevisionMapRef.current['read-only-claim'] = commit.revision;
+      stateMapRef.current = nextStateMap;
+      setStateMap(nextStateMap);
       setSecureReceiptMap((current) => ({
         ...current,
         'read-only-claim': receipt,
@@ -589,9 +641,8 @@ export function LabApp() {
       setExecutionMessage(
         `Capability receipt ${receipt.id.slice(0, 8)} exists only in this document session. Export it before reset or reload; the capability handler made no evidence POST.`,
       );
-      return receipt;
     },
-    [clientLabel, scenario],
+    [],
   );
 
   const createLocalLessonCapabilityReceipt = useCallback(
@@ -641,10 +692,32 @@ export function LabApp() {
           capability,
         }),
       );
+      return receipt;
+    },
+    [clientLabel, scenario],
+  );
+
+  const commitLocalLessonCapabilityReceipt = useCallback(
+    (payload: LessonCapabilityRunPayload, receipt: EvidenceReceipt) => {
+      const commit = planStateRevisionCommit({
+        expected: {
+          revision: payload.stateRevision,
+          state: payload.outcome.before,
+        },
+        currentRevision: stateRevisionMapRef.current[scenario.id],
+        currentState: stateMapRef.current[scenario.id],
+        nextState: payload.outcome.after,
+      });
+      if (!commit) {
+        throw new Error(
+          'The synthetic state changed while the receipt was being verified.',
+        );
+      }
       const nextStateMap = {
         ...stateMapRef.current,
-        [scenario.id]: structuredClone(payload.outcome.after),
+        [scenario.id]: commit.state,
       };
+      stateRevisionMapRef.current[scenario.id] = commit.revision;
       stateMapRef.current = nextStateMap;
       setStateMap(nextStateMap);
       setSecureReceiptMap((current) => ({
@@ -654,9 +727,8 @@ export function LabApp() {
       setExecutionMessage(
         `Page receipt ${receipt.id.slice(0, 8)} returned to the caller. The page made no evidence POST; only the connector can validate and store its own linked entry.`,
       );
-      return receipt;
     },
-    [clientLabel, scenario],
+    [scenario.id],
   );
 
   useEffect(() => {
@@ -940,6 +1012,7 @@ export function LabApp() {
       ...stateMapRef.current,
       [scenario.id]: structuredClone(scenario.initialState),
     };
+    stateRevisionMapRef.current[scenario.id] += 1;
     stateMapRef.current = nextStateMap;
     setStateMap(nextStateMap);
     setReceiptMap((current) => {
@@ -1153,29 +1226,49 @@ export function LabApp() {
         <div className="overflow-hidden rounded-xl border border-foreground bg-card shadow-[7px_7px_0_0_var(--accent-strong)]">
           {scenario.id === 'read-only-claim' ? (
             <CapabilityNegotiator
+              key={`${scenario.id}:${experienceMode}`}
               experienceMode={experienceMode}
               sourceTool={scenario.tool}
               sourceState={scenarioState}
               getCurrentSourceTool={getScenarioOneSourceTool}
               getCurrentSourceState={getScenarioOneSourceState}
+              getCurrentStateRevision={getScenarioOneStateRevision}
               sourceToolSuppressed={sourceToolSuppressed}
               onSuppressSourceTool={suppressSourceTool}
               onRestoreSourceTool={restoreSourceTool}
               onSourceDrift={driftScenarioOneSource}
               onCreateLocalReceipt={createLocalCapabilityReceipt}
+              onCommitLocalReceipt={commitLocalCapabilityReceipt}
               onExport={(receipt) =>
                 setExportArtifact(createEvidenceReceiptArtifact(receipt))
               }
-              onOfferPermit={async (contract, approvedAt, pageUrl) => {
-                const artifact = await createCapabilityPermitArtifact(
-                  contract,
-                  approvedAt,
-                  pageUrl,
-                );
-                window.postMessage(
-                  createCapabilityPermitHandoff(artifact),
-                  window.location.origin,
-                );
+              onOfferPermit={async (
+                contract,
+                approvedAt,
+                pageUrl,
+                signal,
+                isCurrent,
+              ) => {
+                const delivered = await deliverCurrentHandoff({
+                  create: () =>
+                    createCapabilityPermitArtifact(
+                      contract,
+                      approvedAt,
+                      pageUrl,
+                    ),
+                  isCurrent: () => !signal.aborted && isCurrent(),
+                  deliver: (artifact) =>
+                    window.postMessage(
+                      createCapabilityPermitHandoff(artifact),
+                      window.location.origin,
+                    ),
+                });
+                if (!delivered) {
+                  throw new DOMException(
+                    'The permit handoff was revoked.',
+                    'AbortError',
+                  );
+                }
               }}
               onExportPermit={async (contract, approvedAt, pageUrl) =>
                 setExportArtifact(
@@ -1194,7 +1287,7 @@ export function LabApp() {
             />
           ) : (
             <GuidedSecurityLesson
-              key={scenario.id}
+              key={`${scenario.id}:${experienceMode}`}
               experienceMode={experienceMode}
               scenario={
                 scenario as ScenarioDefinition & {
@@ -1203,22 +1296,43 @@ export function LabApp() {
               }
               assessment={riskAssessment}
               sourceState={scenarioState}
+              getCurrentSourceState={getCurrentScenarioState}
+              getCurrentStateRevision={getCurrentScenarioStateRevision}
               clientLabel={clientLabel}
               webMcp={webMcp}
               onSuppressSourceTool={suppressSourceTool}
               onRestoreSourceTool={restoreSourceTool}
               onCreateReceipt={createLocalLessonCapabilityReceipt}
-              onOfferPermit={async (contract, approvedAt, pageUrl) => {
-                const artifact = await createLessonCapabilityPermitArtifact(
-                  contract,
-                  approvedAt,
-                  pageUrl,
-                );
-                window.postMessage(
-                  createCapabilityPermitHandoff(artifact),
-                  window.location.origin,
-                );
+              onCommitReceipt={commitLocalLessonCapabilityReceipt}
+              onOfferPermit={async (
+                contract,
+                approvedAt,
+                pageUrl,
+                signal,
+                isCurrent,
+              ) => {
+                const delivered = await deliverCurrentHandoff({
+                  create: () =>
+                    createLessonCapabilityPermitArtifact(
+                      contract,
+                      approvedAt,
+                      pageUrl,
+                    ),
+                  isCurrent: () => !signal.aborted && isCurrent(),
+                  deliver: (artifact) =>
+                    window.postMessage(
+                      createCapabilityPermitHandoff(artifact),
+                      window.location.origin,
+                    ),
+                });
+                if (!delivered) {
+                  throw new DOMException(
+                    'The permit handoff was revoked.',
+                    'AbortError',
+                  );
+                }
               }}
+              onResetScenario={resetScenario}
               onNext={
                 nextScenario
                   ? () => selectGuidedLesson(nextScenario.id)

@@ -1,5 +1,10 @@
 # Target-client validation
 
+> Historical target-client evidence from September 1, 2026. A separately saved
+> version of the beginner web learning page was subsequently published. This record does not establish a
+> live Sol/Terra built-in-client acceptance result and does not apply to a
+> future browser, session, extension build, connector build, or commit.
+
 **Observation date:** 2026-09-01
 **Earlier direct-run client:** Codex in-app browser
 **Earlier direct-run origin:** `http://localhost:3000`

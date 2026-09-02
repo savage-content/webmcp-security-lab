@@ -1,5 +1,10 @@
 # Verification report
 
+> Historical verification snapshot from September 1, 2026. A separately saved
+> version of the beginner web learning page was subsequently published, but the Local Guard, connector,
+> private reporting workbench, and Android prototype remain outside that public
+> deployment. Current automated counts are recorded in the README.
+
 **Report date:** 2026-09-01
 **Scope:** frozen version 1.0.2 browser evidence plus the local, undeployed
 `codex/capability-negotiator` web, connector, unpacked-extension, and Android

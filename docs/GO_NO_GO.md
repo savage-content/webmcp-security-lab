@@ -1,5 +1,10 @@
 # MVP Publish-Readiness Decision
 
+> Historical decision record from September 1, 2026. A separately saved version
+> of the beginner web learning page was subsequently published at the lab URL. This record still governs its
+> dated Local Guard, connector, Android, compatibility, and prior-art evidence;
+> none of those local components became a hosted or store-distributed product.
+
 **Decision date:** 2026-09-01
 
 **Branch:** `codex/capability-negotiator`

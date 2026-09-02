@@ -17,6 +17,10 @@ import {
   executeLessonCapability,
   validateLessonCapabilityBinding,
 } from '@/lib/lab/lesson-capabilities';
+import {
+  stateRevisionSnapshotMatches,
+  type StateRevisionSnapshot,
+} from '@/lib/lab/state-revision';
 import type {
   CapabilityInvalidationReason,
   CompiledLessonCapabilityContract,
@@ -44,6 +48,7 @@ export type GeneratedLessonCapabilityStatus =
   | 'preparing'
   | 'review'
   | 'registering'
+  | 'offering'
   | 'ready'
   | 'claimed'
   | 'verified'
@@ -60,6 +65,7 @@ export interface LessonCapabilityRunPayload {
   verification: LessonCapabilityVerification;
   invalidationReason: CapabilityInvalidationReason;
   webMcp: WebMcpStatus;
+  stateRevision: number;
 }
 
 function normalizeEmptyInput(input: unknown) {
@@ -77,17 +83,20 @@ function normalizeEmptyInput(input: unknown) {
 export function useGeneratedLessonCapability({
   scenario,
   sourceTool,
-  sourceState,
+  getCurrentSourceState,
+  getCurrentStateRevision,
   clientLabel,
   webMcp,
   onSuppressSourceTool,
   onRestoreSourceTool,
   onCreateReceipt,
+  onCommitReceipt,
   onOfferPermit,
 }: {
   scenario: ScenarioDefinition & { id: LessonCapabilityScenarioId };
   sourceTool: ToolDeclaration;
-  sourceState: Record<string, JsonValue>;
+  getCurrentSourceState: () => Record<string, JsonValue>;
+  getCurrentStateRevision: () => number;
   clientLabel: string;
   webMcp: WebMcpStatus;
   onSuppressSourceTool: () => true;
@@ -95,10 +104,16 @@ export function useGeneratedLessonCapability({
   onCreateReceipt: (
     payload: LessonCapabilityRunPayload,
   ) => Promise<EvidenceReceipt>;
+  onCommitReceipt: (
+    payload: LessonCapabilityRunPayload,
+    receipt: EvidenceReceipt,
+  ) => void;
   onOfferPermit: (
     contract: CompiledLessonCapabilityContract,
     approvedAt: string,
     pageUrl: string,
+    signal: AbortSignal,
+    isCurrent: () => boolean,
   ) => Promise<void>;
 }) {
   const [status, setStatus] = useState<GeneratedLessonCapabilityStatus>('idle');
@@ -112,12 +127,12 @@ export function useGeneratedLessonCapability({
   const [registration, setRegistration] = useState<WebMcpStatus>();
 
   const sourceToolRef = useRef(sourceTool);
-  const sourceStateRef = useRef(sourceState);
   const webMcpRef = useRef(webMcp);
   const mountedRef = useRef(true);
   const epochRef = useRef(0);
   const activeRef = useRef(false);
   const sourceWithdrawnRef = useRef(false);
+  const contractStateRef = useRef<StateRevisionSnapshot | undefined>(undefined);
   const controllerRef = useRef<AbortController | undefined>(undefined);
   const leaseRef = useRef<ReturnType<typeof createOneUseLease> | undefined>(
     undefined,
@@ -127,10 +142,6 @@ export function useGeneratedLessonCapability({
   useEffect(() => {
     sourceToolRef.current = sourceTool;
   }, [sourceTool]);
-
-  useEffect(() => {
-    sourceStateRef.current = sourceState;
-  }, [sourceState]);
 
   useEffect(() => {
     webMcpRef.current = webMcp;
@@ -165,7 +176,8 @@ export function useGeneratedLessonCapability({
     setApprovedAt(undefined);
 
     try {
-      const stateSnapshot = structuredClone(sourceStateRef.current);
+      const stateSnapshot = structuredClone(getCurrentSourceState());
+      const stateRevision = getCurrentStateRevision();
       const toolSnapshot = structuredClone(sourceToolRef.current);
       const lockedAt = new Date().toISOString();
       const baselineStateHash = await sha256Hex(stateSnapshot);
@@ -190,8 +202,11 @@ export function useGeneratedLessonCapability({
       if (
         !mountedRef.current ||
         epochRef.current !== epoch ||
-        canonicalJson(sourceStateRef.current) !==
-          canonicalJson(stateSnapshot) ||
+        !stateRevisionSnapshotMatches({
+          expected: { revision: stateRevision, state: stateSnapshot },
+          currentRevision: getCurrentStateRevision(),
+          currentState: getCurrentSourceState(),
+        }) ||
         canonicalJson(sourceToolRef.current) !== canonicalJson(toolSnapshot)
       ) {
         throw new Error(
@@ -200,6 +215,10 @@ export function useGeneratedLessonCapability({
       }
       setProposal(nextProposal);
       setContract(nextContract);
+      contractStateRef.current = {
+        revision: stateRevision,
+        state: stateSnapshot,
+      };
       setStatus('review');
       setMessage(
         'The exact one-use contract is frozen. Review it before any authority changes.',
@@ -214,7 +233,12 @@ export function useGeneratedLessonCapability({
       }
       return undefined;
     }
-  }, [clientLabel, scenario.id]);
+  }, [
+    clientLabel,
+    getCurrentSourceState,
+    getCurrentStateRevision,
+    scenario.id,
+  ]);
 
   const prepare = useCallback(async () => {
     if (!['idle', 'error', 'closed'].includes(status)) return undefined;
@@ -234,6 +258,7 @@ export function useGeneratedLessonCapability({
     setApprovedAt(undefined);
     setReceipt(undefined);
     setRegistration(undefined);
+    contractStateRef.current = undefined;
     return freezeFreshContract();
   }, [closeRegistration, freezeFreshContract, onRestoreSourceTool, status]);
 
@@ -248,14 +273,46 @@ export function useGeneratedLessonCapability({
       'Approval recorded. Rechecking the frozen state before replacing the broad tool.',
     );
 
+    if (
+      !contractStateRef.current ||
+      !stateRevisionSnapshotMatches({
+        expected: contractStateRef.current,
+        currentRevision: getCurrentStateRevision(),
+        currentState: getCurrentSourceState(),
+      })
+    ) {
+      closeRegistration(
+        'closed',
+        'The frozen contract closed safely because the synthetic state changed before approval. Nothing ran.',
+      );
+      return;
+    }
+
+    const activationSourceSnapshot = structuredClone(sourceToolRef.current);
     const beforeActivation = await validateLessonCapabilityBinding({
       contract,
-      sourceTool: structuredClone(sourceToolRef.current),
-      state: structuredClone(sourceStateRef.current),
+      sourceTool: activationSourceSnapshot,
+      state: structuredClone(getCurrentSourceState()),
       origin: window.location.origin,
       now: approvalTime,
     });
     if (!mountedRef.current || epochRef.current !== epoch) return;
+    if (
+      !contractStateRef.current ||
+      !stateRevisionSnapshotMatches({
+        expected: contractStateRef.current,
+        currentRevision: getCurrentStateRevision(),
+        currentState: getCurrentSourceState(),
+      }) ||
+      canonicalJson(sourceToolRef.current) !==
+        canonicalJson(activationSourceSnapshot)
+    ) {
+      closeRegistration(
+        'closed',
+        'The frozen contract closed safely because the lesson changed during approval validation. Nothing ran.',
+      );
+      return;
+    }
     if (!beforeActivation.ok) {
       closeRegistration(
         'closed',
@@ -324,8 +381,22 @@ export function useGeneratedLessonCapability({
               'The browser guard consumed the one-use authority. Verifying the exact result and effect now.',
             );
 
+            if (
+              !contractStateRef.current ||
+              !stateRevisionSnapshotMatches({
+                expected: contractStateRef.current,
+                currentRevision: getCurrentStateRevision(),
+                currentState: getCurrentSourceState(),
+              })
+            ) {
+              throw new Error(
+                'The consumed capability stopped because the synthetic state changed after approval.',
+              );
+            }
+
             const claimedAt = new Date().toISOString();
-            const stateSnapshot = structuredClone(sourceStateRef.current);
+            const stateSnapshot = structuredClone(getCurrentSourceState());
+            const stateRevision = getCurrentStateRevision();
             const toolSnapshot = structuredClone(sourceToolRef.current);
             const binding = await validateLessonCapabilityBinding({
               contract,
@@ -339,7 +410,15 @@ export function useGeneratedLessonCapability({
                 `The consumed capability stopped before its handler: ${binding.reason}.`,
               );
             }
-            if (!mountedRef.current || epochRef.current !== epoch) {
+            if (
+              !mountedRef.current ||
+              epochRef.current !== epoch ||
+              !stateRevisionSnapshotMatches({
+                expected: { revision: stateRevision, state: stateSnapshot },
+                currentRevision: getCurrentStateRevision(),
+                currentState: getCurrentSourceState(),
+              })
+            ) {
               throw new Error(
                 'The consumed capability was revoked during verification.',
               );
@@ -362,7 +441,18 @@ export function useGeneratedLessonCapability({
               checkedAt: claimedAt,
               webMcp: observedWebMcp,
             });
-            const recorded = await onCreateReceipt({
+            if (
+              !stateRevisionSnapshotMatches({
+                expected: { revision: stateRevision, state: stateSnapshot },
+                currentRevision: getCurrentStateRevision(),
+                currentState: getCurrentSourceState(),
+              })
+            ) {
+              throw new Error(
+                'The consumed capability stopped because the synthetic state changed during verification.',
+              );
+            }
+            const payload: LessonCapabilityRunPayload = {
               proposal,
               contract,
               approvedAt: approvalTime,
@@ -371,12 +461,23 @@ export function useGeneratedLessonCapability({
               verification,
               invalidationReason: 'consumed',
               webMcp: observedWebMcp,
-            });
-            if (!mountedRef.current || epochRef.current !== epoch) {
+              stateRevision,
+            };
+            const recorded = await onCreateReceipt(payload);
+            if (
+              !mountedRef.current ||
+              epochRef.current !== epoch ||
+              !stateRevisionSnapshotMatches({
+                expected: { revision: stateRevision, state: stateSnapshot },
+                currentRevision: getCurrentStateRevision(),
+                currentState: getCurrentSourceState(),
+              })
+            ) {
               throw new Error(
                 'The receipt arrived after this lesson was closed.',
               );
             }
+            onCommitReceipt(payload, recorded);
             setReceipt(recorded);
             setRegistration(observedWebMcp);
             setStatus(verification.passed ? 'verified' : 'failed');
@@ -400,8 +501,6 @@ export function useGeneratedLessonCapability({
       signal: controller.signal,
       permissionObservation: observeToolsPermission(),
     });
-    setRegistration(statusResult);
-
     const settlement = decideRegistrationSettlement({
       mounted: mountedRef.current,
       epochMatches: epochRef.current === epoch,
@@ -414,6 +513,7 @@ export function useGeneratedLessonCapability({
       lease.invalidate('revoked');
       return;
     }
+    setRegistration(statusResult);
     if (statusResult.registration !== 'registered') {
       sourceWithdrawnRef.current = false;
       onRestoreSourceTool();
@@ -424,13 +524,31 @@ export function useGeneratedLessonCapability({
       return;
     }
 
-    setStatus('ready');
+    setStatus('offering');
+    setMessage(
+      'The exact action is registered. Finishing the page handoff before showing the agent request. Nothing has run.',
+    );
+    const handoffIsCurrent = () =>
+      mountedRef.current &&
+      epochRef.current === epoch &&
+      activeRef.current &&
+      leaseRef.current === lease &&
+      lease.state() === 'active';
     try {
-      await onOfferPermit(contract, approvalTime, window.location.href);
+      await onOfferPermit(
+        contract,
+        approvalTime,
+        window.location.href,
+        controller.signal,
+        handoffIsCurrent,
+      );
+      if (!handoffIsCurrent()) return;
+      setStatus('ready');
       setMessage(
         'The one-use action was offered to the browser guard. Nothing has run. Confirm “Protected” in the extension HUD, then ask your connected agent to run it once.',
       );
     } catch {
+      if (!handoffIsCurrent()) return;
       sourceWithdrawnRef.current = false;
       onRestoreSourceTool();
       closeRegistration(
@@ -441,6 +559,9 @@ export function useGeneratedLessonCapability({
   }, [
     closeRegistration,
     contract,
+    getCurrentSourceState,
+    getCurrentStateRevision,
+    onCommitReceipt,
     onCreateReceipt,
     onOfferPermit,
     onRestoreSourceTool,
@@ -474,6 +595,7 @@ export function useGeneratedLessonCapability({
     setApprovedAt(undefined);
     setReceipt(undefined);
     setRegistration(undefined);
+    contractStateRef.current = undefined;
   }, [closeRegistration, onRestoreSourceTool]);
 
   useEffect(() => {

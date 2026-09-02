@@ -6,6 +6,7 @@ import {
   BookOpenCheck,
   Check,
   Clock3,
+  Copy,
   Eye,
   FileCheck2,
   Fingerprint,
@@ -47,6 +48,10 @@ import {
   verifyCapabilityBinding,
   type DocumentCapabilityLease,
 } from '@/lib/lab/capability-negotiation';
+import {
+  stateRevisionSnapshotMatches,
+  type StateRevisionSnapshot,
+} from '@/lib/lab/state-revision';
 import type {
   CapabilityProposalRecord,
   CapabilityVerification,
@@ -79,6 +84,7 @@ export interface CapabilityRunPayload {
   outcome: RunOutcome;
   verification: CapabilityVerification;
   invalidationReason: CapabilityInvalidationReason;
+  stateRevision: number;
 }
 
 type CapabilityStatus =
@@ -126,10 +132,12 @@ export function CapabilityNegotiator({
   sourceToolSuppressed,
   getCurrentSourceTool,
   getCurrentSourceState,
+  getCurrentStateRevision,
   onSuppressSourceTool,
   onRestoreSourceTool,
   onSourceDrift,
   onCreateLocalReceipt,
+  onCommitLocalReceipt,
   onExport,
   onOfferPermit,
   onExportPermit,
@@ -140,6 +148,7 @@ export function CapabilityNegotiator({
   sourceState: Record<string, JsonValue>;
   getCurrentSourceTool: () => ToolDeclaration;
   getCurrentSourceState: () => Record<string, JsonValue>;
+  getCurrentStateRevision: () => number;
   sourceToolSuppressed: boolean;
   onSuppressSourceTool: () => true;
   onRestoreSourceTool: () => void;
@@ -147,11 +156,17 @@ export function CapabilityNegotiator({
   onCreateLocalReceipt: (
     payload: CapabilityRunPayload,
   ) => Promise<EvidenceReceipt>;
+  onCommitLocalReceipt: (
+    payload: CapabilityRunPayload,
+    receipt: EvidenceReceipt,
+  ) => void;
   onExport: (receipt: EvidenceReceipt) => void;
   onOfferPermit: (
     contract: CompiledCapabilityContract,
     approvedAt: string,
     pageUrl: string,
+    signal: AbortSignal,
+    isCurrent: () => boolean,
   ) => Promise<void>;
   onExportPermit: (
     contract: CompiledCapabilityContract,
@@ -170,9 +185,15 @@ export function CapabilityNegotiator({
     useState<CapabilityStatus>('idle');
   const [workflowPhase, setWorkflowPhase] = useState<WorkflowPhase>('idle');
   const [approvalOpen, setApprovalOpen] = useState(false);
+  const [agentRequestCopyResult, setAgentRequestCopyResult] = useState<{
+    request: string;
+    status: 'copied' | 'error';
+  }>();
   const approvalTriggerRef = useRef<HTMLButtonElement>(null);
   const cancelApprovalRef = useRef<HTMLButtonElement>(null);
   const resetNegotiationRef = useRef<HTMLButtonElement>(null);
+  const lessonStageHeadingRef = useRef<HTMLHeadingElement>(null);
+  const [lessonAnnouncement, setLessonAnnouncement] = useState('');
   const [message, setMessage] = useState(
     'Start by locking the human intent. Nothing has been invoked.',
   );
@@ -182,7 +203,7 @@ export function CapabilityNegotiator({
   >('idle');
   const [invalidationReason, setInvalidationReason] = useState<string>();
   const sourceObservationGenerationRef = useRef(0);
-  const stateObservationGenerationRef = useRef(0);
+  const intentStateRef = useRef<StateRevisionSnapshot | undefined>(undefined);
   const proposalControllerRef = useRef<AbortController | undefined>(undefined);
   const capabilityControllerRef = useRef<AbortController | undefined>(
     undefined,
@@ -200,6 +221,14 @@ export function CapabilityNegotiator({
   const workflowPhaseRef = useRef<WorkflowPhase>('idle');
   const [approvalEventAt, setApprovalEventAt] = useState<string>();
   const [guidedAdvance, setGuidedAdvance] = useState(false);
+  const agentRequest =
+    experienceMode === 'site-tools'
+      ? 'Run the one approved eligibility check for TRAINING-1042 once. Do not invoke another Site Tool and do not retry.'
+      : 'Using the LeftOut local relay, run the one protected eligibility check for TRAINING-1042 once. Do not retry.';
+  const agentRequestCopyState =
+    agentRequestCopyResult?.request === agentRequest
+      ? agentRequestCopyResult.status
+      : 'idle';
 
   const transitionPhase = useCallback((phase: WorkflowPhase) => {
     workflowPhaseRef.current = phase;
@@ -209,10 +238,6 @@ export function CapabilityNegotiator({
   useEffect(() => {
     sourceObservationGenerationRef.current += 1;
   }, [sourceTool]);
-
-  useEffect(() => {
-    stateObservationGenerationRef.current += 1;
-  }, [sourceState]);
 
   const invalidate = useCallback((reason: string, detail: string) => {
     operationEpochRef.current += 1;
@@ -408,6 +433,7 @@ export function CapabilityNegotiator({
   async function lockIntent() {
     if (workflowPhaseRef.current !== 'idle') return undefined;
     const currentState = structuredClone(getCurrentSourceState());
+    const currentStateRevision = getCurrentStateRevision();
     if (
       currentState.accountId !== 'TRAINING-1042' ||
       currentState.reviewed !== false ||
@@ -422,14 +448,16 @@ export function CapabilityNegotiator({
     transitionPhase('locking');
     const epoch = operationEpochRef.current + 1;
     operationEpochRef.current = epoch;
-    const stateGeneration = stateObservationGenerationRef.current;
     const baselineStateHash = await sha256Hex(structuredClone(currentState));
     if (!mountedRef.current || operationEpochRef.current !== epoch) {
       return undefined;
     }
     if (
-      stateObservationGenerationRef.current !== stateGeneration ||
-      canonicalJson(getCurrentSourceState()) !== canonicalJson(currentState)
+      !stateRevisionSnapshotMatches({
+        expected: { revision: currentStateRevision, state: currentState },
+        currentRevision: getCurrentStateRevision(),
+        currentState: getCurrentSourceState(),
+      })
     ) {
       transitionPhase('idle');
       setMessage(
@@ -443,6 +471,10 @@ export function CapabilityNegotiator({
       baselineStateHash,
       ttlSeconds: SCENARIO_ONE_CAPABILITY_TTL_SECONDS,
     });
+    intentStateRef.current = {
+      revision: currentStateRevision,
+      state: currentState,
+    };
     setIntent(next);
     setProposal(undefined);
     proposalRef.current = undefined;
@@ -499,9 +531,23 @@ export function CapabilityNegotiator({
     setMessage('Freezing the exact contract for human review.');
 
     const sourceGeneration = sourceObservationGenerationRef.current;
-    const stateGeneration = stateObservationGenerationRef.current;
     const sourceSnapshot = structuredClone(getCurrentSourceTool());
     const stateSnapshot = structuredClone(getCurrentSourceState());
+    const intentStateSnapshot = intentStateRef.current;
+    if (
+      !intentStateSnapshot ||
+      !stateRevisionSnapshotMatches({
+        expected: intentStateSnapshot,
+        currentRevision: getCurrentStateRevision(),
+        currentState: stateSnapshot,
+      })
+    ) {
+      invalidate(
+        'state-drift',
+        'The synthetic account changed before contract review. Nothing was withdrawn or invoked.',
+      );
+      return;
+    }
     const [currentHash, currentStateHash] = await Promise.all([
       fingerprintSource({
         tool: sourceSnapshot,
@@ -523,8 +569,11 @@ export function CapabilityNegotiator({
       return;
     }
     if (
-      stateObservationGenerationRef.current !== stateGeneration ||
-      canonicalJson(getCurrentSourceState()) !== canonicalJson(stateSnapshot) ||
+      !stateRevisionSnapshotMatches({
+        expected: intentStateSnapshot,
+        currentRevision: getCurrentStateRevision(),
+        currentState: getCurrentSourceState(),
+      }) ||
       currentStateHash !== preparedIntent.baseline.stateHash
     ) {
       invalidate(
@@ -551,8 +600,11 @@ export function CapabilityNegotiator({
       return;
     }
     if (
-      stateObservationGenerationRef.current !== stateGeneration ||
-      canonicalJson(getCurrentSourceState()) !== canonicalJson(stateSnapshot)
+      !stateRevisionSnapshotMatches({
+        expected: intentStateSnapshot,
+        currentRevision: getCurrentStateRevision(),
+        currentState: getCurrentSourceState(),
+      })
     ) {
       invalidate(
         'state-drift',
@@ -613,9 +665,23 @@ export function CapabilityNegotiator({
     setMessage('Revalidating the source before withdrawing it.');
 
     const sourceGeneration = sourceObservationGenerationRef.current;
-    const stateGeneration = stateObservationGenerationRef.current;
     const sourceSnapshot = structuredClone(getCurrentSourceTool());
     const stateSnapshot = structuredClone(getCurrentSourceState());
+    const intentStateSnapshot = intentStateRef.current;
+    if (
+      !intentStateSnapshot ||
+      !stateRevisionSnapshotMatches({
+        expected: intentStateSnapshot,
+        currentRevision: getCurrentStateRevision(),
+        currentState: stateSnapshot,
+      })
+    ) {
+      invalidate(
+        'state-drift',
+        'The synthetic account changed after review. The approval event was recorded, but nothing was withdrawn, registered, or invoked.',
+      );
+      return;
+    }
     const [currentHash, currentStateHash] = await Promise.all([
       fingerprintSource({
         tool: sourceSnapshot,
@@ -637,8 +703,11 @@ export function CapabilityNegotiator({
       return;
     }
     if (
-      stateObservationGenerationRef.current !== stateGeneration ||
-      canonicalJson(getCurrentSourceState()) !== canonicalJson(stateSnapshot) ||
+      !stateRevisionSnapshotMatches({
+        expected: intentStateSnapshot,
+        currentRevision: getCurrentStateRevision(),
+        currentState: getCurrentSourceState(),
+      }) ||
       currentStateHash !== intent.baseline.stateHash
     ) {
       invalidate(
@@ -761,13 +830,28 @@ export function CapabilityNegotiator({
 
             const claimedAt = new Date().toISOString();
             const sourceGeneration = sourceObservationGenerationRef.current;
-            const stateGeneration = stateObservationGenerationRef.current;
             const invocationSourceSnapshot = structuredClone(
               getCurrentSourceTool(),
             );
             const invocationStateSnapshot = structuredClone(
               getCurrentSourceState(),
             );
+            const invocationStateRevision = getCurrentStateRevision();
+            const approvedStateSnapshot = intentStateRef.current;
+            if (
+              !approvedStateSnapshot ||
+              !stateRevisionSnapshotMatches({
+                expected: approvedStateSnapshot,
+                currentRevision: invocationStateRevision,
+                currentState: invocationStateSnapshot,
+              })
+            ) {
+              invalidate(
+                'state-drift',
+                'Invocation rejected: the synthetic account changed after approval.',
+              );
+              throw new Error('Capability invalidated: state-drift.');
+            }
             const binding = await verifyCapabilityBinding({
               contract,
               sourceTool: invocationSourceSnapshot,
@@ -800,9 +884,11 @@ export function CapabilityNegotiator({
               throw new Error(`Capability invalidated: ${binding.reason}.`);
             }
             if (
-              stateObservationGenerationRef.current !== stateGeneration ||
-              canonicalJson(getCurrentSourceState()) !==
-                canonicalJson(invocationStateSnapshot)
+              !stateRevisionSnapshotMatches({
+                expected: approvedStateSnapshot,
+                currentRevision: getCurrentStateRevision(),
+                currentState: getCurrentSourceState(),
+              })
             ) {
               invalidate(
                 'state-drift',
@@ -823,9 +909,11 @@ export function CapabilityNegotiator({
               );
             }
             if (
-              stateObservationGenerationRef.current !== stateGeneration ||
-              canonicalJson(getCurrentSourceState()) !==
-                canonicalJson(invocationStateSnapshot)
+              !stateRevisionSnapshotMatches({
+                expected: approvedStateSnapshot,
+                currentRevision: getCurrentStateRevision(),
+                currentState: getCurrentSourceState(),
+              })
             ) {
               invalidate(
                 'state-drift',
@@ -835,17 +923,19 @@ export function CapabilityNegotiator({
             }
             const resultInvalidationReason: CapabilityInvalidationReason =
               verification.passed ? 'consumed' : 'state-drift';
+            const payload: CapabilityRunPayload = {
+              proposal,
+              contract,
+              approvedAt,
+              claimedAt,
+              outcome,
+              verification,
+              invalidationReason: resultInvalidationReason,
+              stateRevision: invocationStateRevision,
+            };
             let recorded: EvidenceReceipt;
             try {
-              recorded = await onCreateLocalReceipt({
-                proposal,
-                contract,
-                approvedAt,
-                claimedAt,
-                outcome,
-                verification,
-                invalidationReason: resultInvalidationReason,
-              });
+              recorded = await onCreateLocalReceipt(payload);
             } catch (error) {
               invalidate(
                 'handler-drift',
@@ -853,11 +943,20 @@ export function CapabilityNegotiator({
               );
               throw error;
             }
-            if (!mountedRef.current || operationEpochRef.current !== epoch) {
+            if (
+              !mountedRef.current ||
+              operationEpochRef.current !== epoch ||
+              !stateRevisionSnapshotMatches({
+                expected: approvedStateSnapshot,
+                currentRevision: getCurrentStateRevision(),
+                currentState: getCurrentSourceState(),
+              })
+            ) {
               throw new Error(
                 'Capability invocation was revoked during receipt validation.',
               );
             }
+            onCommitLocalReceipt(payload, recorded);
             setCapabilityStatus('invoked');
             setReceipt(recorded);
             setReceiptState('local-export-only');
@@ -941,12 +1040,27 @@ export function CapabilityNegotiator({
 
     transitionPhase('active');
     setCapabilityStatus('registered');
+    const handoffIsCurrent = () =>
+      mountedRef.current &&
+      operationEpochRef.current === epoch &&
+      capabilityActiveRef.current &&
+      capabilityGenerationRef.current === capabilityGeneration &&
+      leaseRef.current === lease &&
+      lease.state() === 'active';
     try {
-      await onOfferPermit(contract, approvedAt, window.location.href);
+      await onOfferPermit(
+        contract,
+        approvedAt,
+        window.location.href,
+        controller.signal,
+        handoffIsCurrent,
+      );
+      if (!handoffIsCurrent()) return;
       setMessage(
         'The exact capability is registered and its narrowing rule was offered to the connected browser guard. Nothing has run. Check the browser-owned HUD for authoritative protection status.',
       );
     } catch {
+      if (!handoffIsCurrent()) return;
       setMessage(
         'The exact capability is registered, but its browser-guard handoff could not be prepared. Nothing has run. The local practice check remains available; advanced recovery can export the rule manually.',
       );
@@ -1012,12 +1126,14 @@ export function CapabilityNegotiator({
     capabilityGenerationRef.current = crypto.randomUUID();
     sourceWithdrawnRef.current = false;
     setIntent(undefined);
+    intentStateRef.current = undefined;
     setProposal(undefined);
     proposalRef.current = undefined;
     setContract(undefined);
     setReceipt(undefined);
     setReceiptState('idle');
     setApprovalEventAt(undefined);
+    setAgentRequestCopyResult(undefined);
     setProposalRegistration(initialRegistration);
     setCapabilityStatus('idle');
     operationEpochRef.current += 1;
@@ -1026,7 +1142,20 @@ export function CapabilityNegotiator({
     setMessage(
       'Negotiation reset. The broad source fixture is registered again.',
     );
+    setLessonAnnouncement(
+      'Lesson reset. Review a fresh exact action before approving it.',
+    );
     onRestoreSourceTool();
+    window.requestAnimationFrame(() => lessonStageHeadingRef.current?.focus());
+  }
+
+  async function copyAgentRequest() {
+    try {
+      await navigator.clipboard.writeText(agentRequest);
+      setAgentRequestCopyResult({ request: agentRequest, status: 'copied' });
+    } catch {
+      setAgentRequestCopyResult({ request: agentRequest, status: 'error' });
+    }
   }
 
   const approvalCopy = contract?.approval.copy ?? '';
@@ -1060,7 +1189,7 @@ export function CapabilityNegotiator({
   const lessonSteps = [
     ['1', 'Understand'],
     ['2', 'Approve'],
-    ['3', 'Run'],
+    ['3', 'Ask agent'],
     ['4', 'Verify'],
   ] as const;
   const expiryLabel = contract
@@ -1143,6 +1272,11 @@ export function CapabilityNegotiator({
             );
           })}
         </ol>
+        {lessonAnnouncement ? (
+          <output aria-live="polite" className="sr-only">
+            {lessonAnnouncement}
+          </output>
+        ) : null}
 
         <div className="mt-4 overflow-hidden rounded-xl border border-white/15 bg-white/[0.06]">
           {lessonStopped ? (
@@ -1177,7 +1311,11 @@ export function CapabilityNegotiator({
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-lime-300">
                   First: understand the offer
                 </p>
-                <h3 className="mt-2 text-2xl font-semibold">
+                <h3
+                  ref={lessonStageHeadingRef}
+                  tabIndex={-1}
+                  className="mt-2 text-2xl font-semibold"
+                >
                   The page offers your AI a read action.
                 </h3>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
@@ -1338,8 +1476,8 @@ export function CapabilityNegotiator({
                           are separate from page registration.
                         </li>
                         <li>
-                          3. Tell the same agent: “Run the one approved practice
-                          action once. Do not retry.”
+                          3. Send this exact request to the same agent: “
+                          {agentRequest}”
                         </li>
                       </>
                     ) : experienceMode === 'local-guard' ? (
@@ -1350,8 +1488,8 @@ export function CapabilityNegotiator({
                           action.”
                         </li>
                         <li>
-                          3. Ask your connected local agent to run the one
-                          approved action once, with no retry.
+                          3. Send this exact request to your connected local
+                          agent: “{agentRequest}”
                         </li>
                       </>
                     ) : (
@@ -1368,6 +1506,36 @@ export function CapabilityNegotiator({
                       </>
                     )}
                   </ol>
+                  {experienceMode !== 'read-only' ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="mt-4 min-h-11 w-full border-sky-300/30 bg-sky-300/8 text-sky-100 hover:bg-sky-300/15 hover:text-white"
+                        onClick={() => void copyAgentRequest()}
+                      >
+                        {agentRequestCopyState === 'copied' ? (
+                          <Check data-icon="inline-start" />
+                        ) : (
+                          <Copy data-icon="inline-start" />
+                        )}
+                        {agentRequestCopyState === 'copied'
+                          ? 'Request copied'
+                          : 'Copy request for my agent'}
+                      </Button>
+                      {agentRequestCopyState !== 'idle' ? (
+                        <output
+                          aria-live="polite"
+                          className="mt-2 block text-xs leading-5 text-sky-100"
+                        >
+                          {agentRequestCopyState === 'copied'
+                            ? experienceMode === 'site-tools'
+                              ? 'Copied — return to this browser’s chat and send it.'
+                              : 'Copied — paste it into your connected local agent.'
+                            : 'Copy was blocked — select the exact request above and paste it into your agent.'}
+                        </output>
+                      ) : null}
+                    </>
+                  ) : null}
                   <p className="mt-3 text-xs leading-5 text-sky-100">
                     The receipt will appear here automatically. The page has not
                     run anything itself.

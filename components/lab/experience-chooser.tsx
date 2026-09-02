@@ -1,6 +1,7 @@
 'use client';
 
 import { Bot, CheckCircle2, FlaskConical, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 
@@ -46,6 +47,16 @@ export function ExperienceChooser({
   mode: ExperienceMode;
   onChange: (mode: ExperienceMode) => void;
 }) {
+  const [changeAnnouncement, setChangeAnnouncement] = useState('');
+
+  function chooseMode(nextMode: ExperienceMode) {
+    if (nextMode === mode) return;
+    onChange(nextMode);
+    setChangeAnnouncement(
+      'Setup changed; any unused approval was closed and this lesson restarted.',
+    );
+  }
+
   return (
     <section
       id="setup"
@@ -61,7 +72,8 @@ export function ExperienceChooser({
         </h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
           The lessons are the same, but the agent handoff is different. Choose
-          one path so the page gives you the right instructions.
+          one path so the page gives you the right instructions. Changing setup
+          closes any unused approval and restarts the current lesson.
         </p>
       </div>
       <fieldset className="grid gap-px bg-border lg:grid-cols-3">
@@ -80,7 +92,7 @@ export function ExperienceChooser({
               className={`min-h-56 bg-card p-5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-700 sm:p-6 ${
                 selected ? 'bg-emerald-50' : 'hover:bg-muted/45'
               }`}
-              onClick={() => onChange(option.id)}
+              onClick={() => chooseMode(option.id)}
             >
               <span className="flex items-start justify-between gap-4">
                 <span className="flex size-9 items-center justify-center rounded-md border border-border bg-background">
@@ -115,6 +127,14 @@ export function ExperienceChooser({
           );
         })}
       </fieldset>
+      {changeAnnouncement ? (
+        <output
+          aria-live="polite"
+          className="block border-t border-amber-300/35 bg-amber-50 px-5 py-3 text-xs leading-5 text-amber-950 sm:px-6"
+        >
+          {changeAnnouncement}
+        </output>
+      ) : null}
     </section>
   );
 }

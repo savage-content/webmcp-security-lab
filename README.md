@@ -14,41 +14,44 @@ extension is a third, computer-use surface and is not counted as Site Tools.
 See [OpenAI's Site Tools documentation](https://learn.chatgpt.com/docs/webmcp)
 and the local [conformance family](docs/SITE_TOOLS_CONFORMANCE.md).
 
-**Frozen version 1 demo:** <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>
+**Live public learning lab (last explicitly deployed Sites version):**
+<https://left-out-webmcp-security-lab.taitfor.chatgpt.site>
 
 **Source:** <https://github.com/savage-content/webmcp-security-lab>
 
 **License:** [MIT](LICENSE)
 
-> **Working status (September 1, 2026): GO for a locally validated technical
-> MVP release candidate across all five guided lessons through the tested
-> Chrome 152, unpacked-extension, and loopback-connector path.** A fresh run
-> completed each lesson with one zero-input connector call and no retry. All five
-> receipts returned `PASS`, the browser HUD closed each one-use permit, and the
-> local report path retained five verified hash-chained entries. This is not a
-> first-time-human, public-deployment, cross-client, or universal-
-> compatibility decision. The frozen public version 1 demo remains unchanged,
-> the extension remains unpacked development software, and Android remains
-> conformance-only. The independent prior-art decision remains NO-GO for
+> **Working status (September 2, 2026): the last explicitly deployed Sites
+> version contains a separately saved five-lesson beginner page; repository HEAD
+> and working-tree changes are not deployment evidence. The Local Guard,
+> connector, and reporting workbench remain local development software.** A
+> fresh Chrome 152 run completed all five lessons
+> through the unpacked extension and loopback connector with one zero-input
+> call per lesson and no retries. All five receipts returned `PASS`, the HUD
+> closed each permit, and the local report path retained five verified
+> hash-chained entries. That is not first-time-human, direct built-in-client,
+> cross-client, or universal-compatibility evidence. The extension remains
+> unpacked and unsigned, public report intake and feeds remain disabled, and
+> Android remains conformance-only. The independent prior-art decision remains NO-GO for
 > novelty, patentability, clean-room, and freedom-to-operate claims. See
 > [TARGET_CLIENT_VALIDATION.md](docs/TARGET_CLIENT_VALIDATION.md),
 > [PRIOR_ART.md](PRIOR_ART.md), and [docs/GO_NO_GO.md](docs/GO_NO_GO.md).
 
 The earlier Scenario 1-only baseline used post-`f7290d9` page and extension
 content with a connector still running from `f7290d9`. The newer five-lesson
-run used the current working-tree page, extension, and restarted connector in
-a fresh Chrome 152 profile. Neither run proves a future commit, signed package,
-public deployment, or another client.
+run used the then-current page, extension, and restarted connector in a fresh
+Chrome 152 profile. Neither run proves a future commit, signed package, direct
+Site Tools support, or another client.
 
-| Current component                                    | Status                                                                                                   |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Public learning range                                | Current guided beginner experience deployed on the LeftOut lab site                                      |
-| Five guided page capabilities                        | `PASS` in one fresh Chrome 152 sequence; one exact call per lesson and no retries                        |
-| Connector receipt path                               | `PASS` for five validated receipts, the hash chain, local redacted draft, and zero feed-eligible records |
-| Browser extension                                    | Manifest V3 development prototype validated locally; unpacked and unsigned                               |
-| Android                                              | JVM/API conformance prototype; not device-invokable                                                      |
-| Current MVP deployment                               | Public learning site deployed; extension and connector remain separate local alphas                       |
-| Novelty, patentability, or freedom-to-operate claims | NO-GO under the technical prior-art review; no legal infringement conclusion                             |
+| Current component                                    | Status                                                                                                                      |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Public learning range                                | The last explicitly deployed saved version is live; it does not establish that repository HEAD or this working tree is live |
+| Five guided page capabilities                        | `PASS` in one fresh Chrome 152 sequence; one exact call per lesson and no retries                                           |
+| Connector receipt path                               | `PASS` for five validated receipts, the hash chain, local redacted draft, and zero feed-eligible records                    |
+| Browser extension                                    | Manifest V3 development prototype validated locally; unpacked and unsigned                                                  |
+| Android                                              | JVM/API conformance prototype; not device-invokable                                                                         |
+| Deployment split                                     | Last explicitly deployed saved version: learning site only; this working tree, extension, and connector are not live        |
+| Novelty, patentability, or freedom-to-operate claims | NO-GO under the technical prior-art review; no legal infringement conclusion                                                |
 
 ## Why this lab exists
 
@@ -312,7 +315,7 @@ The automated suite covers:
   behavior, revocation, and failure handling.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The current automated suite passes 140/140
+separate Android conformance script. The current automated suite passes 318/318
 tests, typecheck, lint, and a production build on Node.js 24. Live connector
 evidence is recorded separately: the
 September 1 target-client run satisfied the bounded end-to-end checks in
@@ -347,20 +350,21 @@ Receipts can be downloaded as JSON. There are no update or delete endpoints. Req
 
 ## Deployment
 
-**The 2026-09-01 technical MVP GO is not deployment authorization.** The URL at
-the top of this README remains the frozen version 1 baseline. It is not proof
-that the capability negotiator, connector, extension, reporting dashboard, or
-Android work was deployed.
+The public URL hosts only the Sites version that was last explicitly deployed;
+repository and working-tree changes are not live merely because they exist,
+are committed, or are pushed.
+That deployment contains the beginner page and synthetic Site Tools fixtures.
+It does not host or distribute the Local Guard extension, loopback
+connector, private reporting workbench, public intake, moderation service,
+security-tooling feed, or Android client.
 
 The repository includes `.openai/hosting.json` with a logical `DB` binding and
 generated Drizzle migrations for a possible future web deployment.
 
-1. Record a separate dated public-deployment decision for the exact artifact.
-2. Run `npm ci` and `npm run verify` on the exact clean release commit.
-3. Create or select a Sites project.
-4. Bind D1 as `DB` and apply the migrations under `drizzle/`.
-5. Deploy the exact validated build output only after explicit authorization.
-6. Verify `/`, `/api/evidence`, one persisted baseline receipt, and the
+1. Run `npm ci` and `npm run verify` on the exact release candidate.
+2. Save a new Sites version from the reviewed commit.
+3. Deploy that saved version only after explicit public-publish authorization.
+4. Verify `/`, `/api/evidence`, one persisted baseline receipt, and the
    selected WebMCP tool in the exact deployed target client.
 
 The web range requires no application secrets, but any hosted connector would

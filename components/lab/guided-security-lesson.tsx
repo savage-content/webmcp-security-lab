@@ -11,7 +11,7 @@ import {
   FileCheck2,
   ShieldCheck,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   AlertDialog,
@@ -252,18 +252,24 @@ export function GuidedSecurityLesson({
   scenario,
   assessment,
   sourceState,
+  getCurrentSourceState,
+  getCurrentStateRevision,
   clientLabel,
   webMcp,
   onSuppressSourceTool,
   onRestoreSourceTool,
   onCreateReceipt,
+  onCommitReceipt,
   onOfferPermit,
+  onResetScenario,
   onNext,
 }: {
   experienceMode: ExperienceMode;
   scenario: ScenarioDefinition & { id: LessonCapabilityScenarioId };
   assessment: RiskAssessment;
   sourceState: Record<string, JsonValue>;
+  getCurrentSourceState: () => Record<string, JsonValue>;
+  getCurrentStateRevision: () => number;
   clientLabel: string;
   webMcp: WebMcpStatus;
   onSuppressSourceTool: () => true;
@@ -271,29 +277,41 @@ export function GuidedSecurityLesson({
   onCreateReceipt: (
     payload: LessonCapabilityRunPayload,
   ) => Promise<EvidenceReceipt>;
+  onCommitReceipt: (
+    payload: LessonCapabilityRunPayload,
+    receipt: EvidenceReceipt,
+  ) => void;
   onOfferPermit: (
     contract: CompiledLessonCapabilityContract,
     approvedAt: string,
     pageUrl: string,
+    signal: AbortSignal,
+    isCurrent: () => boolean,
   ) => Promise<void>;
+  onResetScenario: () => void;
   onNext?: () => void;
 }) {
   const [stage, setStage] = useState<LessonStage>(1);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [clockMs, setClockMs] = useState(() => Date.now());
   const [copiedRequestKey, setCopiedRequestKey] = useState('');
+  const [copyErrorRequestKey, setCopyErrorRequestKey] = useState('');
+  const [lessonAnnouncement, setLessonAnnouncement] = useState('');
+  const reviewHeadingRef = useRef<HTMLHeadingElement>(null);
   const copy = beginnerLessonCopy[scenario.id];
   const approvalUi = APPROVAL_REVIEW_UI[scenario.id];
   const secureFields = schemaFields(scenario.secureTool);
   const capability = useGeneratedLessonCapability({
     scenario,
     sourceTool: scenario.tool,
-    sourceState,
+    getCurrentSourceState,
+    getCurrentStateRevision,
     clientLabel,
     webMcp,
     onSuppressSourceTool,
     onRestoreSourceTool,
     onCreateReceipt,
+    onCommitReceipt,
     onOfferPermit,
   });
   const receipt = capability.receipt;
@@ -311,6 +329,21 @@ export function GuidedSecurityLesson({
     capability.status === 'ready' && experienceMode === 'site-tools'
       ? 'Approved. The exact one-use Site Tool is registered on this page. Nothing has run.'
       : capability.message;
+  const canRequestAgent = capability.status === 'ready';
+  const handoffTitle =
+    capability.status === 'ready'
+      ? 'Approved, not run — ask this agent once.'
+      : capability.status === 'claimed'
+        ? 'The one-use authority is consumed. Verifying now.'
+        : capability.status === 'failed'
+          ? 'The one-use action stopped. Do not retry it.'
+          : capability.status === 'offering'
+            ? experienceMode === 'local-guard'
+              ? 'Finishing Local Guard protection.'
+              : 'Finishing the agent handoff.'
+            : ['closed', 'error'].includes(capability.status)
+              ? 'The previous permission closed safely.'
+              : 'Preparing the browser-owned protection.';
   const currentStage: LessonStage = receipt ? 4 : stage;
   const statesMatch = receipt
     ? JSON.stringify(receipt.effective.before) ===
@@ -370,8 +403,10 @@ export function GuidedSecurityLesson({
     try {
       await navigator.clipboard.writeText(agentRequest);
       setCopiedRequestKey(requestKey);
+      setCopyErrorRequestKey('');
     } catch {
       setCopiedRequestKey('');
+      setCopyErrorRequestKey(requestKey);
     }
   }
 
@@ -446,6 +481,11 @@ export function GuidedSecurityLesson({
 
         <div>
           <LessonStages current={currentStage} />
+          {lessonAnnouncement ? (
+            <output aria-live="polite" className="sr-only">
+              {lessonAnnouncement}
+            </output>
+          ) : null}
 
           {currentStage === 1 ? (
             <LessonCard
@@ -482,6 +522,7 @@ export function GuidedSecurityLesson({
               icon={<Bot />}
               eyebrow="Second: inspect, then approve"
               title="Compare the human task with the agent surface."
+              headingRef={reviewHeadingRef}
             >
               <div className="grid gap-3 sm:grid-cols-2">
                 <Fact
@@ -571,13 +612,7 @@ export function GuidedSecurityLesson({
             <LessonCard
               icon={<ShieldCheck />}
               eyebrow="Third: let the connected agent use the one-use action"
-              title={
-                capability.status === 'ready'
-                  ? 'Approved, not run — ask this agent once.'
-                  : capability.status === 'closed'
-                    ? 'The previous permission closed safely.'
-                    : 'Preparing the browser-owned protection.'
-              }
+              title={handoffTitle}
             >
               <p
                 aria-live="polite"
@@ -585,67 +620,71 @@ export function GuidedSecurityLesson({
               >
                 {visibleCapabilityMessage}
               </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                {experienceMode === 'site-tools' ? (
-                  <>
-                    <Fact
-                      label="1. Keep this page open"
-                      value="Stay in ChatGPT or Codex’s built-in browser. The action belongs to this page and session."
-                    />
-                    <Fact
-                      label="2. Ask the same agent"
-                      value={approvalUi.siteToolsAgentRequest}
-                    />
-                    <Fact
-                      label="3. Return here"
-                      value="The page evidence appears after the registered callback completes."
-                    />
-                  </>
-                ) : experienceMode === 'local-guard' ? (
-                  <>
-                    <Fact
-                      label="1. Local Guard"
-                      value="Open LeftOut Local Guard and confirm “Protected: 1 exact action.”"
-                    />
-                    <Fact
-                      label="2. Ask your local agent"
-                      value={approvalUi.localAgentRequest}
-                    />
-                    <Fact
-                      label="3. Return here"
-                      value="The page evidence appears after the relay completes the guarded call."
-                    />
-                  </>
-                ) : (
-                  <>
-                    <Fact
-                      label="1. Stay read-only"
-                      value="Do not ask an agent to run the prepared action."
-                    />
-                    <Fact
-                      label="2. Inspect"
-                      value="Review the frozen contract and the security rule it applies."
-                    />
-                    <Fact
-                      label="3. Continue"
-                      value="Choose a live setup above when you want an agent-driven result."
-                    />
-                  </>
-                )}
-              </div>
-              <div className="mt-4 rounded-md border border-sky-300/20 bg-sky-300/8 p-3">
-                <p className="text-xs font-semibold text-sky-200">
-                  No technical details to copy
-                </p>
-                <p className="mt-1 text-xs leading-5 text-slate-300">
-                  {experienceMode === 'site-tools'
-                    ? 'The agent uses the one approved, zero-input action registered by this page. If the client cannot identify that exact action, it should stop without invoking anything.'
-                    : experienceMode === 'local-guard'
-                      ? 'The local relay finds the one protected practice page and its sole approved, zero-input action. If the page or action is ambiguous, it stops without invoking anything.'
-                      : 'No client action is requested on this path. The technical identifiers remain available only for inspection.'}
-                </p>
-              </div>
-              {experienceMode !== 'read-only' ? (
+              {canRequestAgent ? (
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  {experienceMode === 'site-tools' ? (
+                    <>
+                      <Fact
+                        label="1. Keep this page open"
+                        value="Stay in ChatGPT or Codex’s built-in browser. The action belongs to this page and session."
+                      />
+                      <Fact
+                        label="2. Ask the same agent"
+                        value={approvalUi.siteToolsAgentRequest}
+                      />
+                      <Fact
+                        label="3. Return here"
+                        value="The page evidence appears after the registered callback completes."
+                      />
+                    </>
+                  ) : experienceMode === 'local-guard' ? (
+                    <>
+                      <Fact
+                        label="1. Local Guard"
+                        value="Open LeftOut Local Guard and confirm “Protected: 1 exact action.”"
+                      />
+                      <Fact
+                        label="2. Ask your local agent"
+                        value={approvalUi.localAgentRequest}
+                      />
+                      <Fact
+                        label="3. Return here"
+                        value="The page evidence appears after the relay completes the guarded call."
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Fact
+                        label="1. Stay read-only"
+                        value="Do not ask an agent to run the prepared action."
+                      />
+                      <Fact
+                        label="2. Inspect"
+                        value="Review the frozen contract and the security rule it applies."
+                      />
+                      <Fact
+                        label="3. Continue"
+                        value="Choose a live setup above when you want an agent-driven result."
+                      />
+                    </>
+                  )}
+                </div>
+              ) : null}
+              {canRequestAgent ? (
+                <div className="mt-4 rounded-md border border-sky-300/20 bg-sky-300/8 p-3">
+                  <p className="text-xs font-semibold text-sky-200">
+                    No tool IDs or hashes needed
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-slate-300">
+                    {experienceMode === 'site-tools'
+                      ? 'The agent uses the one approved, zero-input action registered by this page. If the client cannot identify that exact action, it should stop without invoking anything.'
+                      : experienceMode === 'local-guard'
+                        ? 'The local relay finds the one protected practice page and its sole approved, zero-input action. If the page or action is ambiguous, it stops without invoking anything.'
+                        : 'No client action is requested on this path. The technical identifiers remain available only for inspection.'}
+                  </p>
+                </div>
+              ) : null}
+              {canRequestAgent && experienceMode !== 'read-only' ? (
                 <Button
                   variant="outline"
                   className="mt-3 min-h-11 w-full border-sky-300/30 bg-sky-300/8 text-sky-100 hover:bg-sky-300/15 hover:text-white"
@@ -656,6 +695,21 @@ export function GuidedSecurityLesson({
                     ? 'Request copied'
                     : 'Copy request for my agent'}
                 </Button>
+              ) : null}
+              {canRequestAgent &&
+              (copiedRequestKey === requestKey ||
+                copyErrorRequestKey === requestKey) &&
+              experienceMode !== 'read-only' ? (
+                <output
+                  aria-live="polite"
+                  className="mt-2 block text-xs leading-5 text-sky-100"
+                >
+                  {copiedRequestKey === requestKey
+                    ? experienceMode === 'site-tools'
+                      ? 'Copied — return to this browser’s chat and send it.'
+                      : 'Copied — paste it into your connected local agent.'
+                    : 'Copy was blocked — select the exact request above and paste it into your agent.'}
+                </output>
               ) : null}
               <details className="mt-4 rounded-md border border-white/10 bg-white/5 p-3">
                 <summary className="cursor-pointer text-xs font-semibold text-slate-200">
@@ -704,6 +758,33 @@ export function GuidedSecurityLesson({
                     }}
                   >
                     Review a fresh approval
+                  </Button>
+                </div>
+              ) : null}
+              {capability.status === 'failed' && !receipt ? (
+                <div className="mt-4 rounded-md border border-red-300/30 bg-red-300/10 p-3">
+                  <p className="text-xs leading-5 text-red-100">
+                    The old action cannot be requested again. Reset the fake
+                    lesson state, then inspect and approve a new action.
+                  </p>
+                  <Button
+                    variant="secondary"
+                    className="mt-3 min-h-11 w-full"
+                    onClick={() => {
+                      onResetScenario();
+                      capability.reset();
+                      setCopiedRequestKey('');
+                      setCopyErrorRequestKey('');
+                      setStage(2);
+                      setLessonAnnouncement(
+                        'Lesson reset. Review a fresh exact action before approving it.',
+                      );
+                      window.requestAnimationFrame(() =>
+                        reviewHeadingRef.current?.focus(),
+                      );
+                    }}
+                  >
+                    Reset this synthetic lesson
                   </Button>
                 </div>
               ) : null}
@@ -982,11 +1063,13 @@ function LessonCard({
   icon,
   eyebrow,
   title,
+  headingRef,
   children,
 }: {
   icon: React.ReactNode;
   eyebrow: string;
   title: string;
+  headingRef?: React.Ref<HTMLHeadingElement>;
   children: React.ReactNode;
 }) {
   return (
@@ -999,7 +1082,13 @@ function LessonCard({
           <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-lime-300">
             {eyebrow}
           </p>
-          <h3 className="mt-1 text-xl font-semibold tracking-tight">{title}</h3>
+          <h3
+            ref={headingRef}
+            tabIndex={headingRef ? -1 : undefined}
+            className="mt-1 text-xl font-semibold tracking-tight"
+          >
+            {title}
+          </h3>
         </div>
       </div>
       <div className="mt-5">{children}</div>
