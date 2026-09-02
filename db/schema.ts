@@ -215,3 +215,94 @@ export const reportPublications = sqliteTable(
     ),
   ],
 );
+
+export const reportRetentionStates = sqliteTable(
+  'leftout_report_retention_states',
+  {
+    reportId: text('report_id')
+      .primaryKey()
+      .references(() => reportRecords.id),
+    schemaVersion: text('schema_version').notNull(),
+    revision: integer('revision').notNull(),
+    updatedAt: text('updated_at').notNull(),
+    legalHold: integer('legal_hold', { mode: 'boolean' }).notNull(),
+    retainUntil: text('retain_until').notNull(),
+    policyVersion: text('policy_version').notNull(),
+    lastEventSha256: text('last_event_sha256').notNull(),
+    stateJson: text('state_json').notNull(),
+  },
+  (table) => [
+    check(
+      'chk_leftout_report_retention_states_revision',
+      sql`${table.revision} >= 1`,
+    ),
+    check(
+      'chk_leftout_report_retention_states_legal_hold',
+      sql`${table.legalHold} IN (0, 1)`,
+    ),
+    check(
+      'chk_leftout_report_retention_states_last_event_sha256',
+      sql`length(${table.lastEventSha256}) = 64`,
+    ),
+    index('idx_leftout_report_retention_states_due').on(
+      table.legalHold,
+      table.retainUntil,
+    ),
+  ],
+);
+
+export const reportRetentionEvents = sqliteTable(
+  'leftout_report_retention_events',
+  {
+    eventId: text('event_id').primaryKey(),
+    reportId: text('report_id')
+      .notNull()
+      .references(() => reportRecords.id),
+    revision: integer('revision').notNull(),
+    at: text('at').notNull(),
+    actorId: text('actor_id').notNull(),
+    actorRole: text('actor_role').notNull(),
+    requestId: text('request_id').notNull(),
+    action: text('action').notNull(),
+    legalHold: integer('legal_hold', { mode: 'boolean' }).notNull(),
+    retainUntil: text('retain_until').notNull(),
+    policyVersion: text('policy_version').notNull(),
+    previousEventSha256: text('previous_event_sha256'),
+    eventSha256: text('event_sha256').notNull(),
+    eventJson: text('event_json').notNull(),
+  },
+  (table) => [
+    check(
+      'chk_leftout_report_retention_events_revision',
+      sql`${table.revision} >= 1`,
+    ),
+    check(
+      'chk_leftout_report_retention_events_actor_role',
+      sql`${table.actorRole} IN ('custodian','system')`,
+    ),
+    check(
+      'chk_leftout_report_retention_events_action',
+      sql`${table.action} IN ('policy_assigned','legal_hold_set','legal_hold_cleared')`,
+    ),
+    check(
+      'chk_leftout_report_retention_events_legal_hold',
+      sql`${table.legalHold} IN (0, 1)`,
+    ),
+    check(
+      'chk_leftout_report_retention_events_previous_event_sha256',
+      sql`${table.previousEventSha256} IS NULL OR length(${table.previousEventSha256}) = 64`,
+    ),
+    check(
+      'chk_leftout_report_retention_events_event_sha256',
+      sql`length(${table.eventSha256}) = 64`,
+    ),
+    uniqueIndex('idx_leftout_report_retention_events_report_revision').on(
+      table.reportId,
+      table.revision,
+    ),
+    uniqueIndex('idx_leftout_report_retention_events_report_request').on(
+      table.reportId,
+      table.requestId,
+    ),
+  ],
+);

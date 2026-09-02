@@ -14,8 +14,14 @@ import {
   type ReportingLedgerEvent,
   type ReportingLedgerRecord,
 } from './ledger';
+import {
+  parseReportingRetentionEvent,
+  parseReportingRetentionState,
+  type ReportingRetentionEvent,
+  type ReportingRetentionState,
+} from './retention-core';
 
-export const REPORTING_STORE_SCHEMA_VERSION = 2 as const;
+export const REPORTING_STORE_SCHEMA_VERSION = 3 as const;
 
 export class ReportingStoreConflictError extends Error {
   override readonly name = 'ReportingStoreConflictError';
@@ -32,6 +38,11 @@ export class ReportingStoreQuotaError extends Error {
 export interface ReportingLedgerBundle {
   record: Readonly<ReportingLedgerRecord>;
   events: readonly Readonly<ReportingLedgerEvent>[];
+}
+
+export interface ReportingRetentionBundle {
+  state: Readonly<ReportingRetentionState>;
+  events: readonly Readonly<ReportingRetentionEvent>[];
 }
 
 export interface ReportingIntakeIdempotency {
@@ -129,12 +140,44 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     record_json TEXT NOT NULL,
     FOREIGN KEY (report_id) REFERENCES leftout_report_records(id)
   )`,
+  `CREATE TABLE IF NOT EXISTS leftout_report_retention_states (
+    report_id TEXT PRIMARY KEY NOT NULL,
+    schema_version TEXT NOT NULL,
+    revision INTEGER NOT NULL CHECK (revision >= 1),
+    updated_at TEXT NOT NULL,
+    legal_hold INTEGER NOT NULL CHECK (legal_hold IN (0, 1)),
+    retain_until TEXT NOT NULL,
+    policy_version TEXT NOT NULL,
+    last_event_sha256 TEXT NOT NULL CHECK (length(last_event_sha256) = 64),
+    state_json TEXT NOT NULL,
+    FOREIGN KEY (report_id) REFERENCES leftout_report_records(id)
+  )`,
+  `CREATE TABLE IF NOT EXISTS leftout_report_retention_events (
+    event_id TEXT PRIMARY KEY NOT NULL,
+    report_id TEXT NOT NULL,
+    revision INTEGER NOT NULL CHECK (revision >= 1),
+    at TEXT NOT NULL,
+    actor_id TEXT NOT NULL,
+    actor_role TEXT NOT NULL CHECK (actor_role IN ('custodian','system')),
+    request_id TEXT NOT NULL,
+    action TEXT NOT NULL CHECK (action IN ('policy_assigned','legal_hold_set','legal_hold_cleared')),
+    legal_hold INTEGER NOT NULL CHECK (legal_hold IN (0, 1)),
+    retain_until TEXT NOT NULL,
+    policy_version TEXT NOT NULL,
+    previous_event_sha256 TEXT CHECK (previous_event_sha256 IS NULL OR length(previous_event_sha256) = 64),
+    event_sha256 TEXT NOT NULL CHECK (length(event_sha256) = 64),
+    event_json TEXT NOT NULL,
+    FOREIGN KEY (report_id) REFERENCES leftout_report_records(id)
+  )`,
   'CREATE INDEX IF NOT EXISTS idx_leftout_report_records_state_updated ON leftout_report_records(state, updated_at)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_events_report_sequence ON leftout_report_events(report_id, sequence)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_events_report_request ON leftout_report_events(report_id, request_id)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_intake_idempotency_key ON leftout_report_intake_idempotency(invitation_id, key_sha256)',
   'CREATE INDEX IF NOT EXISTS idx_leftout_report_intake_quotas_expiry ON leftout_report_intake_quotas(expires_at)',
   'CREATE INDEX IF NOT EXISTS idx_leftout_report_publications_published ON leftout_report_publications(published_at, report_id)',
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_retention_events_report_revision ON leftout_report_retention_events(report_id, revision)',
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_retention_events_report_request ON leftout_report_retention_events(report_id, request_id)',
+  'CREATE INDEX IF NOT EXISTS idx_leftout_report_retention_states_due ON leftout_report_retention_states(legal_hold, retain_until)',
   `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_event_snapshot
     BEFORE INSERT ON leftout_report_events
     WHEN NOT EXISTS (
@@ -228,6 +271,57 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     BEFORE DELETE ON leftout_report_publications
     BEGIN
       SELECT RAISE(ABORT, 'leftout_report_publications_immutable');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_retention_event_snapshot
+    BEFORE INSERT ON leftout_report_retention_events
+    WHEN NOT EXISTS (
+      SELECT 1 FROM leftout_report_retention_states
+      WHERE report_id = NEW.report_id
+        AND revision = NEW.revision
+        AND last_event_sha256 = NEW.event_sha256
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_retention_event_snapshot_mismatch');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_retention_event_chain
+    BEFORE INSERT ON leftout_report_retention_events
+    WHEN (NEW.revision = 1 AND NEW.previous_event_sha256 IS NOT NULL)
+      OR (NEW.revision > 1 AND NOT EXISTS (
+        SELECT 1 FROM leftout_report_retention_events
+        WHERE report_id = NEW.report_id
+          AND revision = NEW.revision - 1
+          AND event_sha256 = NEW.previous_event_sha256
+      ))
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_retention_event_chain_mismatch');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_retention_events_no_update
+    BEFORE UPDATE ON leftout_report_retention_events
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_retention_events_append_only');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_retention_events_no_delete
+    BEFORE DELETE ON leftout_report_retention_events
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_retention_events_append_only');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_retention_state_integrity
+    BEFORE UPDATE ON leftout_report_retention_states
+    WHEN NEW.report_id != OLD.report_id
+      OR NEW.schema_version != OLD.schema_version
+      OR NEW.revision != OLD.revision + 1
+      OR NEW.updated_at < OLD.updated_at
+      OR NEW.legal_hold = OLD.legal_hold
+      OR NEW.retain_until != OLD.retain_until
+      OR NEW.policy_version != OLD.policy_version
+      OR NEW.last_event_sha256 = OLD.last_event_sha256
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_retention_state_integrity');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_retention_states_no_delete
+    BEFORE DELETE ON leftout_report_retention_states
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_retention_states_require_retention_workflow');
     END`,
 ]);
 
@@ -411,6 +505,93 @@ function eventStatement(
     );
 }
 
+function retentionStateStatement(
+  database: D1Database,
+  state: Readonly<ReportingRetentionState>,
+) {
+  return database
+    .prepare(
+      `INSERT INTO leftout_report_retention_states (
+        report_id, schema_version, revision, updated_at, legal_hold,
+        retain_until, policy_version, last_event_sha256, state_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      state.reportId,
+      state.schemaVersion,
+      state.revision,
+      state.updatedAt,
+      state.legalHold ? 1 : 0,
+      state.retainUntil,
+      state.policyVersion,
+      state.lastEventSha256,
+      JSON.stringify(state),
+    );
+}
+
+function retentionEventStatement(
+  database: D1Database,
+  event: Readonly<ReportingRetentionEvent>,
+) {
+  return database
+    .prepare(
+      `INSERT INTO leftout_report_retention_events (
+        event_id, report_id, revision, at, actor_id, actor_role, request_id,
+        action, legal_hold, retain_until, policy_version,
+        previous_event_sha256, event_sha256, event_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      event.eventId,
+      event.reportId,
+      event.revision,
+      event.at,
+      event.actor.id,
+      event.actor.role,
+      event.requestId,
+      event.action,
+      event.legalHold ? 1 : 0,
+      event.retainUntil,
+      event.policyVersion,
+      event.previousEventSha256,
+      event.eventSha256,
+      JSON.stringify(event),
+    );
+}
+
+function initialRetentionBundle(
+  value: Readonly<{
+    state: Readonly<ReportingRetentionState>;
+    event: Readonly<ReportingRetentionEvent>;
+  }>,
+) {
+  try {
+    const state = parseReportingRetentionState(value.state);
+    const event = parseReportingRetentionEvent(value.event);
+    if (
+      state.reportId !== event.reportId ||
+      state.revision !== 1 ||
+      event.revision !== 1 ||
+      event.action !== 'policy_assigned' ||
+      event.actor.role !== 'system' ||
+      event.legalHold ||
+      event.previousEventSha256 !== null ||
+      state.updatedAt !== event.at ||
+      state.legalHold !== event.legalHold ||
+      state.retainUntil !== event.retainUntil ||
+      state.policyVersion !== event.policyVersion ||
+      state.lastEventSha256 !== event.eventSha256
+    ) {
+      throw new Error('initial retention mismatch');
+    }
+    return Object.freeze({ state, event });
+  } catch {
+    throw new ReportingStoreIntegrityError(
+      'Reporting intake retention bundle failed integrity validation.',
+    );
+  }
+}
+
 function publicationRecord(
   record: Readonly<ReportingLedgerRecord>,
   event: Readonly<ReportingLedgerEvent>,
@@ -424,7 +605,11 @@ function publicationRecord(
     moderationState: record.moderation.state,
     publication: record.moderation.publication,
   });
-  if (!projected || event.to !== 'published' || event.actor.role !== 'publisher') {
+  if (
+    !projected ||
+    event.to !== 'published' ||
+    event.actor.role !== 'publisher'
+  ) {
     throw new ReportingStoreIntegrityError(
       'Reporting publication bundle failed integrity validation.',
     );
@@ -714,6 +899,156 @@ export async function loadReportingLedger(
   }
 }
 
+interface ReportingRetentionStateRow {
+  stateJson: string;
+  revision: number;
+  updatedAt: string;
+  legalHold: number;
+  retainUntil: string;
+  policyVersion: string;
+  lastEventSha256: string;
+}
+
+interface ReportingRetentionEventRow {
+  eventJson: string;
+  eventId: string;
+  revision: number;
+  at: string;
+  actorId: string;
+  actorRole: string;
+  requestId: string;
+  action: string;
+  legalHold: number;
+  retainUntil: string;
+  policyVersion: string;
+  previousEventSha256: string | null;
+  eventSha256: string;
+}
+
+export async function loadReportingRetention(
+  database: D1Database,
+  reportId: string,
+): Promise<Readonly<ReportingRetentionBundle> | null> {
+  await ensureReportingStoreSchema(database);
+  if (!UUID_PATTERN.test(reportId)) {
+    throw new ReportingStoreIntegrityError(
+      'Reporting retention identifier is invalid.',
+    );
+  }
+  const stateRow = await database
+    .prepare(
+      `SELECT state_json AS stateJson, revision, updated_at AS updatedAt,
+              legal_hold AS legalHold, retain_until AS retainUntil,
+              policy_version AS policyVersion,
+              last_event_sha256 AS lastEventSha256
+       FROM leftout_report_retention_states WHERE report_id = ?`,
+    )
+    .bind(reportId)
+    .first<ReportingRetentionStateRow>();
+  if (!stateRow) {
+    const orphaned = await database
+      .prepare(
+        'SELECT count(*) AS count FROM leftout_report_retention_events WHERE report_id = ?',
+      )
+      .bind(reportId)
+      .first<{ count: number }>();
+    if ((orphaned?.count ?? 0) !== 0) {
+      throw new ReportingStoreIntegrityError(
+        'Stored reporting retention events have no state snapshot.',
+      );
+    }
+    return null;
+  }
+  const eventRows = await database
+    .prepare(
+      `SELECT event_json AS eventJson, event_id AS eventId, revision, at,
+              actor_id AS actorId, actor_role AS actorRole,
+              request_id AS requestId, action, legal_hold AS legalHold,
+              retain_until AS retainUntil, policy_version AS policyVersion,
+              previous_event_sha256 AS previousEventSha256,
+              event_sha256 AS eventSha256
+       FROM leftout_report_retention_events
+       WHERE report_id = ? ORDER BY revision ASC`,
+    )
+    .bind(reportId)
+    .all<ReportingRetentionEventRow>();
+
+  try {
+    const state = parseReportingRetentionState(
+      JSON.parse(stateRow.stateJson) as unknown,
+    );
+    const events = Object.freeze(
+      eventRows.results.map((row) =>
+        parseReportingRetentionEvent(JSON.parse(row.eventJson) as unknown),
+      ),
+    );
+    if (
+      state.reportId !== reportId ||
+      state.revision !== stateRow.revision ||
+      state.updatedAt !== stateRow.updatedAt ||
+      ![0, 1].includes(stateRow.legalHold) ||
+      state.legalHold !== (stateRow.legalHold === 1) ||
+      state.retainUntil !== stateRow.retainUntil ||
+      state.policyVersion !== stateRow.policyVersion ||
+      state.lastEventSha256 !== stateRow.lastEventSha256 ||
+      events.length !== state.revision
+    ) {
+      throw new Error('retention state metadata mismatch');
+    }
+    for (const [index, event] of events.entries()) {
+      const row = eventRows.results[index];
+      const previous = events[index - 1];
+      if (
+        !row ||
+        event.eventId !== row.eventId ||
+        event.reportId !== reportId ||
+        event.revision !== index + 1 ||
+        event.revision !== row.revision ||
+        event.at !== row.at ||
+        event.actor.id !== row.actorId ||
+        event.actor.role !== row.actorRole ||
+        event.requestId !== row.requestId ||
+        event.action !== row.action ||
+        ![0, 1].includes(row.legalHold) ||
+        event.legalHold !== (row.legalHold === 1) ||
+        event.retainUntil !== row.retainUntil ||
+        event.policyVersion !== row.policyVersion ||
+        event.previousEventSha256 !== row.previousEventSha256 ||
+        event.previousEventSha256 !==
+          (previous ? previous.eventSha256 : null) ||
+        event.eventSha256 !== row.eventSha256 ||
+        event.retainUntil !== state.retainUntil ||
+        event.policyVersion !== state.policyVersion ||
+        (index === 0 &&
+          (event.action !== 'policy_assigned' ||
+            event.actor.role !== 'system' ||
+            event.legalHold)) ||
+        (index > 0 &&
+          (event.actor.role !== 'custodian' ||
+            event.action !==
+              (event.legalHold ? 'legal_hold_set' : 'legal_hold_cleared') ||
+            event.legalHold === previous?.legalHold))
+      ) {
+        throw new Error('retention event metadata mismatch');
+      }
+    }
+    const last = events.at(-1);
+    if (
+      !last ||
+      state.updatedAt !== last.at ||
+      state.legalHold !== last.legalHold ||
+      state.lastEventSha256 !== last.eventSha256
+    ) {
+      throw new Error('retention chain did not match state');
+    }
+    return Object.freeze({ state, events });
+  } catch {
+    throw new ReportingStoreIntegrityError(
+      'Stored reporting retention failed integrity validation.',
+    );
+  }
+}
+
 export interface ReportingReviewCursor {
   updatedAt: string;
   reportId: string;
@@ -823,6 +1158,29 @@ async function resolveExistingIntake(
   return Object.freeze({ disposition: 'existing' as const, ledger });
 }
 
+async function verifyExistingRetention(
+  database: D1Database,
+  expected: Readonly<{
+    state: Readonly<ReportingRetentionState>;
+    event: Readonly<ReportingRetentionEvent>;
+  }>,
+) {
+  const retained = await loadReportingRetention(
+    database,
+    expected.state.reportId,
+  );
+  if (
+    !retained ||
+    retained.state.retainUntil !== expected.state.retainUntil ||
+    retained.state.policyVersion !== expected.state.policyVersion ||
+    JSON.stringify(retained.events[0]) !== JSON.stringify(expected.event)
+  ) {
+    throw new ReportingStoreIntegrityError(
+      'Existing reporting intake is missing its original retention assignment.',
+    );
+  }
+}
+
 export async function saveReportingIntake(
   database: D1Database,
   bundle: Readonly<{
@@ -831,14 +1189,25 @@ export async function saveReportingIntake(
   }>,
   idempotencyValue: Readonly<ReportingIntakeIdempotency>,
   intakeQuotaPolicy?: Readonly<ReportingIntakeQuotaPolicy>,
+  retentionValue?: Readonly<{
+    state: Readonly<ReportingRetentionState>;
+    event: Readonly<ReportingRetentionEvent>;
+  }>,
 ) {
   const idempotency = intakeIdempotency(idempotencyValue);
+  const retention = retentionValue
+    ? initialRetentionBundle(retentionValue)
+    : undefined;
   if (
     bundle.record.revision !== 1 ||
     bundle.event.sequence !== 1 ||
     bundle.event.actor.role !== 'intake' ||
     bundle.event.actor.id !== idempotency.invitationId ||
-    !verifyReportingLedgerChain(bundle.record, [bundle.event])
+    !verifyReportingLedgerChain(bundle.record, [bundle.event]) ||
+    (retention !== undefined &&
+      (retention.state.reportId !== bundle.record.moderation.id ||
+        retention.event.requestId !== bundle.event.requestId ||
+        retention.event.at !== bundle.record.moderation.receivedAt))
   ) {
     throw new ReportingStoreIntegrityError(
       'Reporting intake bundle failed integrity validation.',
@@ -846,7 +1215,10 @@ export async function saveReportingIntake(
   }
   await ensureReportingStoreSchema(database);
   const existing = await resolveExistingIntake(database, idempotency);
-  if (existing) return existing;
+  if (existing) {
+    if (retention) await verifyExistingRetention(database, retention);
+    return existing;
+  }
 
   try {
     await database.batch([
@@ -855,6 +1227,12 @@ export async function saveReportingIntake(
         : []),
       recordStatement(database, bundle.record),
       eventStatement(database, bundle.event),
+      ...(retention
+        ? [
+            retentionStateStatement(database, retention.state),
+            retentionEventStatement(database, retention.event),
+          ]
+        : []),
       database
         .prepare(
           `INSERT INTO leftout_report_intake_idempotency (
@@ -890,6 +1268,7 @@ export async function saveReportingIntake(
       'Committed reporting intake did not match its source record.',
     );
   }
+  if (retention) await verifyExistingRetention(database, retention);
   return Object.freeze({ disposition: 'created' as const, ledger });
 }
 
@@ -913,6 +1292,170 @@ export async function loadReportingRequestEvent(
       'Stored reporting request event failed integrity validation.',
     );
   }
+}
+
+export async function loadReportingRetentionRequestEvent(
+  database: D1Database,
+  reportId: string,
+  requestId: string,
+) {
+  await ensureReportingStoreSchema(database);
+  const row = await database
+    .prepare(
+      `SELECT event_json AS eventJson FROM leftout_report_retention_events
+       WHERE report_id = ? AND request_id = ?`,
+    )
+    .bind(reportId, requestId)
+    .first<{ eventJson: string }>();
+  if (!row) return null;
+  try {
+    return parseReportingRetentionEvent(JSON.parse(row.eventJson) as unknown);
+  } catch {
+    throw new ReportingStoreIntegrityError(
+      'Stored reporting retention request event failed integrity validation.',
+    );
+  }
+}
+
+function sameRetentionTransitionRequest(
+  left: Readonly<ReportingRetentionEvent>,
+  right: Readonly<ReportingRetentionEvent>,
+) {
+  return (
+    left.reportId === right.reportId &&
+    left.revision === right.revision &&
+    left.actor.id === right.actor.id &&
+    left.actor.role === right.actor.role &&
+    left.requestId === right.requestId &&
+    left.action === right.action &&
+    left.legalHold === right.legalHold &&
+    left.retainUntil === right.retainUntil &&
+    left.policyVersion === right.policyVersion &&
+    left.previousEventSha256 === right.previousEventSha256
+  );
+}
+
+export async function saveReportingRetentionTransition(
+  database: D1Database,
+  nextValue: Readonly<{
+    state: Readonly<ReportingRetentionState>;
+    event: Readonly<ReportingRetentionEvent>;
+  }>,
+) {
+  let next;
+  try {
+    next = Object.freeze({
+      state: parseReportingRetentionState(nextValue.state),
+      event: parseReportingRetentionEvent(nextValue.event),
+    });
+  } catch {
+    throw new ReportingStoreIntegrityError(
+      'Reporting retention transition failed integrity validation.',
+    );
+  }
+  await ensureReportingStoreSchema(database);
+  const current = await loadReportingRetention(database, next.event.reportId);
+  if (!current) {
+    throw new ReportingStoreConflictError(
+      'Reporting retention state was not found.',
+    );
+  }
+  const existingRequest = await loadReportingRetentionRequestEvent(
+    database,
+    next.event.reportId,
+    next.event.requestId,
+  );
+  if (existingRequest) {
+    if (!sameRetentionTransitionRequest(existingRequest, next.event)) {
+      throw new ReportingStoreConflictError(
+        'Reporting lifecycle request ID was reused for a different transition.',
+      );
+    }
+    return Object.freeze({
+      disposition: 'existing' as const,
+      retention: current,
+    });
+  }
+  if (
+    next.state.reportId !== current.state.reportId ||
+    next.state.revision !== current.state.revision + 1 ||
+    next.event.reportId !== current.state.reportId ||
+    next.event.revision !== next.state.revision ||
+    next.event.actor.role !== 'custodian' ||
+    next.event.previousEventSha256 !== current.state.lastEventSha256 ||
+    next.event.legalHold === current.state.legalHold ||
+    next.event.action !==
+      (next.event.legalHold ? 'legal_hold_set' : 'legal_hold_cleared') ||
+    next.event.retainUntil !== current.state.retainUntil ||
+    next.event.policyVersion !== current.state.policyVersion ||
+    next.state.updatedAt !== next.event.at ||
+    next.state.legalHold !== next.event.legalHold ||
+    next.state.retainUntil !== next.event.retainUntil ||
+    next.state.policyVersion !== next.event.policyVersion ||
+    next.state.lastEventSha256 !== next.event.eventSha256
+  ) {
+    throw new ReportingStoreConflictError(
+      'Reporting lifecycle transition does not extend the current revision.',
+    );
+  }
+
+  try {
+    await database.batch([
+      database
+        .prepare(
+          `UPDATE leftout_report_retention_states
+           SET revision = ?, updated_at = ?, legal_hold = ?,
+               last_event_sha256 = ?, state_json = ?
+           WHERE report_id = ? AND revision = ? AND last_event_sha256 = ?`,
+        )
+        .bind(
+          next.state.revision,
+          next.state.updatedAt,
+          next.state.legalHold ? 1 : 0,
+          next.state.lastEventSha256,
+          JSON.stringify(next.state),
+          next.state.reportId,
+          current.state.revision,
+          current.state.lastEventSha256,
+        ),
+      retentionEventStatement(database, next.event),
+    ]);
+  } catch {
+    const raced = await loadReportingRetentionRequestEvent(
+      database,
+      next.event.reportId,
+      next.event.requestId,
+    );
+    if (raced && sameRetentionTransitionRequest(raced, next.event)) {
+      const retained = await loadReportingRetention(
+        database,
+        next.event.reportId,
+      );
+      if (retained) {
+        return Object.freeze({
+          disposition: 'existing' as const,
+          retention: retained,
+        });
+      }
+    }
+    throw new ReportingStoreConflictError(
+      'Reporting lifecycle transition lost its optimistic revision race.',
+    );
+  }
+  const retained = await loadReportingRetention(database, next.event.reportId);
+  if (
+    !retained ||
+    JSON.stringify(retained.state) !== JSON.stringify(next.state) ||
+    JSON.stringify(retained.events.at(-1)) !== JSON.stringify(next.event)
+  ) {
+    throw new ReportingStoreIntegrityError(
+      'Committed reporting lifecycle transition did not match its source.',
+    );
+  }
+  return Object.freeze({
+    disposition: 'updated' as const,
+    retention: retained,
+  });
 }
 
 function sameTransitionRequest(
@@ -998,9 +1541,7 @@ export async function saveReportingTransition(
           current.record.lastEventSha256,
         ),
       eventStatement(database, next.event),
-      ...(publication
-        ? [publicationStatement(database, publication)]
-        : []),
+      ...(publication ? [publicationStatement(database, publication)] : []),
     ]);
   } catch {
     const racedRequest = await loadReportingRequestEvent(

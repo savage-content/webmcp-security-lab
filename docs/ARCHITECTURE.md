@@ -248,8 +248,12 @@ caller-supplied actor, timestamp, publication, or state authority is rejected.
 A separately authenticated publisher can act only on the exact
 `accepted_private` revision, re-run the hostname/evidence gate, and atomically
 write an immutable minimized publication row. Stored or caller-supplied state
-is not treated as authenticated human review. Retention/correction workflows
-do not yet exist. An independently authenticated feed handler reads only the
+is not treated as authenticated human review. When its independent lifecycle
+gate is enabled, intake atomically persists an immutable retention assignment
+and a distinct custodian can set or clear legal hold through a narrow,
+idempotent revision transition. Controlled deletion, backup purge, tombstones,
+and correction workflows do not yet exist. An independently authenticated feed
+handler reads only the
 immutable publication table through a bounded, stable snapshot cursor; its JSON
 and NDJSON forms omit private report IDs, reviewer/publisher identities, source
 revisions, and private origins. Exact response bytes carry an Ed25519 detached

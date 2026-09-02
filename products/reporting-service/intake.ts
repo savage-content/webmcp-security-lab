@@ -7,6 +7,7 @@ import {
 import { authenticateReportingInvitation } from './auth';
 import { loadReportingServiceConfiguration } from './config';
 import { createReportingLedgerIntake } from './ledger';
+import { createReportingRetention } from './retention-core';
 import {
   ReportingStoreConflictError,
   ReportingStoreIntegrityError,
@@ -20,12 +21,7 @@ export const REPORTING_INTAKE_RESPONSE_SCHEMA_VERSION =
 const MAX_INTAKE_BYTES = 2 * 1024;
 const IDEMPOTENCY_KEY_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
-const INTAKE_FIELDS = new Set([
-  'category',
-  'severity',
-  'siteOrigin',
-  'stage',
-]);
+const INTAKE_FIELDS = new Set(['category', 'severity', 'siteOrigin', 'stage']);
 
 class ReportingInputError extends Error {}
 class ReportingBodyTooLargeError extends Error {}
@@ -36,6 +32,7 @@ export interface ReportingIntakeDependencies {
   now?: () => number;
   id?: () => string;
   eventId?: () => string;
+  retentionEventId?: () => string;
 }
 
 const responseHeaders = Object.freeze({
@@ -138,7 +135,10 @@ function parseIntakeBody(bodyText: string) {
 
 function retryAfterSeconds(now: number) {
   const hour = 60 * 60 * 1_000;
-  return Math.max(1, Math.ceil((Math.ceil((now + 1) / hour) * hour - now) / 1_000));
+  return Math.max(
+    1,
+    Math.ceil((Math.ceil((now + 1) / hour) * hour - now) / 1_000),
+  );
 }
 
 export async function handleReportingIntake(
@@ -147,9 +147,7 @@ export async function handleReportingIntake(
 ) {
   let configuration;
   try {
-    configuration = loadReportingServiceConfiguration(
-      dependencies.environment,
-    );
+    configuration = loadReportingServiceConfiguration(dependencies.environment);
   } catch {
     return jsonResponse({ error: 'Reporting service unavailable.' }, 503);
   }
@@ -157,22 +155,26 @@ export async function handleReportingIntake(
     return jsonResponse({ error: 'Not found.' }, 404);
   }
   if (!authenticateReportingInvitation(request, configuration)) {
-    return jsonResponse(
-      { error: 'Reporting invitation is invalid.' },
-      401,
-      { 'WWW-Authenticate': 'Bearer' },
-    );
+    return jsonResponse({ error: 'Reporting invitation is invalid.' }, 401, {
+      'WWW-Authenticate': 'Bearer',
+    });
   }
   if (
     !configuration.intakeInvitationId ||
     !configuration.intakeHourlyLimit ||
     !configuration.globalHourlyLimit ||
+    (configuration.gates.lifecycle &&
+      (!configuration.retentionDays ||
+        !configuration.retentionPolicyVersion)) ||
     !dependencies.database
   ) {
     return jsonResponse({ error: 'Reporting service unavailable.' }, 503);
   }
   if (request.headers.has('origin')) {
-    return jsonResponse({ error: 'Browser-origin intake is not enabled.' }, 403);
+    return jsonResponse(
+      { error: 'Browser-origin intake is not enabled.' },
+      403,
+    );
   }
   if (
     request.headers.get('content-type')?.toLowerCase() !== 'application/json' ||
@@ -211,6 +213,18 @@ export async function handleReportingIntake(
         now: () => now,
       },
     );
+    const retention = configuration.gates.lifecycle
+      ? createReportingRetention(
+          {
+            reportId: bundle.record.moderation.id,
+            receivedAt: bundle.record.moderation.receivedAt,
+            retentionDays: configuration.retentionDays!,
+            policyVersion: configuration.retentionPolicyVersion!,
+            requestId: idempotencyKey,
+          },
+          { eventId: dependencies.retentionEventId ?? randomUUID },
+        )
+      : undefined;
     const result = await saveReportingIntake(
       dependencies.database,
       bundle,
@@ -225,6 +239,7 @@ export async function handleReportingIntake(
         globalLimit: configuration.globalHourlyLimit,
         now,
       },
+      retention,
     );
     const record = result.ledger.record;
     return jsonResponse(

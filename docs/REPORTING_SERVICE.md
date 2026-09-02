@@ -5,7 +5,7 @@
 The reporting service is implemented as a **disabled-by-default, invited
 private pipeline preview**. It is not enabled on the public learning site. The
 public lab continues to work when every reporting setting is absent; in that
-state intake, review, publication, and feed routes return the same `404`
+state intake, review, publication, feed, and lifecycle routes return the same `404`
 response as unavailable routes.
 
 The local implementation currently provides:
@@ -16,7 +16,7 @@ The local implementation currently provides:
   content encoding, browser-origin requests, unknown fields, private/local
   destinations, caller IDs, timestamps, state, and free text;
 - one bearer invitation, a lowercase UUID idempotency key, constant-time token
-  comparison, and distinct reviewer/publisher credential types;
+  comparison, and distinct reviewer/publisher/custodian credential types;
 - per-invitation and global hourly counters committed in the same D1 batch as
   a new report;
 - unconditional `quarantined` entry, server-generated IDs and timestamps,
@@ -30,14 +30,19 @@ The local implementation currently provides:
   only public event IDs and minimized publication fields, signs the exact bytes
   with externally supplied Ed25519 material, and identifies the fingerprint
   clients must verify through a separate trust channel; and
+- an optional lifecycle gate that atomically assigns an immutable retention
+  deadline at intake and gives a separate custodian an idempotent,
+  optimistic-revision legal-hold operation; and
 - database constraints and triggers that reject state/hash drift, event or
   idempotency mutation, record deletion outside a future retention workflow,
-  quota substitution, quota overflow, or publication mutation.
+  retention-chain mutation, quota substitution, quota overflow, or publication
+  mutation.
 
-No retention/deletion/correction operation, browser submission UI, production
-identity integration, production signing-key custodian, independent
-fingerprint publication, or production operations runbook exists yet. Source
-code for a route is not evidence that the service is enabled.
+No controlled deletion, tombstone, backup purge, or public-correction operation,
+browser submission UI, production identity integration, production signing-key
+custodian, independent fingerprint publication, or production operations
+runbook exists yet. Source code for a route is not evidence that the service is
+enabled.
 
 ## Configuration contract
 
@@ -50,23 +55,26 @@ fingerprint must also be distributed through a separately trusted channel.
 With no `LEFTOUT_REPORTING_*` settings, the service is fully disabled. An
 invited-intake deployment requires all of these explicit values:
 
-| Setting                                          | Required value or boundary                                      |
-| ------------------------------------------------ | --------------------------------------------------------------- |
-| `LEFTOUT_REPORTING_MODE`                         | `invited`                                                       |
-| `LEFTOUT_REPORTING_INTAKE`                       | `true`                                                          |
-| `LEFTOUT_REPORTING_MODERATION`                   | `false` until reviewer identity and operations are approved     |
-| `LEFTOUT_REPORTING_PUBLICATION`                  | `false` until publisher identity and operations are approved    |
-| `LEFTOUT_REPORTING_FEED`                         | `false` until feed identity, key custody, and operations are approved |
-| `LEFTOUT_REPORTING_INVITATION_ID`                | Opaque normalized identifier beginning with `invitation.`        |
-| `LEFTOUT_REPORTING_INTAKE_TOKEN_SHA256`          | Lowercase SHA-256 of a randomly generated 32–512 character token |
-| `LEFTOUT_REPORTING_INVITATION_HOURLY_LIMIT`      | Explicit positive integer, at most 1,000                         |
-| `LEFTOUT_REPORTING_GLOBAL_HOURLY_LIMIT`          | Explicit positive integer, at most 10,000 and not below per-invite |
-| `LEFTOUT_REPORTING_ACTORS_JSON`                  | Omit while moderation is disabled                               |
-| `LEFTOUT_REPORTING_FEED_TOKEN_SHA256`            | Required only when feed is `true`; distinct reader-token digest |
-| `LEFTOUT_REPORTING_FEED_SIGNING_KEY_ID`          | Required only when feed is `true`; normalized `feed.*` ID      |
-| `LEFTOUT_REPORTING_FEED_SIGNING_PRIVATE_KEY_PKCS8_BASE64` | Required only when feed is `true`; Ed25519 PKCS#8 secret |
-| `LEFTOUT_REPORTING_FEED_SIGNING_PUBLIC_KEY_SPKI_BASE64` | Required only when feed is `true`; matching Ed25519 SPKI |
-| `LEFTOUT_REPORTING_FEED_SIGNING_PUBLIC_KEY_SHA256` | Required only when feed is `true`; matching lowercase digest |
+| Setting                                                   | Required value or boundary                                                                |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `LEFTOUT_REPORTING_MODE`                                  | `invited`                                                                                 |
+| `LEFTOUT_REPORTING_INTAKE`                                | `true`                                                                                    |
+| `LEFTOUT_REPORTING_MODERATION`                            | `false` until reviewer identity and operations are approved                               |
+| `LEFTOUT_REPORTING_PUBLICATION`                           | `false` until publisher identity and operations are approved                              |
+| `LEFTOUT_REPORTING_FEED`                                  | `false` until feed identity, key custody, and operations are approved                     |
+| `LEFTOUT_REPORTING_LIFECYCLE`                             | `true` only with approved retention policy and custodian operations                       |
+| `LEFTOUT_REPORTING_INVITATION_ID`                         | Opaque normalized identifier beginning with `invitation.`                                 |
+| `LEFTOUT_REPORTING_INTAKE_TOKEN_SHA256`                   | Lowercase SHA-256 of a randomly generated 32–512 character token                          |
+| `LEFTOUT_REPORTING_INVITATION_HOURLY_LIMIT`               | Explicit positive integer, at most 1,000                                                  |
+| `LEFTOUT_REPORTING_GLOBAL_HOURLY_LIMIT`                   | Explicit positive integer, at most 10,000 and not below per-invite                        |
+| `LEFTOUT_REPORTING_ACTORS_JSON`                           | Closed reviewer, publisher, and/or custodian credential records required by enabled gates |
+| `LEFTOUT_REPORTING_FEED_TOKEN_SHA256`                     | Required only when feed is `true`; distinct reader-token digest                           |
+| `LEFTOUT_REPORTING_FEED_SIGNING_KEY_ID`                   | Required only when feed is `true`; normalized `feed.*` ID                                 |
+| `LEFTOUT_REPORTING_FEED_SIGNING_PRIVATE_KEY_PKCS8_BASE64` | Required only when feed is `true`; Ed25519 PKCS#8 secret                                  |
+| `LEFTOUT_REPORTING_FEED_SIGNING_PUBLIC_KEY_SPKI_BASE64`   | Required only when feed is `true`; matching Ed25519 SPKI                                  |
+| `LEFTOUT_REPORTING_FEED_SIGNING_PUBLIC_KEY_SHA256`        | Required only when feed is `true`; matching lowercase digest                              |
+| `LEFTOUT_REPORTING_RETENTION_DAYS`                        | Required only when lifecycle is `true`; integer from 1 through 3,650                      |
+| `LEFTOUT_REPORTING_RETENTION_POLICY_VERSION`              | Required only when lifecycle is `true`; normalized `retention.*` ID                       |
 
 The bearer itself is given only to the invited non-browser client. The stored
 configuration and quota rows retain digests, not bearer material. Changing a
@@ -117,6 +125,20 @@ consumer must verify the signature against a fingerprint obtained through a
 different trusted channel; the fingerprint returned beside the feed is
 diagnostic metadata, not a trust root. Browser-origin requests and unknown
 query authority are rejected.
+
+## Retention and legal-hold requests
+
+When lifecycle is explicitly enabled, each newly created intake receives a
+retention state and first hash-chained policy event in the same D1 batch as the
+private report. An authenticated custodian can read that limited projection at
+`GET /api/reports/lifecycle/:reportId` and set or clear its legal hold at
+`POST /api/reports/lifecycle/:reportId`. The transition accepts only
+`expectedRevision` and `legalHold`, requires a lowercase UUID idempotency key,
+and cannot change policy, deadline, report content, moderation, or publication.
+
+This is not yet a deletion system. The database still rejects private-record
+deletion until a controlled purge, non-identifying tombstone, backup policy,
+and public-record correction design are implemented and tested.
 
 ## Required enablement evidence
 

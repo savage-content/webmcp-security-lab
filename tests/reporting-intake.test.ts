@@ -5,7 +5,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { ISSUE_DRAFT_ASSURANCE_LIMITATION } from '../products/connector/issue-draft';
 import { handleReportingIntake } from '../products/reporting-service/intake';
-import { loadReportingLedger } from '../products/reporting-service/store';
+import {
+  loadReportingLedger,
+  loadReportingRetention,
+} from '../products/reporting-service/store';
 
 const invitationToken = 'invitation-token-with-at-least-32-characters';
 
@@ -27,12 +30,28 @@ function invitedEnvironment(
     LEFTOUT_REPORTING_MODERATION: 'false',
     LEFTOUT_REPORTING_PUBLICATION: 'false',
     LEFTOUT_REPORTING_FEED: 'false',
+    LEFTOUT_REPORTING_LIFECYCLE: 'false',
     LEFTOUT_REPORTING_INVITATION_ID: id,
     LEFTOUT_REPORTING_INTAKE_TOKEN_SHA256: digest(invitationToken),
     LEFTOUT_REPORTING_INVITATION_HOURLY_LIMIT: '20',
     LEFTOUT_REPORTING_GLOBAL_HOURLY_LIMIT: '100',
     ...overrides,
   };
+}
+
+function lifecycleEnvironment(id: string) {
+  return invitedEnvironment(id, {
+    LEFTOUT_REPORTING_LIFECYCLE: 'true',
+    LEFTOUT_REPORTING_RETENTION_DAYS: '90',
+    LEFTOUT_REPORTING_RETENTION_POLICY_VERSION: 'retention.private-v1',
+    LEFTOUT_REPORTING_ACTORS_JSON: JSON.stringify([
+      {
+        id: 'custodian-alpha',
+        role: 'custodian',
+        tokenSha256: digest('custodian-token-with-at-least-32-characters'),
+      },
+    ]),
+  });
 }
 
 function reportBody(
@@ -98,7 +117,9 @@ describe('invited reporting intake', () => {
 
   it('rejects missing authority before parsing or storing input', async () => {
     const response = await handleReportingIntake(
-      request('{not-json', { token: 'unknown-token-with-at-least-32-characters' }),
+      request('{not-json', {
+        token: 'unknown-token-with-at-least-32-characters',
+      }),
       {
         environment: invitedEnvironment(invitationId()),
         database,
@@ -170,6 +191,30 @@ describe('invited reporting intake', () => {
     expect(quota?.count).toBe(1);
   });
 
+  it('creates an immutable retention assignment in the intake transaction', async () => {
+    const id = invitationId();
+    const response = await handleReportingIntake(request(), {
+      environment: lifecycleEnvironment(id),
+      database,
+      now: () => Date.parse('2026-09-02T20:15:00.000Z'),
+    });
+    const body = (await response.json()) as Record<string, unknown>;
+    const retained = await loadReportingRetention(
+      database,
+      String(body.reportId),
+    );
+
+    expect(response.status).toBe(201);
+    expect(retained?.state).toMatchObject({
+      legalHold: false,
+      retainUntil: '2026-12-01T20:15:00.000Z',
+      policyVersion: 'retention.private-v1',
+      revision: 1,
+    });
+    expect(retained?.events).toHaveLength(1);
+    expect(retained?.events[0]?.action).toBe('policy_assigned');
+  });
+
   it('rejects conflicting reuse, hidden fields, browser origins, and broad media types', async () => {
     const id = invitationId();
     const key = randomUUID();
@@ -205,7 +250,9 @@ describe('invited reporting intake', () => {
     expect(
       (
         await handleReportingIntake(
-          request(reportBody(), { headers: { Origin: 'https://evil.example' } }),
+          request(reportBody(), {
+            headers: { Origin: 'https://evil.example' },
+          }),
           dependencies,
         )
       ).status,

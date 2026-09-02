@@ -4,9 +4,13 @@ import {
 } from './feed-signing';
 
 export const REPORTING_CONFIG_SCHEMA_VERSION =
-  'leftout.reporting-service-config/3' as const;
+  'leftout.reporting-service-config/4' as const;
 
-export const REPORTING_ACTOR_ROLES = ['reviewer', 'publisher'] as const;
+export const REPORTING_ACTOR_ROLES = [
+  'reviewer',
+  'publisher',
+  'custodian',
+] as const;
 
 export type ReportingActorRole = (typeof REPORTING_ACTOR_ROLES)[number];
 
@@ -24,6 +28,7 @@ export interface ReportingServiceConfiguration {
     moderation: boolean;
     publication: boolean;
     feed: boolean;
+    lifecycle: boolean;
   }>;
   intakeInvitationId?: string;
   intakeTokenSha256?: string;
@@ -31,6 +36,8 @@ export interface ReportingServiceConfiguration {
   globalHourlyLimit?: number;
   feedTokenSha256?: string;
   feedSigning?: Readonly<ReportingFeedSigningMaterial>;
+  retentionDays?: number;
+  retentionPolicyVersion?: string;
   actors: readonly Readonly<ReportingActorConfiguration>[];
 }
 
@@ -40,6 +47,7 @@ const ENVIRONMENT_FIELDS = Object.freeze({
   moderation: 'LEFTOUT_REPORTING_MODERATION',
   publication: 'LEFTOUT_REPORTING_PUBLICATION',
   feed: 'LEFTOUT_REPORTING_FEED',
+  lifecycle: 'LEFTOUT_REPORTING_LIFECYCLE',
   intakeInvitationId: 'LEFTOUT_REPORTING_INVITATION_ID',
   intakeTokenSha256: 'LEFTOUT_REPORTING_INTAKE_TOKEN_SHA256',
   intakeHourlyLimit: 'LEFTOUT_REPORTING_INVITATION_HOURLY_LIMIT',
@@ -49,16 +57,19 @@ const ENVIRONMENT_FIELDS = Object.freeze({
   feedSigningKeyId: 'LEFTOUT_REPORTING_FEED_SIGNING_KEY_ID',
   feedSigningPrivateKey:
     'LEFTOUT_REPORTING_FEED_SIGNING_PRIVATE_KEY_PKCS8_BASE64',
-  feedSigningPublicKey:
-    'LEFTOUT_REPORTING_FEED_SIGNING_PUBLIC_KEY_SPKI_BASE64',
+  feedSigningPublicKey: 'LEFTOUT_REPORTING_FEED_SIGNING_PUBLIC_KEY_SPKI_BASE64',
   feedSigningPublicKeySha256:
     'LEFTOUT_REPORTING_FEED_SIGNING_PUBLIC_KEY_SHA256',
+  retentionDays: 'LEFTOUT_REPORTING_RETENTION_DAYS',
+  retentionPolicyVersion: 'LEFTOUT_REPORTING_RETENTION_POLICY_VERSION',
 });
 
 const ALL_ENVIRONMENT_FIELDS = Object.freeze(Object.values(ENVIRONMENT_FIELDS));
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const ACTOR_ID_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{1,62}[a-z0-9])?$/u;
 const MAX_ACTORS = 32;
+const RETENTION_POLICY_PATTERN =
+  /^retention\.[a-z0-9](?:[a-z0-9._-]{1,62}[a-z0-9])?$/u;
 
 function definedString(
   environment: Readonly<Record<string, unknown>>,
@@ -111,6 +122,15 @@ function invitationId(value: string | undefined) {
   ) {
     throw new Error(
       'Reporting invitation ID must be a normalized opaque invitation.* identifier.',
+    );
+  }
+  return value;
+}
+
+function retentionPolicyVersion(value: string | undefined) {
+  if (!value || value.length > 64 || !RETENTION_POLICY_PATTERN.test(value)) {
+    throw new Error(
+      'Reporting retention policy must be a normalized retention.* identifier.',
     );
   }
   return value;
@@ -208,6 +228,7 @@ function disabledConfiguration(): Readonly<ReportingServiceConfiguration> {
       moderation: false,
       publication: false,
       feed: false,
+      lifecycle: false,
     }),
     actors: Object.freeze([]),
   });
@@ -241,6 +262,7 @@ export function loadReportingServiceConfiguration(
     moderation: exactBoolean(environment, ENVIRONMENT_FIELDS.moderation),
     publication: exactBoolean(environment, ENVIRONMENT_FIELDS.publication),
     feed: exactBoolean(environment, ENVIRONMENT_FIELDS.feed),
+    lifecycle: exactBoolean(environment, ENVIRONMENT_FIELDS.lifecycle),
   });
   if (gates.publication && !gates.moderation) {
     throw new Error('Reporting publication requires moderation to be enabled.');
@@ -302,10 +324,23 @@ export function loadReportingServiceConfiguration(
 
   const actorsValue = definedString(environment, ENVIRONMENT_FIELDS.actors);
   const actors = parseActors(actorsValue);
-  if (!gates.moderation && actors.length > 0) {
+  if (!gates.moderation && !gates.lifecycle && actors.length > 0) {
     throw new Error(
-      'Reporting actor credentials require the moderation gate to be enabled.',
+      'Reporting actor credentials require moderation or lifecycle authority.',
     );
+  }
+  if (
+    !gates.moderation &&
+    actors.some(
+      (actor) => actor.role === 'reviewer' || actor.role === 'publisher',
+    )
+  ) {
+    throw new Error(
+      'Reviewer and publisher credentials require moderation authority.',
+    );
+  }
+  if (!gates.lifecycle && actors.some((actor) => actor.role === 'custodian')) {
+    throw new Error('Custodian credentials require lifecycle authority.');
   }
   if (gates.moderation && !actors.some((actor) => actor.role === 'reviewer')) {
     throw new Error(
@@ -318,6 +353,11 @@ export function loadReportingServiceConfiguration(
   ) {
     throw new Error(
       'Enabled reporting publication requires at least one separate publisher.',
+    );
+  }
+  if (gates.lifecycle && !actors.some((actor) => actor.role === 'custodian')) {
+    throw new Error(
+      'Enabled reporting lifecycle requires at least one separate custodian.',
     );
   }
   if (
@@ -372,6 +412,29 @@ export function loadReportingServiceConfiguration(
     );
   }
 
+  const retentionDaysValue = definedString(
+    environment,
+    ENVIRONMENT_FIELDS.retentionDays,
+  );
+  const retentionPolicyValue = definedString(
+    environment,
+    ENVIRONMENT_FIELDS.retentionPolicyVersion,
+  );
+  if (
+    !gates.lifecycle &&
+    (retentionDaysValue !== undefined || retentionPolicyValue !== undefined)
+  ) {
+    throw new Error(
+      'Reporting retention settings require lifecycle authority.',
+    );
+  }
+  const retentionDays = gates.lifecycle
+    ? boundedInteger(environment, ENVIRONMENT_FIELDS.retentionDays, 3_650)
+    : undefined;
+  const policyVersion = gates.lifecycle
+    ? retentionPolicyVersion(retentionPolicyValue)
+    : undefined;
+
   return Object.freeze({
     schemaVersion: REPORTING_CONFIG_SCHEMA_VERSION,
     mode,
@@ -382,6 +445,8 @@ export function loadReportingServiceConfiguration(
     ...(globalHourlyLimit ? { globalHourlyLimit } : {}),
     ...(feedTokenSha256 ? { feedTokenSha256 } : {}),
     ...(feedSigning ? { feedSigning } : {}),
+    ...(retentionDays ? { retentionDays } : {}),
+    ...(policyVersion ? { retentionPolicyVersion: policyVersion } : {}),
     actors,
   });
 }

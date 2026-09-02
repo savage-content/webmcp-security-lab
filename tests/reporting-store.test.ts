@@ -7,10 +7,12 @@ import {
   createReportingLedgerIntake,
   transitionReportingLedger,
 } from '../products/reporting-service/ledger';
+import { createReportingRetention } from '../products/reporting-service/retention-core';
 import {
   ensureReportingStoreSchema,
   loadReportingLedger,
   loadReportingPublication,
+  loadReportingRetention,
   ReportingStoreConflictError,
   ReportingStoreIntegrityError,
   ReportingStoreQuotaError,
@@ -89,6 +91,41 @@ describe('durable reporting store', () => {
     expect(
       await loadReportingLedger(database, created.record.moderation.id),
     ).toEqual(result.ledger);
+  });
+
+  it('atomically binds intake to its initial retention assignment', async () => {
+    const created = intake();
+    const retention = createReportingRetention(
+      {
+        reportId: created.record.moderation.id,
+        receivedAt: created.record.moderation.receivedAt,
+        retentionDays: 90,
+        policyVersion: 'retention.private-v1',
+        requestId: created.event.requestId,
+      },
+      { eventId: randomUUID },
+    );
+    const key = idempotency();
+    const first = await saveReportingIntake(
+      database,
+      created,
+      key,
+      undefined,
+      retention,
+    );
+    const replay = await saveReportingIntake(
+      database,
+      created,
+      key,
+      undefined,
+      retention,
+    );
+
+    expect(first.disposition).toBe('created');
+    expect(replay.disposition).toBe('existing');
+    expect(
+      await loadReportingRetention(database, created.record.moderation.id),
+    ).toEqual({ state: retention.state, events: [retention.event] });
   });
 
   it('returns an identical idempotent intake and rejects conflicting reuse', async () => {

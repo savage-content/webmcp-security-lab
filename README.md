@@ -344,9 +344,9 @@ The automated suite covers:
   behavior, revocation, and failure handling.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The current automated suite passes 395/395
-tests across 45 files, typecheck, lint, and a production build on Node.js 24. Live connector
-evidence is recorded separately: the
+separate Android conformance script. The current automated suite passes 407/407
+tests across 47 files, typecheck, lint, and a production build on Node.js 24.
+Live connector evidence is recorded separately: the
 September 1 target-client run satisfied the bounded end-to-end checks in
 [docs/GO_NO_GO.md](docs/GO_NO_GO.md).
 

@@ -102,7 +102,7 @@ pretending that a green badge or a reassuring annotation is enforcement.
 
 ## Verification
 
-The current working tree passed 395 automated tests across 45 files on Node.js
+The current working tree passed 407 automated tests across 47 files on Node.js
 24, typecheck, lint, production build, deterministic Local Guard packaging, and a
 live non-invoking walkthrough/accessibility regression. Earlier bounded browser
 runs produced passing receipts for all five synthetic lessons through the

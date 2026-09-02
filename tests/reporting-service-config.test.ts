@@ -16,6 +16,7 @@ function digest(value: string) {
 const invitationToken = 'invitation-token-with-at-least-32-characters';
 const reviewerToken = 'reviewer-token-with-at-least-32-characters-long';
 const publisherToken = 'publisher-token-with-at-least-32-characters';
+const custodianToken = 'custodian-token-with-at-least-32-characters';
 const feedToken = 'feed-reader-token-with-at-least-32-characters-long';
 const feedKeyPair = generateKeyPairSync('ed25519');
 const feedPrivateKey = Buffer.from(
@@ -32,6 +33,7 @@ function invitedEnvironment(overrides: Readonly<Record<string, string>> = {}) {
     LEFTOUT_REPORTING_MODERATION: 'true',
     LEFTOUT_REPORTING_PUBLICATION: 'true',
     LEFTOUT_REPORTING_FEED: 'false',
+    LEFTOUT_REPORTING_LIFECYCLE: 'false',
     LEFTOUT_REPORTING_INVITATION_ID: 'invitation.cohort-alpha',
     LEFTOUT_REPORTING_INTAKE_TOKEN_SHA256: digest(invitationToken),
     LEFTOUT_REPORTING_INVITATION_HOURLY_LIMIT: '20',
@@ -70,6 +72,34 @@ function feedEnvironment(
   });
 }
 
+function lifecycleEnvironment(
+  overrides: Readonly<Record<string, string>> = {},
+): Record<string, string> {
+  return invitedEnvironment({
+    LEFTOUT_REPORTING_LIFECYCLE: 'true',
+    LEFTOUT_REPORTING_RETENTION_DAYS: '90',
+    LEFTOUT_REPORTING_RETENTION_POLICY_VERSION: 'retention.private-v1',
+    LEFTOUT_REPORTING_ACTORS_JSON: JSON.stringify([
+      {
+        id: 'reviewer-alpha',
+        role: 'reviewer',
+        tokenSha256: digest(reviewerToken),
+      },
+      {
+        id: 'publisher-alpha',
+        role: 'publisher',
+        tokenSha256: digest(publisherToken),
+      },
+      {
+        id: 'custodian-alpha',
+        role: 'custodian',
+        tokenSha256: digest(custodianToken),
+      },
+    ]),
+    ...overrides,
+  });
+}
+
 function request(token?: string) {
   return new Request('https://reports.example.test/action', {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -80,13 +110,14 @@ describe('reporting service configuration', () => {
   it('is fully disabled when reporting configuration is absent', () => {
     const configuration = loadReportingServiceConfiguration({});
     expect(configuration).toEqual({
-      schemaVersion: 'leftout.reporting-service-config/3',
+      schemaVersion: 'leftout.reporting-service-config/4',
       mode: 'disabled',
       gates: {
         intake: false,
         moderation: false,
         publication: false,
         feed: false,
+        lifecycle: false,
       },
       actors: [],
     });
@@ -117,10 +148,9 @@ describe('reporting service configuration', () => {
       moderation: true,
       publication: true,
       feed: false,
+      lifecycle: false,
     });
-    expect(configuration.intakeInvitationId).toBe(
-      'invitation.cohort-alpha',
-    );
+    expect(configuration.intakeInvitationId).toBe('invitation.cohort-alpha');
     expect(configuration.intakeHourlyLimit).toBe(20);
     expect(configuration.globalHourlyLimit).toBe(100);
     expect(configuration.actors.map(({ id, role }) => ({ id, role }))).toEqual([
@@ -153,12 +183,54 @@ describe('reporting service configuration', () => {
         feedEnvironment({ LEFTOUT_REPORTING_PUBLICATION: 'false' }),
       ),
     ).toThrow('feed requires publication');
+    expect(() =>
+      loadReportingServiceConfiguration(
+        lifecycleEnvironment({
+          LEFTOUT_REPORTING_ACTORS_JSON:
+            invitedEnvironment().LEFTOUT_REPORTING_ACTORS_JSON,
+        }),
+      ),
+    ).toThrow('separate custodian');
+  });
+
+  it('loads bounded retention under separate custodian authority', () => {
+    const configuration = loadReportingServiceConfiguration(
+      lifecycleEnvironment(),
+    );
+    expect(configuration.gates.lifecycle).toBe(true);
+    expect(configuration.retentionDays).toBe(90);
+    expect(configuration.retentionPolicyVersion).toBe('retention.private-v1');
+    expect(
+      configuration.actors.find((actor) => actor.role === 'custodian'),
+    ).toMatchObject({ id: 'custodian-alpha', role: 'custodian' });
+  });
+
+  it('rejects retention settings without lifecycle and invalid policy bounds', () => {
+    expect(() =>
+      loadReportingServiceConfiguration(
+        invitedEnvironment({ LEFTOUT_REPORTING_RETENTION_DAYS: '90' }),
+      ),
+    ).toThrow('require lifecycle authority');
+    expect(() =>
+      loadReportingServiceConfiguration(
+        lifecycleEnvironment({ LEFTOUT_REPORTING_RETENTION_DAYS: '3651' }),
+      ),
+    ).toThrow('supported maximum');
+    expect(() =>
+      loadReportingServiceConfiguration(
+        lifecycleEnvironment({
+          LEFTOUT_REPORTING_RETENTION_POLICY_VERSION: 'private-v1',
+        }),
+      ),
+    ).toThrow('retention.* identifier');
   });
 
   it('requires a bounded invitation identity and explicit intake quotas', () => {
     expect(() =>
       loadReportingServiceConfiguration(
-        invitedEnvironment({ LEFTOUT_REPORTING_INVITATION_ID: 'reviewer-alpha' }),
+        invitedEnvironment({
+          LEFTOUT_REPORTING_INVITATION_ID: 'reviewer-alpha',
+        }),
       ),
     ).toThrow('invitation.* identifier');
     expect(() =>
@@ -228,9 +300,9 @@ describe('reporting service configuration', () => {
       publicKeySpkiBase64: feedPublicKey.toString('base64'),
     });
     expect(configuration.feedSigning).not.toHaveProperty('privateKey');
-    expect(
-      authenticateReportingFeed(request(feedToken), configuration),
-    ).toBe(true);
+    expect(authenticateReportingFeed(request(feedToken), configuration)).toBe(
+      true,
+    );
     expect(
       authenticateReportingFeed(request(publisherToken), configuration),
     ).toBe(false);
@@ -307,6 +379,33 @@ describe('reporting service authentication', () => {
     ).toMatchObject({ id: 'publisher-alpha', role: 'publisher' });
   });
 
+  it('keeps lifecycle authority separate from review and publication', () => {
+    const lifecycleConfiguration = loadReportingServiceConfiguration(
+      lifecycleEnvironment(),
+    );
+    expect(
+      authenticateReportingActor(
+        request(custodianToken),
+        lifecycleConfiguration,
+        'custodian',
+      ),
+    ).toMatchObject({ id: 'custodian-alpha', role: 'custodian' });
+    expect(
+      authenticateReportingActor(
+        request(reviewerToken),
+        lifecycleConfiguration,
+        'custodian',
+      ),
+    ).toBeNull();
+    expect(
+      authenticateReportingActor(
+        request(custodianToken),
+        lifecycleConfiguration,
+        'publisher',
+      ),
+    ).toBeNull();
+  });
+
   it('rejects malformed, short, whitespace-bearing, and unknown credentials', () => {
     for (const candidate of [
       request('short'),
@@ -330,8 +429,6 @@ describe('reporting service authentication', () => {
     expect(
       authenticateReportingActor(request(reviewerToken), disabled, 'reviewer'),
     ).toBeNull();
-    expect(authenticateReportingFeed(request(feedToken), disabled)).toBe(
-      false,
-    );
+    expect(authenticateReportingFeed(request(feedToken), disabled)).toBe(false);
   });
 });

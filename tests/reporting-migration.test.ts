@@ -8,6 +8,7 @@ const migrationUrls = [
   new URL('../drizzle/0002_furry_miss_america.sql', import.meta.url),
   new URL('../drizzle/0003_mixed_nightmare.sql', import.meta.url),
   new URL('../drizzle/0004_colossal_tenebrous.sql', import.meta.url),
+  new URL('../drizzle/0005_fine_toad.sql', import.meta.url),
 ];
 
 async function applyReportingMigration(database: D1Database) {
@@ -73,6 +74,24 @@ describe('reporting database migration', () => {
       { name: 'trg_leftout_report_publications_no_delete', type: 'trigger' },
       { name: 'trg_leftout_report_publications_no_update', type: 'trigger' },
       { name: 'trg_leftout_report_records_no_delete', type: 'trigger' },
+      { name: 'trg_leftout_report_retention_event_chain', type: 'trigger' },
+      { name: 'trg_leftout_report_retention_event_snapshot', type: 'trigger' },
+      {
+        name: 'trg_leftout_report_retention_events_no_delete',
+        type: 'trigger',
+      },
+      {
+        name: 'trg_leftout_report_retention_events_no_update',
+        type: 'trigger',
+      },
+      {
+        name: 'trg_leftout_report_retention_state_integrity',
+        type: 'trigger',
+      },
+      {
+        name: 'trg_leftout_report_retention_states_no_delete',
+        type: 'trigger',
+      },
     ]);
 
     await expect(
@@ -154,6 +173,77 @@ describe('reporting database migration', () => {
     await expect(
       database
         .prepare('DELETE FROM leftout_report_records WHERE id = ?')
+        .bind(reportId)
+        .run(),
+    ).rejects.toThrow('require_retention_workflow');
+
+    const retentionEventId = randomUUID();
+    const retentionEventSha256 = '9'.repeat(64);
+    await database
+      .prepare(
+        `INSERT INTO leftout_report_retention_states (
+          report_id, schema_version, revision, updated_at, legal_hold,
+          retain_until, policy_version, last_event_sha256, state_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        reportId,
+        'leftout.reporting-retention-state/1',
+        1,
+        '2026-09-02T19:00:00.000Z',
+        0,
+        '2026-12-01T19:00:00.000Z',
+        'retention.private-v1',
+        retentionEventSha256,
+        '{}',
+      )
+      .run();
+    await database
+      .prepare(
+        `INSERT INTO leftout_report_retention_events (
+          event_id, report_id, revision, at, actor_id, actor_role,
+          request_id, action, legal_hold, retain_until, policy_version,
+          previous_event_sha256, event_sha256, event_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        retentionEventId,
+        reportId,
+        1,
+        '2026-09-02T19:00:00.000Z',
+        'system.retention-policy',
+        'system',
+        randomUUID(),
+        'policy_assigned',
+        0,
+        '2026-12-01T19:00:00.000Z',
+        'retention.private-v1',
+        null,
+        retentionEventSha256,
+        '{}',
+      )
+      .run();
+    await expect(
+      database
+        .prepare(
+          'UPDATE leftout_report_retention_states SET policy_version = ? WHERE report_id = ?',
+        )
+        .bind('retention.substituted', reportId)
+        .run(),
+    ).rejects.toThrow('retention_state_integrity');
+    await expect(
+      database
+        .prepare(
+          'DELETE FROM leftout_report_retention_events WHERE event_id = ?',
+        )
+        .bind(retentionEventId)
+        .run(),
+    ).rejects.toThrow('append_only');
+    await expect(
+      database
+        .prepare(
+          'DELETE FROM leftout_report_retention_states WHERE report_id = ?',
+        )
         .bind(reportId)
         .run(),
     ).rejects.toThrow('require_retention_workflow');

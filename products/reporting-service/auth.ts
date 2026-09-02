@@ -69,8 +69,9 @@ export function authenticateReportingActor(
 ): Readonly<ReportingActorConfiguration> | null {
   if (
     configuration.mode !== 'invited' ||
-    !configuration.gates.moderation ||
-    (requiredRole === 'publisher' && !configuration.gates.publication)
+    (requiredRole === 'reviewer' && !configuration.gates.moderation) ||
+    (requiredRole === 'publisher' && !configuration.gates.publication) ||
+    (requiredRole === 'custodian' && !configuration.gates.lifecycle)
   ) {
     return null;
   }
