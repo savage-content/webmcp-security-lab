@@ -6,7 +6,7 @@
 > remain outside the public deployment.
 
 **Report date:** 2026-09-02
-**Scope:** public commit `5ba6e97`, historical version 1.0.2 browser evidence,
+**Scope:** public commit `8568a5f`, historical version 1.0.2 browser evidence,
 and the local undeployed Local Guard, connector, moderation, and Android
 candidate
 
@@ -22,15 +22,17 @@ Tools page API, recommended the viable built-in path, unlocked Lesson 1, and
 presented an exact `TRAINING-1042` read-only approval. The dialog named the
 target, effect, no-input boundary, one-attempt/no-retry limit, prohibited
 changes, expiry, and the distinction between approval and invocation. The test
-selected **Not now**; no generated capability was approved or invoked.
+selected **Not now**; no generated capability was approved or invoked. The
+reduced-motion remediation and bounded productization candidate were then
+saved and deployed as commit `8568a5f`, Sites version 11.
 
 The live accessibility tree had one main landmark, one H1, coherent heading
 levels, named navigation, and no unnamed buttons, links, textboxes, checkboxes,
 or comboboxes. Keyboard Tab moved through the approval controls, Escape closed
 the dialog, and focus returned to its launcher. Source checks cover responsive
-dialog scrolling and the 360 CSS px Local Guard popup. The live baseline lacked
-a reduced-motion override; the next release candidate adds it to the public
-page and extension. Independent first-time-human, real screen-reader, 200%
+dialog scrolling and the 360 CSS px Local Guard popup. The version 10 baseline
+lacked a reduced-motion override; the version 11 live stylesheet contains the
+remediation for the public page and extension. Independent first-time-human, real screen-reader, 200%
 zoom, and human 360 px popup acceptance remain pending and are not inferred
 from automation. See [NOVICE_ACCEPTANCE.md](NOVICE_ACCEPTANCE.md).
 

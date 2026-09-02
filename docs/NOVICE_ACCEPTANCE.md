@@ -2,15 +2,17 @@
 
 ## Current decision
 
-**Technical novice path: PASS with one remediation pending deployment.**
+**Technical novice path: PASS on the deployed version 11 release.**
 
 **Real first-time human acceptance: NOT YET RUN.** No independent first-time
 participant or screen-reader operator was available inside this development
 session. Automated browser interaction is not relabeled as a human study.
 
 The public baseline tested on 2026-09-02 was commit `5ba6e97`, Sites version
-10, at <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>. No Site
-Tool was invoked during this acceptance run.
+10. The reduced-motion remediation and regression-tested release is commit
+`8568a5f`, Sites version 11, at
+<https://left-out-webmcp-security-lab.taitfor.chatgpt.site>. No Site Tool was
+invoked during either acceptance run.
 
 ## Deployed technical novice run
 
@@ -35,7 +37,7 @@ Tool was invoked during this acceptance run.
 | Escape and focus restoration    | PASS                   | Escape closed the alert dialog and returned focus to “Review the exact approval.”                                                                      |
 | Short/zoomed dialog containment | CODE PASS              | Walkthrough and approval dialogs use bounded viewport height, internal scrolling, wrapping actions, and responsive width.                              |
 | 360 CSS px Local Guard popup    | CODE PASS              | Popup is fixed at 360 CSS px, wraps technical values, has named labels/status regions, 40 px controls, and visible focus outlines.                     |
-| Reduced motion                  | FIXED AFTER LIVE CHECK | The live `5ba6e97` baseline lacked a reduced-motion rule. The release candidate now disables smooth scroll, animation, and transitions when requested. |
+| Reduced motion                  | PASS LIVE              | Version 10 lacked a reduced-motion rule. The version 11 live stylesheet disables smooth scroll, animation, and transitions when requested.           |
 | Real screen reader              | PENDING HUMAN          | No NVDA, JAWS, VoiceOver, or TalkBack operator completed the journey.                                                                                  |
 | Real 200% zoom                  | PENDING HUMAN          | Responsive code is present; a human usability pass at 200% remains required.                                                                           |
 | Real 360 px popup               | PENDING HUMAN          | Static contract and earlier Chrome visual evidence exist; a first-time human completion remains required.                                              |

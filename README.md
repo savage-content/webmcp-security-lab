@@ -21,9 +21,9 @@ and the local [conformance family](docs/SITE_TOOLS_CONFORMANCE.md).
 
 **License:** [MIT](LICENSE)
 
-> **Working status (September 2, 2026): commit `5ba6e97` is explicitly deployed
-> as Sites version 10 at the public URL. It includes the required setup gate,
-> six-step first-visit walkthrough, and five-lesson beginner page. The Local
+> **Working status (September 2, 2026): commit `8568a5f` is explicitly deployed
+> as Sites version 11 at the public URL. It includes the required setup gate,
+> six-step first-visit walkthrough, five-lesson beginner page, and reduced-motion support. The Local
 > Guard, connector, and reporting workbench remain local development software.** A
 > fresh Chrome 152 run completed all five lessons
 > through the unpacked extension and loopback connector with one zero-input
@@ -45,7 +45,7 @@ Site Tools support, or another client.
 
 | Current component                                    | Status                                                                                                      |
 | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Public learning range                                | Commit `5ba6e97`, Sites version 10, is live with the setup gate, first-visit walkthrough, and five lessons  |
+| Public learning range                                | Commit `8568a5f`, Sites version 11, is live with the setup gate, first-visit walkthrough, and five lessons  |
 | Five guided page capabilities                        | `PASS` in one fresh Chrome 152 sequence; one exact call per lesson and no retries                           |
 | Connector receipt path                               | `PASS` for five validated receipts, the hash chain, local redacted draft, and zero feed-eligible records    |
 | Browser extension                                    | Manifest V3 development preview; deterministic package and integrity manifest now available, still unsigned |
@@ -365,7 +365,7 @@ Receipts can be downloaded as JSON. There are no update or delete endpoints. Req
 
 ## Deployment
 
-The public URL currently hosts commit `5ba6e97` as Sites version 10. Repository
+The public URL currently hosts commit `8568a5f` as Sites version 11. Repository
 and later working-tree changes are not live merely because they exist, are
 committed, or are pushed. That deployment contains the beginner page and
 synthetic Site Tools fixtures.
