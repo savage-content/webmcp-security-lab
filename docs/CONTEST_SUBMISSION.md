@@ -93,11 +93,13 @@ pretending that a green badge or a reassuring annotation is enforcement.
   release-attestation verifier that explicitly does not claim Chrome signing.
 - A disabled-by-default, privacy-minimized reporting core with a strict invited
   intake handler, atomic quotas, hash-chained D1 events, idempotency, and
-  optimistic concurrency; it is not configured or enabled on the public site.
+  optimistic concurrency; authenticated reviewer reads/transitions and a
+  distinct publisher action can atomically create an immutable minimized
+  publication record. None is configured or enabled on the public site.
 
 ## Verification
 
-The current working tree passed 376 automated tests across 42 files on Node.js
+The current working tree passed 388 automated tests across 44 files on Node.js
 24, typecheck, lint, production build, deterministic Local Guard packaging, and a
 live non-invoking walkthrough/accessibility regression. Earlier bounded browser
 runs produced passing receipts for all five synthetic lessons through the
@@ -129,9 +131,9 @@ freedom to operate.
 - The Local Guard remains an unsigned developer preview with a loopback
   companion.
 - Reporting remains locally implemented and publicly disabled. Invited HTTP
-  intake and atomic quotas exist, but reviewer/publisher routes,
-  retention/deletion, operator recovery, correction, signed publication, and
-  privacy approval do not.
+  intake, atomic quotas, reviewer routes, and a separately authorized publisher
+  route exist, but production identity, retention/deletion, operator recovery,
+  correction, signed feed serving, and privacy approval do not.
 - Android is a conformance prototype, not a device-validated product.
 - Real first-time-human, screen-reader, and 200% zoom acceptance remain pending.
 

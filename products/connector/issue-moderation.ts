@@ -219,7 +219,15 @@ export function transitionIssueModeration(
       moderationState: to,
       publication: transitionInput.publication,
     };
-    projectPublicIssueRecord(candidate);
+    const projected = projectPublicIssueRecord(candidate);
+    if (
+      projected?.hostname &&
+      new URL(current.draft.siteOrigin ?? '').hostname !== projected.hostname
+    ) {
+      throw new Error(
+        'Named publication hostname must match the reviewed report origin.',
+      );
+    }
     publication = structuredClone(
       transitionInput.publication,
     ) as IssuePublicationGate;

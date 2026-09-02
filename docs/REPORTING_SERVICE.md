@@ -3,9 +3,10 @@
 ## Current status
 
 The reporting service is implemented as a **disabled-by-default, invited
-intake preview**. It is not enabled on the public learning site. The public lab
-continues to work when every reporting setting is absent; in that state the
-intake route returns the same `404` response as an unavailable route.
+private pipeline preview**. It is not enabled on the public learning site. The
+public lab continues to work when every reporting setting is absent; in that
+state intake, review, and publication routes return the same `404` response
+as unavailable routes.
 
 The local implementation currently provides:
 
@@ -20,13 +21,18 @@ The local implementation currently provides:
   a new report;
 - unconditional `quarantined` entry, server-generated IDs and timestamps,
   versioned snapshots, hash-chained events, and optimistic revisions; and
+- authenticated reviewer keyset reads and closed-graph transitions that reject
+  caller-supplied actor, timestamp, state, and publication authority;
+- a distinct publisher action that accepts only the exact
+  `accepted_private` revision, re-runs the hostname/evidence projection gate,
+  and atomically creates an immutable minimized publication record; and
 - database constraints and triggers that reject state/hash drift, event or
   idempotency mutation, record deletion outside a future retention workflow,
-  quota substitution, and quota overflow.
+  quota substitution, quota overflow, or publication mutation.
 
-No reviewer HTTP endpoint, publisher endpoint, retention/deletion operation,
-signed feed, browser submission UI, or production operations runbook exists
-yet. Source code for a route is not evidence that the service is enabled.
+No retention/deletion/correction operation, signed feed, browser submission UI,
+production identity integration, or production operations runbook exists yet.
+Source code for a route is not evidence that the service is enabled.
 
 ## Configuration contract
 
@@ -41,8 +47,8 @@ invited-intake deployment requires all of these explicit values:
 | ------------------------------------------------ | --------------------------------------------------------------- |
 | `LEFTOUT_REPORTING_MODE`                         | `invited`                                                       |
 | `LEFTOUT_REPORTING_INTAKE`                       | `true`                                                          |
-| `LEFTOUT_REPORTING_MODERATION`                   | `false` until reviewer endpoints and operations are approved    |
-| `LEFTOUT_REPORTING_PUBLICATION`                  | `false` until separate publisher controls are approved          |
+| `LEFTOUT_REPORTING_MODERATION`                   | `false` until reviewer identity and operations are approved     |
+| `LEFTOUT_REPORTING_PUBLICATION`                  | `false` until publisher identity and operations are approved    |
 | `LEFTOUT_REPORTING_FEED`                         | `false`; current code rejects attempts to enable it              |
 | `LEFTOUT_REPORTING_INVITATION_ID`                | Opaque normalized identifier beginning with `invitation.`        |
 | `LEFTOUT_REPORTING_INTAKE_TOKEN_SHA256`          | Lowercase SHA-256 of a randomly generated 32–512 character token |
@@ -79,7 +85,8 @@ and retained rehearsal evidence:
    incident response, and rollback;
 3. invitation issuance, revocation, rate-limit selection, abuse response, and
    support contact;
-4. authenticated reviewer reads/transitions and a separate publisher action;
+4. production reviewer/publisher identity, authorization, revocation, and
+   role-separation rehearsal;
 5. correction and erroneous-publication workflows; and
 6. a separately signed/versioned minimized feed, if a feed is still justified.
 

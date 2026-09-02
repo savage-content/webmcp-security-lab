@@ -77,7 +77,7 @@ There are intentionally no credentials, real identities, production accounts, or
 | Loopback or browser profile compromise                       | Local attacker captures development tokens or tampers with the prototype                    | Explicit local-development boundary; no production authentication claim; restart invalidates connector state                                                                                             |
 | Android conformance mislabeled integration                   | JVM tests are represented as device/AppFunction support                                     | No generated metadata or device discovery claim; Android remains isolated and conformance-only                                                                                                           |
 | Release package widens extension authority                   | A preview artifact contains unreviewed code or permissions                                  | Deterministic runtime allowlist; exact MV3 permission/host checks; symlink, remote-reference, and dynamic-code rejection; per-file and archive SHA-256 metadata                                          |
-| Caller asserts that a report was human-reviewed              | Untrusted intake reaches a public feed without real review                                  | Invited intake can only create quarantine records; closed transitions, role-separated credentials, and a hash-chained D1 ledger exist locally; no reviewer route, retention operation, or feed route exists until privacy and operations approval |
+| Caller asserts that a report was human-reviewed              | Untrusted intake reaches a public feed without real review                                  | Invited intake can only create quarantine records; authenticated reviewers follow closed transitions; only a separate publisher can act on the exact `accepted_private` revision and write an immutable minimized record. All routes remain disabled publicly, and no signed feed exists |
 
 ## Deliberate vulnerabilities versus platform vulnerabilities
 
@@ -114,10 +114,11 @@ The fixture mismatches are intentional application-design failures. The lab does
   identity, installation safety, Chrome Web Store approval, or a protected
   native browser-to-host channel.
 - The reporting modules provide role-separated credential checks, atomic
-  intake quotas, and a durable hash-chained moderation ledger. The invited
-  intake route remains disabled and unconfigured publicly. Production operator
-  identity, retention/deletion, backup and recovery, correction, incident
-  response, and signed feed operations remain absent.
+  intake quotas, a durable hash-chained moderation ledger, authenticated
+  reviewer transitions, and a separately authorized immutable publication
+  record. All routes remain disabled and unconfigured publicly. Production
+  operator identity, retention/deletion, backup and recovery, correction,
+  incident response, and signed feed operations remain absent.
 - Two earlier 2026-09-01 page invocations produced local `PASS` receipts but
   failed before connector commitment. An in-flight Chrome 152 registration
   abort remains the leading hypothesis for the later failure, not proven

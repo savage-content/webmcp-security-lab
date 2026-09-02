@@ -242,8 +242,14 @@ and optimistic revisions reject replay and stale writers. The checked-in
 migrations enforce the same state, digest, append-only, retention, and quota
 gates as the runtime bootstrap. A strict non-browser, bearer-invited intake
 route exists in source and always writes to quarantine, but its configuration
-is absent on the public site so it returns `404`. Stored or caller-supplied
-state is not treated as authenticated human review.
+is absent on the public site so it returns `404`. Authenticated reviewer
+routes use keyset pagination and permit only the closed transition graph;
+caller-supplied actor, timestamp, publication, or state authority is rejected.
+A separately authenticated publisher can act only on the exact
+`accepted_private` revision, re-run the hostname/evidence gate, and atomically
+write an immutable minimized publication row. Stored or caller-supplied state
+is not treated as authenticated human review. Retention/correction workflows
+and signed feed serving do not yet exist.
 
 Indexes match the actual read patterns:
 

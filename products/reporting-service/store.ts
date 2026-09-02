@@ -1,6 +1,13 @@
 import { createHash } from 'node:crypto';
 
 import {
+  ISSUE_MODERATION_STATES,
+  parsePublicIssueFeedRecord,
+  projectPublicIssueRecord,
+  type IssueModerationState,
+  type PublicIssueFeedRecord,
+} from '../connector/issue-publication';
+import {
   parseReportingLedgerBundle,
   parseReportingLedgerEvent,
   verifyReportingLedgerChain,
@@ -40,7 +47,18 @@ export interface ReportingIntakeQuotaPolicy {
   now: number;
 }
 
+export interface ReportingPublicationRecord {
+  reportId: string;
+  publishedAt: string;
+  publisherId: string;
+  sourceRevision: number;
+  recordSha256: string;
+  record: Readonly<PublicIssueFeedRecord>;
+}
+
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const INVITATION_ID_PATTERN =
   /^invitation\.[a-z0-9](?:[a-z0-9._-]{1,62}[a-z0-9])?$/u;
 
@@ -89,11 +107,22 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     count INTEGER NOT NULL CHECK (count >= 1 AND count <= max_count),
     max_count INTEGER NOT NULL CHECK (max_count >= 1)
   )`,
+  `CREATE TABLE IF NOT EXISTS leftout_report_publications (
+    report_id TEXT PRIMARY KEY NOT NULL,
+    schema_version TEXT NOT NULL,
+    published_at TEXT NOT NULL,
+    publisher_id TEXT NOT NULL,
+    source_revision INTEGER NOT NULL CHECK (source_revision >= 2),
+    record_sha256 TEXT NOT NULL CHECK (length(record_sha256) = 64),
+    record_json TEXT NOT NULL,
+    FOREIGN KEY (report_id) REFERENCES leftout_report_records(id)
+  )`,
   'CREATE INDEX IF NOT EXISTS idx_leftout_report_records_state_updated ON leftout_report_records(state, updated_at)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_events_report_sequence ON leftout_report_events(report_id, sequence)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_events_report_request ON leftout_report_events(report_id, request_id)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_intake_idempotency_key ON leftout_report_intake_idempotency(invitation_id, key_sha256)',
   'CREATE INDEX IF NOT EXISTS idx_leftout_report_intake_quotas_expiry ON leftout_report_intake_quotas(expires_at)',
+  'CREATE INDEX IF NOT EXISTS idx_leftout_report_publications_published ON leftout_report_publications(published_at, report_id)',
   `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_event_snapshot
     BEFORE INSERT ON leftout_report_events
     WHEN NOT EXISTS (
@@ -159,6 +188,34 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     WHEN NEW.count > NEW.max_count
     BEGIN
       SELECT RAISE(ABORT, 'leftout_reporting_quota_exhausted');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_publication_snapshot
+    BEFORE INSERT ON leftout_report_publications
+    WHEN NOT EXISTS (
+      SELECT 1
+      FROM leftout_report_records AS record
+      JOIN leftout_report_events AS event
+        ON event.report_id = record.id
+       AND event.revision = record.revision
+      WHERE record.id = NEW.report_id
+        AND record.state = 'published'
+        AND record.revision = NEW.source_revision
+        AND event.to_state = 'published'
+        AND event.actor_role = 'publisher'
+        AND event.actor_id = NEW.publisher_id
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_publication_snapshot_mismatch');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_publications_no_update
+    BEFORE UPDATE ON leftout_report_publications
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_publications_immutable');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_publications_no_delete
+    BEFORE DELETE ON leftout_report_publications
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_publications_immutable');
     END`,
 ]);
 
@@ -342,6 +399,112 @@ function eventStatement(
     );
 }
 
+function publicationRecord(
+  record: Readonly<ReportingLedgerRecord>,
+  event: Readonly<ReportingLedgerEvent>,
+): Readonly<ReportingPublicationRecord> | null {
+  if (record.moderation.state !== 'published') return null;
+  const projected = projectPublicIssueRecord({
+    context: record.moderation.draft.context,
+    category: record.moderation.draft.category,
+    severity: record.moderation.draft.severity,
+    stage: record.moderation.draft.stage,
+    moderationState: record.moderation.state,
+    publication: record.moderation.publication,
+  });
+  if (!projected || event.to !== 'published' || event.actor.role !== 'publisher') {
+    throw new ReportingStoreIntegrityError(
+      'Reporting publication bundle failed integrity validation.',
+    );
+  }
+  const recordJson = JSON.stringify(projected);
+  return Object.freeze({
+    reportId: record.moderation.id,
+    publishedAt: event.at,
+    publisherId: event.actor.id,
+    sourceRevision: record.revision,
+    recordSha256: sha256(recordJson),
+    record: projected,
+  });
+}
+
+function publicationStatement(
+  database: D1Database,
+  publication: Readonly<ReportingPublicationRecord>,
+) {
+  return database
+    .prepare(
+      `INSERT INTO leftout_report_publications (
+        report_id, schema_version, published_at, publisher_id,
+        source_revision, record_sha256, record_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      publication.reportId,
+      publication.record.schemaVersion,
+      publication.publishedAt,
+      publication.publisherId,
+      publication.sourceRevision,
+      publication.recordSha256,
+      JSON.stringify(publication.record),
+    );
+}
+
+export async function loadReportingPublication(
+  database: D1Database,
+  reportId: string,
+): Promise<Readonly<ReportingPublicationRecord> | null> {
+  await ensureReportingStoreSchema(database);
+  const row = await database
+    .prepare(
+      `SELECT schema_version AS schemaVersion, published_at AS publishedAt,
+              publisher_id AS publisherId, source_revision AS sourceRevision,
+              record_sha256 AS recordSha256, record_json AS recordJson
+       FROM leftout_report_publications WHERE report_id = ?`,
+    )
+    .bind(reportId)
+    .first<{
+      schemaVersion: string;
+      publishedAt: string;
+      publisherId: string;
+      sourceRevision: number;
+      recordSha256: string;
+      recordJson: string;
+    }>();
+  if (!row) return null;
+  try {
+    const record = parsePublicIssueFeedRecord(
+      JSON.parse(row.recordJson) as unknown,
+    );
+    if (
+      row.schemaVersion !== record.schemaVersion ||
+      !Number.isSafeInteger(row.sourceRevision) ||
+      row.sourceRevision < 2 ||
+      !SHA256_PATTERN.test(row.recordSha256) ||
+      row.recordSha256 !== sha256(JSON.stringify(record)) ||
+      typeof row.publisherId !== 'string' ||
+      row.publisherId.length < 3 ||
+      typeof row.publishedAt !== 'string' ||
+      !Number.isFinite(Date.parse(row.publishedAt)) ||
+      new Date(row.publishedAt).toISOString() !== row.publishedAt
+    ) {
+      throw new Error('publication metadata mismatch');
+    }
+    return Object.freeze({
+      reportId,
+      publishedAt: row.publishedAt,
+      publisherId: row.publisherId,
+      sourceRevision: row.sourceRevision,
+      recordSha256: row.recordSha256,
+      record,
+    });
+  } catch {
+    throw new ReportingStoreIntegrityError(
+      'Stored reporting publication failed integrity validation.',
+    );
+  }
+}
+
 async function findIntake(
   database: D1Database,
   value: Readonly<ReportingIntakeIdempotency>,
@@ -414,6 +577,95 @@ export async function loadReportingLedger(
       'Stored reporting ledger failed integrity validation.',
     );
   }
+}
+
+export interface ReportingReviewCursor {
+  updatedAt: string;
+  reportId: string;
+}
+
+export interface ReportingReviewQuery {
+  limit?: number;
+  state?: IssueModerationState;
+  cursor?: Readonly<ReportingReviewCursor>;
+}
+
+function exactCursor(value: Readonly<ReportingReviewCursor>) {
+  if (
+    typeof value.updatedAt !== 'string' ||
+    !Number.isFinite(Date.parse(value.updatedAt)) ||
+    new Date(value.updatedAt).toISOString() !== value.updatedAt ||
+    typeof value.reportId !== 'string' ||
+    !UUID_PATTERN.test(value.reportId)
+  ) {
+    throw new ReportingStoreIntegrityError(
+      'Reporting review cursor is invalid.',
+    );
+  }
+  return value;
+}
+
+export async function listReportingLedgers(
+  database: D1Database,
+  query: Readonly<ReportingReviewQuery> = {},
+) {
+  await ensureReportingStoreSchema(database);
+  const limit = query.limit ?? 20;
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50) {
+    throw new ReportingStoreIntegrityError(
+      'Reporting review limit must be between 1 and 50.',
+    );
+  }
+  if (
+    query.state !== undefined &&
+    !ISSUE_MODERATION_STATES.includes(query.state)
+  ) {
+    throw new ReportingStoreIntegrityError(
+      'Reporting review state is invalid.',
+    );
+  }
+  const cursor = query.cursor ? exactCursor(query.cursor) : undefined;
+  const clauses: string[] = [];
+  const bindings: unknown[] = [];
+  if (query.state) {
+    clauses.push('state = ?');
+    bindings.push(query.state);
+  }
+  if (cursor) {
+    clauses.push('(updated_at < ? OR (updated_at = ? AND id < ?))');
+    bindings.push(cursor.updatedAt, cursor.updatedAt, cursor.reportId);
+  }
+  const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+  const rows = await database
+    .prepare(
+      `SELECT id, updated_at AS updatedAt
+       FROM leftout_report_records
+       ${where}
+       ORDER BY updated_at DESC, id DESC
+       LIMIT ?`,
+    )
+    .bind(...bindings, limit + 1)
+    .all<{ id: string; updatedAt: string }>();
+  const selected = rows.results.slice(0, limit);
+  const ledgers = await Promise.all(
+    selected.map(async (row) => {
+      const ledger = await loadReportingLedger(database, row.id);
+      if (!ledger) {
+        throw new ReportingStoreIntegrityError(
+          'Reporting review row disappeared during pagination.',
+        );
+      }
+      return ledger;
+    }),
+  );
+  const last = selected.at(-1);
+  return Object.freeze({
+    ledgers: Object.freeze(ledgers),
+    nextCursor:
+      rows.results.length > limit && last
+        ? Object.freeze({ updatedAt: last.updatedAt, reportId: last.id })
+        : null,
+  });
 }
 
 async function resolveExistingIntake(
@@ -506,7 +758,7 @@ export async function saveReportingIntake(
   return Object.freeze({ disposition: 'created' as const, ledger });
 }
 
-async function findRequestEvent(
+export async function loadReportingRequestEvent(
   database: D1Database,
   reportId: string,
   requestId: string,
@@ -528,6 +780,23 @@ async function findRequestEvent(
   }
 }
 
+function sameTransitionRequest(
+  left: Readonly<ReportingLedgerEvent>,
+  right: Readonly<ReportingLedgerEvent>,
+) {
+  return (
+    left.reportId === right.reportId &&
+    left.revision === right.revision &&
+    left.from === right.from &&
+    left.to === right.to &&
+    left.payloadSha256 === right.payloadSha256 &&
+    left.previousEventSha256 === right.previousEventSha256 &&
+    left.actor.id === right.actor.id &&
+    left.actor.role === right.actor.role &&
+    left.requestId === right.requestId
+  );
+}
+
 export async function saveReportingTransition(
   database: D1Database,
   next: Readonly<{
@@ -540,15 +809,23 @@ export async function saveReportingTransition(
   if (!current) {
     throw new ReportingStoreConflictError('Reporting record was not found.');
   }
-  const existingRequest = await findRequestEvent(
+  const existingRequest = await loadReportingRequestEvent(
     database,
     next.event.reportId,
     next.event.requestId,
   );
   if (existingRequest) {
-    if (existingRequest.eventSha256 !== next.event.eventSha256) {
+    if (!sameTransitionRequest(existingRequest, next.event)) {
       throw new ReportingStoreConflictError(
         'Reporting request ID was reused for a different transition.',
+      );
+    }
+    if (
+      existingRequest.to === 'published' &&
+      !(await loadReportingPublication(database, next.event.reportId))
+    ) {
+      throw new ReportingStoreIntegrityError(
+        'Reporting publication record is missing.',
       );
     }
     return Object.freeze({ disposition: 'existing' as const, ledger: current });
@@ -563,6 +840,7 @@ export async function saveReportingTransition(
       'Reporting transition does not extend the current ledger revision.',
     );
   }
+  const publication = publicationRecord(next.record, next.event);
 
   try {
     await database.batch([
@@ -585,16 +863,23 @@ export async function saveReportingTransition(
           current.record.lastEventSha256,
         ),
       eventStatement(database, next.event),
+      ...(publication
+        ? [publicationStatement(database, publication)]
+        : []),
     ]);
   } catch {
-    const racedRequest = await findRequestEvent(
+    const racedRequest = await loadReportingRequestEvent(
       database,
       next.event.reportId,
       next.event.requestId,
     );
-    if (racedRequest?.eventSha256 === next.event.eventSha256) {
+    if (racedRequest && sameTransitionRequest(racedRequest, next.event)) {
       const ledger = await loadReportingLedger(database, next.event.reportId);
-      if (ledger) {
+      const retainedPublication =
+        racedRequest.to === 'published'
+          ? await loadReportingPublication(database, next.event.reportId)
+          : null;
+      if (ledger && (racedRequest.to !== 'published' || retainedPublication)) {
         return Object.freeze({ disposition: 'existing' as const, ledger });
       }
     }
@@ -607,6 +892,22 @@ export async function saveReportingTransition(
     throw new ReportingStoreIntegrityError(
       'Committed reporting transition did not match its source record.',
     );
+  }
+  if (publication) {
+    const retained = await loadReportingPublication(
+      database,
+      next.event.reportId,
+    );
+    if (
+      !retained ||
+      retained.recordSha256 !== publication.recordSha256 ||
+      retained.publisherId !== publication.publisherId ||
+      retained.sourceRevision !== publication.sourceRevision
+    ) {
+      throw new ReportingStoreIntegrityError(
+        'Committed reporting publication did not match its source record.',
+      );
+    }
   }
   return Object.freeze({ disposition: 'updated' as const, ledger });
 }

@@ -120,6 +120,18 @@ describe('quarantined issue moderation', () => {
         },
       }),
     ).toThrow('explicit hostname-publication consent');
+    expect(() =>
+      transitionIssueModeration(accepted, {
+        at: '2026-09-02T12:03:00.000Z',
+        to: 'published',
+        publication: {
+          hostnameVisibility: 'named',
+          hostnameConsent: 'explicit',
+          evidenceBasis: 'human_reproduced',
+          hostname: 'other.example.com',
+        },
+      }),
+    ).toThrow('must match the reviewed report origin');
   });
 
   it('rehydrates only a canonical moderation snapshot by replaying history', () => {

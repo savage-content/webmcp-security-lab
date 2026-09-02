@@ -10,6 +10,7 @@ import {
 import {
   ensureReportingStoreSchema,
   loadReportingLedger,
+  loadReportingPublication,
   ReportingStoreConflictError,
   ReportingStoreIntegrityError,
   ReportingStoreQuotaError,
@@ -169,6 +170,101 @@ describe('durable reporting store', () => {
     await expect(
       saveReportingTransition(database, rejected),
     ).rejects.toBeInstanceOf(ReportingStoreConflictError);
+  });
+
+  it('returns the committed transition for a semantically identical request retry', async () => {
+    const created = intake();
+    await saveReportingIntake(database, created, idempotency());
+    const requestId = randomUUID();
+    const first = transitionReportingLedger(
+      created.record,
+      { at: '2026-09-02T19:02:00.000Z', to: 'under_review' },
+      {
+        actor: { id: 'reviewer-alpha', role: 'reviewer' },
+        expectedRevision: 1,
+        requestId,
+      },
+    );
+    const retry = transitionReportingLedger(
+      created.record,
+      { at: '2026-09-02T19:02:01.000Z', to: 'under_review' },
+      {
+        actor: { id: 'reviewer-alpha', role: 'reviewer' },
+        expectedRevision: 1,
+        requestId,
+      },
+    );
+    expect((await saveReportingTransition(database, first)).disposition).toBe(
+      'updated',
+    );
+    const replay = await saveReportingTransition(database, retry);
+    expect(replay.disposition).toBe('existing');
+    expect(replay.ledger.events[1]?.eventSha256).toBe(first.event.eventSha256);
+  });
+
+  it('atomically persists one immutable minimized publication record', async () => {
+    const created = intake();
+    await saveReportingIntake(database, created, idempotency());
+    const reviewing = transitionReportingLedger(
+      created.record,
+      { at: '2026-09-02T19:03:00.000Z', to: 'under_review' },
+      {
+        actor: { id: 'reviewer-alpha', role: 'reviewer' },
+        expectedRevision: 1,
+        requestId: randomUUID(),
+      },
+    );
+    await saveReportingTransition(database, reviewing);
+    const accepted = transitionReportingLedger(
+      reviewing.record,
+      { at: '2026-09-02T19:04:00.000Z', to: 'accepted_private' },
+      {
+        actor: { id: 'reviewer-alpha', role: 'reviewer' },
+        expectedRevision: 2,
+        requestId: randomUUID(),
+      },
+    );
+    await saveReportingTransition(database, accepted);
+    const published = transitionReportingLedger(
+      accepted.record,
+      {
+        at: '2026-09-02T19:05:00.000Z',
+        to: 'published',
+        publication: {
+          hostnameVisibility: 'withheld',
+          hostnameConsent: 'not_granted',
+          evidenceBasis: 'human_reproduced',
+        },
+      },
+      {
+        actor: { id: 'publisher-alpha', role: 'publisher' },
+        expectedRevision: 3,
+        requestId: randomUUID(),
+      },
+    );
+    await saveReportingTransition(database, published);
+    const publication = await loadReportingPublication(
+      database,
+      created.record.moderation.id,
+    );
+    expect(publication).toMatchObject({
+      reportId: created.record.moderation.id,
+      publisherId: 'publisher-alpha',
+      sourceRevision: 4,
+      record: {
+        moderationState: 'published',
+        hostnameVisibility: 'withheld',
+      },
+    });
+    expect(JSON.stringify(publication)).not.toContain('shop.example.com');
+    await expect(
+      database
+        .prepare(
+          'UPDATE leftout_report_publications SET publisher_id = ? WHERE report_id = ?',
+        )
+        .bind('substituted', created.record.moderation.id)
+        .run(),
+    ).rejects.toThrow('immutable');
   });
 
   it('makes event and idempotency rows append-only at the database boundary', async () => {

@@ -186,3 +186,32 @@ export const reportIntakeQuotas = sqliteTable(
     index('idx_leftout_report_intake_quotas_expiry').on(table.expiresAt),
   ],
 );
+
+export const reportPublications = sqliteTable(
+  'leftout_report_publications',
+  {
+    reportId: text('report_id')
+      .primaryKey()
+      .references(() => reportRecords.id),
+    schemaVersion: text('schema_version').notNull(),
+    publishedAt: text('published_at').notNull(),
+    publisherId: text('publisher_id').notNull(),
+    sourceRevision: integer('source_revision').notNull(),
+    recordSha256: text('record_sha256').notNull(),
+    recordJson: text('record_json').notNull(),
+  },
+  (table) => [
+    check(
+      'chk_leftout_report_publications_source_revision',
+      sql`${table.sourceRevision} >= 2`,
+    ),
+    check(
+      'chk_leftout_report_publications_record_sha256',
+      sql`length(${table.recordSha256}) = 64`,
+    ),
+    index('idx_leftout_report_publications_published').on(
+      table.publishedAt,
+      table.reportId,
+    ),
+  ],
+);

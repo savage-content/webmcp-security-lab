@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 const migrationUrls = [
   new URL('../drizzle/0002_furry_miss_america.sql', import.meta.url),
   new URL('../drizzle/0003_mixed_nightmare.sql', import.meta.url),
+  new URL('../drizzle/0004_colossal_tenebrous.sql', import.meta.url),
 ];
 
 async function applyReportingMigration(database: D1Database) {
@@ -68,6 +69,9 @@ describe('reporting database migration', () => {
         name: 'trg_leftout_report_intake_quota_integrity',
         type: 'trigger',
       },
+      { name: 'trg_leftout_report_publication_snapshot', type: 'trigger' },
+      { name: 'trg_leftout_report_publications_no_delete', type: 'trigger' },
+      { name: 'trg_leftout_report_publications_no_update', type: 'trigger' },
       { name: 'trg_leftout_report_records_no_delete', type: 'trigger' },
     ]);
 
@@ -179,5 +183,25 @@ describe('reporting database migration', () => {
         .bind('d'.repeat(64))
         .run(),
     ).rejects.toThrow('quota_exhausted');
+
+    await expect(
+      database
+        .prepare(
+          `INSERT INTO leftout_report_publications (
+            report_id, schema_version, published_at, publisher_id,
+            source_revision, record_sha256, record_json
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          reportId,
+          'leftout.public-issue-feed/1',
+          '2026-09-02T19:01:00.000Z',
+          'publisher-alpha',
+          2,
+          'f'.repeat(64),
+          '{}',
+        )
+        .run(),
+    ).rejects.toThrow('publication_snapshot_mismatch');
   }, 15_000);
 });

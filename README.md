@@ -86,15 +86,16 @@ Site Tools handoff, the Local Guard one-use capability/HUD/connector path, and a
 session-scoped `/conformance` family that captures model, workspace, app build,
 document, registration, discovery, and invocation separately. A fresh Chrome
 152 technical acceptance run completed Lessons 1–5 through the Local Guard
-path. A live Sol/Terra built-in-client conformance run remains outstanding. A
-A strict quarantine/moderation state machine, minimized feed projection, and
-fail-closed invited-intake/reviewer/publisher configuration and authentication
-are implemented locally. A versioned D1 store now adds hash-chained events,
-idempotent intake, optimistic revisions, append-only database enforcement, and
-atomic per-invitation/global quotas. An invited HTTP intake handler exists but
-is disabled and unconfigured on the public site. Reviewer routes, retention
-operations, and feed serving remain absent pending their privacy and security
-gates.
+path. A live Sol/Terra built-in-client conformance run remains outstanding.
+A strict quarantine/moderation state machine, minimized publication projection,
+and fail-closed invited-intake/reviewer/publisher configuration and
+authentication are implemented locally. A versioned D1 store adds hash-chained
+events, idempotent intake, optimistic revisions, append-only database
+enforcement, atomic per-invitation/global quotas, and an immutable minimized
+publication record. Invited intake, authenticated reviewer read/transition,
+and separate publisher handlers exist in source but are disabled and
+unconfigured on the public site. Retention/correction operations, signed feed
+serving, production identity, and operating approval remain absent.
 
 ## The guided experience
 
@@ -339,8 +340,8 @@ The automated suite covers:
   behavior, revocation, and failure handling.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The current automated suite passes 376/376
-tests across 42 files, typecheck, lint, and a production build on Node.js 24. Live connector
+separate Android conformance script. The current automated suite passes 388/388
+tests across 44 files, typecheck, lint, and a production build on Node.js 24. Live connector
 evidence is recorded separately: the
 September 1 target-client run satisfied the bounded end-to-end checks in
 [docs/GO_NO_GO.md](docs/GO_NO_GO.md).

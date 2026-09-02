@@ -124,11 +124,14 @@ Every automated result and related report must state exactly:
 
 A strict quarantine transition core, role-separated authentication helpers,
 durable hash-chained D1 store, and minimized feed projection now exist as local
-code. A strict, quota-bound invited intake handler also exists, but its public
-configuration is absent. Reviewer endpoints, retention operations, and feed
-serving remain disabled until a dedicated privacy and security review approves
-the destination, production identity boundary, retention, abuse controls,
-publication standard, and incident process.
+code. Strict quota-bound invited intake, authenticated reviewer
+read/transition, and separately authorized publisher handlers also exist. The
+publisher accepts only the exact `accepted_private` revision and writes a
+separate immutable minimized publication record. Their public configuration is
+absent. Retention/correction operations and signed feed serving do not exist;
+all external reporting remains disabled until a dedicated privacy and security
+review approves the destination, production identity boundary, retention,
+abuse controls, publication standard, and incident process.
 
 ## Agent behavior
 
@@ -167,10 +170,12 @@ An agent using this product should:
 2. Verify keyboard, screen-reader, 200% zoom, and 360 px popup journeys with
    first-time users.
 3. Complete novice acceptance of the HUD-to-receipt-to-local-review-list handoff.
-4. Conduct privacy/security review for a real intake and moderation service.
-5. Build authenticated human triage, abuse handling, retention controls, and
+4. Conduct privacy/security review for the implemented intake, review, and
+   publication service boundary.
+5. Add production identity, abuse handling, retention/correction controls, and
    an explicit external submission confirmation.
-6. Publish only a human-reviewed feed projection, never raw reports or receipts.
+6. Serve only a signed, versioned, human-reviewed feed projection—never raw
+   reports or receipts.
 7. Extract the policy, receipt, and conformance logic for a small native Android
    AppFunctions prototype. Android is a separate native client, not a browser
    extension claim.

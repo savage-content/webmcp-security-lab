@@ -28,13 +28,15 @@ data shape changes.
 
 ## Implementation Status — 2026-09-02
 
-Work packages 1–3 are implemented and verified in local source: fail-closed
+Work packages 1–5 are implemented and verified in local source: fail-closed
 configuration and role separation; versioned D1 moderation records,
 hash-chained events, idempotency and quota tables; and a strict invited intake
-route with atomic quarantine entry. The route is disabled and unconfigured on
-the public deployment. Packages 4–9 remain open, including reviewer and
-publisher APIs, retention/correction operations, signed feeds, production
-telemetry/runbooks, privacy approval, and the first-time reporting walkthrough.
+route with atomic quarantine entry; authenticated reviewer reads and closed
+transitions; and a separate publisher action that atomically creates an
+immutable minimized publication row. The routes are disabled and unconfigured
+on the public deployment. Packages 6–9 remain open: signed feeds,
+retention/correction operations, production telemetry/runbooks, privacy
+approval, and the first-time reporting walkthrough.
 
 ## Affected Components
 

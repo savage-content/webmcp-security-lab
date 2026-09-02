@@ -84,6 +84,18 @@ const PUBLICATION_FIELDS = new Set([
   'hostnameVisibility',
 ]);
 
+const PUBLIC_RECORD_FIELDS = new Set([
+  'assuranceLimitation',
+  'category',
+  'evidenceBasis',
+  'hostname',
+  'hostnameVisibility',
+  'moderationState',
+  'schemaVersion',
+  'severity',
+  'stage',
+]);
+
 const NON_PUBLIC_HOST_SUFFIXES = [
   '.home',
   '.home.arpa',
@@ -217,6 +229,12 @@ function publicationGate(value: unknown) {
   } as const;
 }
 
+export function parseIssuePublicationGate(
+  value: unknown,
+): Readonly<IssuePublicationGate> {
+  return Object.freeze(publicationGate(value));
+}
+
 function candidate(value: unknown): ModeratedIssueCandidate {
   if (!isRecord(value)) {
     throw new Error('Moderated issue input must be an object.');
@@ -281,4 +299,38 @@ export function projectPublicIssueFeed(
     if (projection) records.push(projection);
   }
   return Object.freeze(records);
+}
+
+export function parsePublicIssueFeedRecord(
+  value: unknown,
+): Readonly<PublicIssueFeedRecord> {
+  if (!isRecord(value)) {
+    throw new Error('Stored public issue record must be an object.');
+  }
+  rejectUnknownFields(value, PUBLIC_RECORD_FIELDS, 'Stored public issue');
+  if (
+    value.schemaVersion !== ISSUE_PUBLICATION_SCHEMA_VERSION ||
+    value.moderationState !== 'published' ||
+    value.assuranceLimitation !== ISSUE_DRAFT_ASSURANCE_LIMITATION
+  ) {
+    throw new Error('Stored public issue record contract is invalid.');
+  }
+  const projected = projectPublicIssueRecord({
+    context: 'public-web',
+    category: value.category,
+    severity: value.severity,
+    stage: value.stage,
+    moderationState: value.moderationState,
+    publication: {
+      hostnameVisibility: value.hostnameVisibility,
+      hostnameConsent:
+        value.hostnameVisibility === 'named' ? 'explicit' : 'not_granted',
+      evidenceBasis: value.evidenceBasis,
+      ...(Object.hasOwn(value, 'hostname') ? { hostname: value.hostname } : {}),
+    },
+  });
+  if (!projected || JSON.stringify(projected) !== JSON.stringify(value)) {
+    throw new Error('Stored public issue record is not canonical.');
+  }
+  return projected;
 }
