@@ -16,6 +16,7 @@ import {
   type ConnectorReceiptEntry,
   type ReceiptStore,
 } from './receipt-store';
+import { receiptCapabilitySummary } from './lesson-capability-policy';
 
 const MAX_INSPECTED_TOOLS = 32;
 const MAX_TOOL_NAME_CODE_POINTS = 128;
@@ -78,6 +79,27 @@ function normalizedTimestamp(value: unknown) {
   return Number.isFinite(timestamp)
     ? new Date(timestamp).toISOString()
     : undefined;
+}
+
+function extensionPermitEvidence(value: unknown) {
+  const permit = asRecord(value);
+  const consumedAt = normalizedTimestamp(permit?.consumedAt);
+  if (
+    !permit ||
+    Object.keys(permit).length !== 2 ||
+    typeof permit.sha256 !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(permit.sha256) ||
+    !consumedAt
+  ) {
+    throw new TerminalBridgeResultError(
+      'The browser did not return valid extension permit evidence.',
+    );
+  }
+  return {
+    capabilityPermitSha256: permit.sha256,
+    enforcement: 'extension-consumed-before-invocation' as const,
+    consumedAt,
+  };
 }
 
 function sanitizeTool(value: unknown) {
@@ -156,6 +178,7 @@ function normalizeInspection(
 
 function receiptSummary(entry: ConnectorReceiptEntry) {
   const receipt = entry.receipt;
+  const capability = receiptCapabilitySummary(receipt);
   return {
     entry_id: entry.entryId,
     receipt_id: receipt.id,
@@ -167,9 +190,12 @@ function receiptSummary(entry: ConnectorReceiptEntry) {
     client_labels_included: false,
     tool_name: receipt.declaration.name,
     verdict: receipt.verdict,
-    contract_hash: receipt.capability?.contract.contractHash,
-    invalidation: receipt.capability?.invalidation.reason,
-    verification_passed: receipt.capability?.verification.passed,
+    capability_protocol: capability.protocol,
+    contract_hash: capability.contractHash,
+    invalidation: capability.invalidation,
+    verification_passed: capability.verificationPassed,
+    capability_permit_sha256: entry.adapter?.capabilityPermitSha256,
+    extension_enforcement: entry.adapter?.enforcement ?? 'not-recorded',
     entry_hash: entry.entryHash,
     previous_entry_hash: entry.previousEntryHash,
     report_path: `/receipts/${entry.entryId}`,
@@ -218,9 +244,18 @@ export async function commitApprovedInvocationResult({
       'The page did not return a capability receipt.',
     );
   }
+  const returnedReceipt = asRecord(receiptValue);
+  const returnedDeclaration = asRecord(returnedReceipt?.declaration);
+  if (returnedDeclaration?.name !== toolName) {
+    throw new TerminalBridgeResultError(
+      'The returned receipt names a different capability.',
+    );
+  }
+  const adapter = extensionPermitEvidence(root.permit);
   try {
     return await receipts.append(receiptValue, page, toolName, {
       acceptExactDuplicate: true,
+      adapter,
     });
   } catch (error) {
     if (error instanceof ReceiptValidationError) {
@@ -249,8 +284,40 @@ export function createCapabilityConnectorServer({
 }) {
   const server = new McpServer({
     name: 'leftout-webmcp-capability-connector',
-    version: '0.1.1',
+    version: '0.1.2',
   });
+
+  async function invokeApprovedCapability(sessionId: string, toolName: string) {
+    const page = coordinator.getPairedPage(sessionId);
+    const result = await coordinator.requestApprovedInvocation(
+      sessionId,
+      toolName,
+    );
+    const receiptEntryId = result.commitment?.receiptEntryId;
+    if (!receiptEntryId) {
+      throw new Error(
+        'The bridge did not commit the capability receipt before acknowledgement.',
+      );
+    }
+    const entry = await receipts.getVerified(receiptEntryId);
+    if (
+      entry.connection.sessionId !== page.sessionId ||
+      entry.connection.origin !== page.origin ||
+      entry.receipt.declaration.name !== toolName
+    ) {
+      throw new Error(
+        'The committed capability receipt identity did not match.',
+      );
+    }
+    return entry;
+  }
+
+  function invocationResult(entry: ConnectorReceiptEntry) {
+    return textResult(
+      `The approved capability was invoked once and recorded as receipt ${entry.receiptId}. Verification: ${entry.receipt.verdict}. ${REPORT_LIMITATION}`,
+      { receipt: receiptSummary(entry), limitation: REPORT_LIMITATION },
+    );
+  }
 
   server.registerTool(
     'list_paired_pages',
@@ -313,7 +380,7 @@ export function createCapabilityConnectorServer({
     {
       title: 'Invoke an approved one-use capability',
       description:
-        'Use this only after the human has approved a uniquely named Scenario 1 no-input capability in the paired browser page. It consumes that grant exactly once; it cannot invoke the broad source or proposal tools.',
+        'Use this only after the human has approved a uniquely named, no-input capability from the paired page’s built-in guided lessons and imported its exact extension permit. The extension consumes that permit before invocation; the connector validates the lesson-specific receipt and records the returned permit digest. It cannot invoke broad source, proposal, or page-defined profile tools.',
       inputSchema: {
         session_id: z.uuid(),
         tool_name: z.string().regex(APPROVED_CAPABILITY_TOOL_PATTERN),
@@ -326,31 +393,67 @@ export function createCapabilityConnectorServer({
       },
     },
     async ({ session_id, tool_name }) => {
-      const page = coordinator.getPairedPage(session_id);
-      const result = await coordinator.requestApprovedInvocation(
-        session_id,
-        tool_name,
-      );
-      const receiptEntryId = result.commitment?.receiptEntryId;
-      if (!receiptEntryId) {
+      const entry = await invokeApprovedCapability(session_id, tool_name);
+      return invocationResult(entry);
+    },
+  );
+
+  server.registerTool(
+    'run_one_approved_practice_action',
+    {
+      title: 'Run the one approved practice action',
+      description:
+        'Use this when the human asks to run the one approved LeftOut practice action. It needs no IDs or protocol data from the human. It proceeds only when exactly one browser page is connected and that page declares exactly one allowlisted, closed, zero-input generated lesson action. It issues one invocation with no automatic retry; the browser extension must independently validate and consume the exact permit first.',
+      inputSchema: z.strictObject({}),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: true,
+        idempotentHint: false,
+      },
+    },
+    async () => {
+      const connectedPages = coordinator
+        .listPairedPages()
+        .filter((page) => page.connected);
+      if (connectedPages.length !== 1) {
         throw new Error(
-          'The bridge did not commit the capability receipt before acknowledgement.',
+          'Exactly one paired practice page must be connected. Nothing was invoked.',
         );
       }
-      const entry = await receipts.getVerified(receiptEntryId);
+      const page = connectedPages[0];
+      if (!page) {
+        throw new Error('The connected practice page was not found.');
+      }
+
+      const inspectionResult = await coordinator.requestInspection(
+        page.sessionId,
+      );
+      const inspection = normalizeInspection(
+        inspectionResult.payload,
+        page.origin,
+        page.pageUrl,
+      );
+      const tool = inspection.tools[0];
       if (
-        entry.connection.sessionId !== page.sessionId ||
-        entry.connection.origin !== page.origin ||
-        entry.receipt.declaration.name !== tool_name
+        inspection.reportedToolCount !== 1 ||
+        inspection.returnedToolCount !== 1 ||
+        inspection.omittedToolCount !== 0 ||
+        inspection.toolListTruncated ||
+        !tool ||
+        !APPROVED_CAPABILITY_TOOL_PATTERN.test(tool.name) ||
+        tool.inputSchema.type !== 'object' ||
+        tool.inputSchema.propertyCount !== 0 ||
+        tool.inputSchema.requiredCount !== 0 ||
+        tool.inputSchema.additionalProperties !== false
       ) {
         throw new Error(
-          'The committed capability receipt identity did not match.',
+          'The connected page did not expose exactly one allowed, closed, zero-input practice action. Nothing was invoked.',
         );
       }
-      return textResult(
-        `The approved capability was invoked once and recorded as receipt ${entry.receiptId}. Verification: ${entry.receipt.verdict}. ${REPORT_LIMITATION}`,
-        { receipt: receiptSummary(entry), limitation: REPORT_LIMITATION },
-      );
+
+      const entry = await invokeApprovedCapability(page.sessionId, tool.name);
+      return invocationResult(entry);
     },
   );
 

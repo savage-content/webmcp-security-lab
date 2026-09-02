@@ -37,7 +37,7 @@ The GitHub repository `savage-content/webmcp-security-lab` was confirmed public 
 - Presented → Declared → Predicted Risk preflight before approval;
 - builder remediation with vulnerable/secure implementation contrast and tests to add;
 - passing secure retests for all five fixtures;
-- downloadable extension-ready policy artifacts; and
+- downloadable learning-only awareness artifacts; and
 - required self-reported-readiness limitation on generated receipts and artifacts.
 
 ## Not represented as completed by software alone

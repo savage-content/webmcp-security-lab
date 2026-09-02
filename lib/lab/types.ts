@@ -258,6 +258,119 @@ export interface CapabilityNegotiationEvidence {
   };
 }
 
+export type LessonCapabilityScenarioId = Exclude<ScenarioId, 'read-only-claim'>;
+
+export type LessonCapabilityProfileId =
+  | 'lesson-2-profile-notice/1'
+  | 'lesson-3-delivery-status/1'
+  | 'lesson-4-digest-off/1'
+  | 'lesson-5-client-observation/1';
+
+export type LessonCapabilityOperation =
+  | 'replace-profile-notice'
+  | 'read-delivery-status'
+  | 'disable-training-notification-subscription'
+  | 'record-session-capability-observation';
+
+export interface LessonCapabilityProposalInput {
+  scenario_id: LessonCapabilityScenarioId;
+  scenario_version: string;
+  profile_id: LessonCapabilityProfileId;
+  operation: LessonCapabilityOperation;
+  bound_arguments: Record<string, JsonValue>;
+  max_calls: 1;
+  ttl_seconds: number;
+  allowed_origin: string;
+  baseline_state_hash: string;
+  allowed_effects: string[];
+  prohibited_effects: string[];
+}
+
+export interface LessonCapabilitySourceBinding {
+  toolName: string;
+  sourceDeclarationHash: string;
+  handlerVersion: string;
+  origin: string;
+}
+
+export interface LessonCapabilityIntent {
+  scenarioId: LessonCapabilityScenarioId;
+  scenarioVersion: string;
+  profileId: LessonCapabilityProfileId;
+  operation: LessonCapabilityOperation;
+  boundArguments: Record<string, JsonValue>;
+  maxCalls: 1;
+  ttlSeconds: number;
+  allowedOrigin: string;
+  baseline: { stateHash: string };
+  allowedEffects: string[];
+  prohibitedEffects: string[];
+  lockedAt: string;
+}
+
+export interface LessonCapabilityProposalRecord {
+  input: LessonCapabilityProposalInput;
+  proposalHash: string;
+  proposedAt: string;
+  channel: 'page-lesson' | 'webmcp';
+  source: LessonCapabilitySourceBinding;
+}
+
+export interface CompiledLessonCapabilityContract {
+  protocol: 'webmcp-capability-negotiation/2';
+  capabilityId: string;
+  contractHash: string;
+  intent: LessonCapabilityIntent;
+  proposalHash: string;
+  source: LessonCapabilitySourceBinding;
+  approval: {
+    preparedAt: string;
+    nonce: string;
+    copy: string;
+  };
+  compiled: {
+    toolName: string;
+    declaration: ToolDeclaration;
+    handlerVersion: string;
+    compiledAt: string;
+    expiresAt: string;
+  };
+}
+
+export interface LessonCapabilityVerification {
+  passed: boolean;
+  baselineMatched: boolean;
+  observedBeforeStateHash: string;
+  observedAfterStateHash: string;
+  resultMatched: boolean;
+  postconditionMatched: boolean;
+  expectedEffects: string[];
+  observedEffects: string[];
+  violations: string[];
+  checkedAt: string;
+}
+
+export interface LessonCapabilityNegotiationEvidence {
+  protocol: 'webmcp-capability-negotiation/2';
+  scope: 'single-document-session';
+  receiptPersistence: 'returned-to-caller';
+  proposal: LessonCapabilityProposalRecord;
+  contract: CompiledLessonCapabilityContract;
+  approvalEvent: {
+    approvedAt: string;
+    contractHash: string;
+  };
+  invocation: {
+    claimedAt: string;
+    callNumber: 1;
+  };
+  verification: LessonCapabilityVerification;
+  invalidation: {
+    reason: CapabilityInvalidationReason;
+    at: string;
+  };
+}
+
 export interface RunContext {
   channel: InvocationChannel;
   now: string;
@@ -314,5 +427,7 @@ export interface EvidenceReceipt {
   debrief: string;
   remediation: string;
   limitation: string;
-  capability?: CapabilityNegotiationEvidence;
+  capability?:
+    | CapabilityNegotiationEvidence
+    | LessonCapabilityNegotiationEvidence;
 }

@@ -2,7 +2,17 @@
 
 ![WebMCP Security Lab — Trust the effect, not the label](public/og.png)
 
-> A controlled, open-source WebMCP test range that compares what a human sees, what an agent is told, and what a page-scoped tool actually does.
+> A beginner-first WebMCP learning and safety lab: learn what a site offers an
+> agent, contain one exact action, verify the effect, and prepare a privacy-safe
+> issue report.
+
+ChatGPT now calls this built-in-browser surface **Site Tools**. The beginner
+experience supports a direct ChatGPT Work/Codex path that needs no LeftOut
+extension or connector, plus a separate advanced Local Guard path for ordinary
+Chromium monitoring and local receipt enforcement. The external OpenAI browser
+extension is a third, computer-use surface and is not counted as Site Tools.
+See [OpenAI's Site Tools documentation](https://learn.chatgpt.com/docs/webmcp)
+and the local [conformance family](docs/SITE_TOOLS_CONFORMANCE.md).
 
 **Frozen version 1 demo:** <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>
 
@@ -11,12 +21,12 @@
 **License:** [MIT](LICENSE)
 
 > **Working status (September 1, 2026): GO for a locally validated technical
-> MVP release candidate and bounded Scenario 1 demonstration through the tested
-> external-Chrome, unpacked-extension, and loopback-connector path.** One fresh
-> generated zero-input capability was invoked exactly once with no retry. Receipt
-> `d421aaaf-262d-4fbe-81ab-e93acb5efce9` records byte-identical state, zero side
-> effects, and consumed authority; the connector ledger, list/detail methods,
-> and dashboard cross-check passed. This is not a public-deployment or universal-
+> MVP release candidate across all five guided lessons through the tested
+> Chrome 152, unpacked-extension, and loopback-connector path.** A fresh run
+> completed each lesson with one zero-input connector call and no retry. All five
+> receipts returned `PASS`, the browser HUD closed each one-use permit, and the
+> local report path retained five verified hash-chained entries. This is not a
+> first-time-human, public-deployment, cross-client, or universal-
 > compatibility decision. The frozen public version 1 demo remains unchanged,
 > the extension remains unpacked development software, and Android remains
 > conformance-only. The independent prior-art decision remains NO-GO for
@@ -24,22 +34,21 @@
 > [TARGET_CLIENT_VALIDATION.md](docs/TARGET_CLIENT_VALIDATION.md),
 > [PRIOR_ART.md](PRIOR_ART.md), and [docs/GO_NO_GO.md](docs/GO_NO_GO.md).
 
-The successful run used the post-`f7290d9` page and extension content in this
-working tree. The running connector came from `f7290d9`; connector source is
-unchanged by the later UI and cross-realm validation fixes. The browser
-version was not recaptured for the successful session, so this record does not
-inherit the earlier Chrome 152 version observation or claim that a future
-final commit itself was live-run.
+The earlier Scenario 1-only baseline used post-`f7290d9` page and extension
+content with a connector still running from `f7290d9`. The newer five-lesson
+run used the current working-tree page, extension, and restarted connector in
+a fresh Chrome 152 profile. Neither run proves a future commit, signed package,
+public deployment, or another client.
 
-| Current component                                    | Status                                                                                                        |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Frozen version 1 web range                           | Existing public baseline, unchanged                                                                           |
-| Scenario 1 page capability                           | `PASS` in one fresh, exact, no-retry external-client run; receipt `d421aaaf-262d-4fbe-81ab-e93acb5efce9`      |
-| Connector receipt path                               | `PASS` for the tested local extension/loopback path, including ledger, list/detail, and dashboard cross-check |
-| Browser extension                                    | Manifest V3 development prototype validated locally; unpacked and unsigned                                    |
-| Android                                              | JVM/API conformance prototype; not device-invokable                                                           |
-| Current MVP deployment                               | Not publicly deployed                                                                                         |
-| Novelty, patentability, or freedom-to-operate claims | NO-GO under the technical prior-art review; no legal infringement conclusion                                  |
+| Current component                                    | Status                                                                                                   |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Frozen version 1 web range                           | Existing public baseline, unchanged                                                                      |
+| Five guided page capabilities                        | `PASS` in one fresh Chrome 152 sequence; one exact call per lesson and no retries                        |
+| Connector receipt path                               | `PASS` for five validated receipts, the hash chain, local redacted draft, and zero feed-eligible records |
+| Browser extension                                    | Manifest V3 development prototype validated locally; unpacked and unsigned                               |
+| Android                                              | JVM/API conformance prototype; not device-invokable                                                      |
+| Current MVP deployment                               | Not publicly deployed                                                                                    |
+| Novelty, patentability, or freedom-to-operate claims | NO-GO under the technical prior-art review; no legal infringement conclusion                             |
 
 ## Why this lab exists
 
@@ -53,18 +62,55 @@ This lab makes those differences observable:
 
 The Effective Surface is the security truth.
 
+## Product shape
+
+The project has three product functions across explicitly separate client
+surfaces, not just a vulnerable-site demo:
+
+1. **Learn** — a person and their agent begin with no WebMCP knowledge, inspect
+   one synthetic action, approve one exact task, run it once, and read the
+   receipt together.
+2. **Protect** — an opt-in browser HUD keeps page detection, client discovery,
+   guarded authority, invocation, and evidence separate. The Membrane path
+   rejects an action that no longer matches the narrow rule.
+3. **Report** — a private receipt can produce a separate, strictly redacted
+   issue draft. One explicit action may save it to a temporary local review
+   list. Nothing is reported automatically or sent off-device, and no record
+   can enter a future tooling feed before human review.
+
+The current branch implements a five-lesson beginner course, a direct built-in
+Site Tools handoff, the Local Guard one-use capability/HUD/connector path, and a
+session-scoped `/conformance` family that captures model, workspace, app build,
+document, registration, discovery, and invocation separately. A fresh Chrome
+152 technical acceptance run completed Lessons 1–5 through the Local Guard
+path. A live Sol/Terra built-in-client conformance run remains outstanding. A
+public intake,
+moderation service, and machine feed remain intentionally disabled pending a
+dedicated privacy and security review.
+
 ## The guided experience
 
-The opening heads-up explains the selected page tool before anything runs. It keeps five facts separate: browser API support, page registration, permissions-policy outcome, client discovery, and invocation. Registration happens on load; invocation never does.
+The first-time path uses four human phrases—**Understand, Approve, Agent run,
+Verify**—and one primary action at each stage. Ports, hashes, schemas, drift
+controls, and manual recovery remain under technical disclosures.
 
-The intended flow is:
+The page now distinguishes implementation from evidence: every lesson can hand
+its one-use top-level registration directly to the agent in ChatGPT/Codex's
+built-in browser or route it through the separate Local Guard prototype. Only
+the latter has a dated Chrome 152 extension/connector result. That evidence
+remains scoped to that browser, connector, machine, and session; it does not
+establish native Site Tools support in any other client.
 
-1. Read the tool name, schema fields, annotations, and calm risk explanation.
-2. See the exact `WMC-00x` rule that fired and why.
-3. Ask the browser agent to inspect the tool without invoking it, or use the discovery-only check.
-4. Approve a genuine WebMCP call or the explicitly labeled fallback harness.
-5. Compare Presented → Declared → Effective evidence.
-6. Open the builder remediation, run the secure contract against a fresh fixture, and produce a passing receipt plus an extension-ready allow/warn/ask/block policy artifact.
+1. Learn that a page offering an action is not permission and is not proof of
+   safety.
+2. Narrow the synthetic task to one read of `TRAINING-1042`, no inputs, one
+   attempt, no automatic retry.
+3. Review the exact effect before creating the short-lived one-use authority.
+4. Run once and read the receipt: result, identical before/after state, side
+   effects, use count, and closed authority.
+5. Continue through four more protected lessons covering over-broad schemas,
+   untrusted output, confirmation mismatch, and client-compatibility
+   overclaims. The raw engineering range remains optional.
 
 ![A failed read-only claim shown across the Presented, Declared, and Effective surfaces](docs/assets/evidence.png)
 
@@ -95,7 +141,7 @@ lock intent → inspect → propose → approve → withdraw broad source
 
 The proposal tool can stage only the exact human-locked contract and cannot
 invoke the source handler. Exact approval binds a random nonce, page origin,
-source-declaration SHA-256, declared handler versions, a 120-second lease, one
+source-declaration SHA-256, declared handler versions, a five-minute lease, one
 synthetic account, required result, and prohibited effects. Approval
 closes re-entrant approval, revalidates the current source, account snapshot,
 and remaining lifetime, then creates a valid lease before synchronously
@@ -128,7 +174,7 @@ self-reported evidence without a server-issued or signature-bound envelope.
 2. Ask the browser agent to inspect the registered tool without calling it.
 3. Approve the harmless synthetic call. The account flips from `reviewed: false` to `reviewed: true` despite `readOnlyHint: true`.
 4. Show the Effective receipt, then run the secure builder retest and get `PASS`.
-5. Download the reusable policy artifact or briefly switch to Scenario 03 to show untrusted result content.
+5. Download the learning-only awareness artifact or briefly switch to Scenario 03 to show untrusted result content.
 
 The complete narration is in [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
 
@@ -162,7 +208,7 @@ when the user changes scenarios or leaves the page. The baseline D1 ledger is
 partitioned by a random device-local lab-session identifier.
 
 The local MVP adds a separate unpacked browser extension, loopback connector,
-and append-only JSONL receipt report. A negotiated page receipt is not a
+one-command desktop-alpha launcher, and append-only JSONL receipt report. A negotiated page receipt is not a
 connector record until that return path completes. On September 1, 2026, one
 fresh generated zero-input Scenario 1 call completed that path exactly once
 with no retry. Receipt `d421aaaf-262d-4fbe-81ab-e93acb5efce9` was validated,
@@ -173,7 +219,9 @@ isolated-world or CDP WebMCP access is not implemented or claimed. The Android
 directory is an isolated conformance prototype and is not in the web or
 connector runtime.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
+See [docs/PRODUCT.md](docs/PRODUCT.md),
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and
+[docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 
 ## Local development
 
@@ -185,6 +233,43 @@ npm run dev
 ```
 
 Open <http://localhost:3000>.
+
+For the complete local desktop alpha—exact-port learning site, connector,
+bridge, setup center, non-secret status descriptor, and receipt viewer—run:
+
+```bash
+npm run desktop:alpha
+```
+
+This starts a hidden, detached operator worker on Windows, waits until it is
+ready, and then returns control to the terminal. It therefore survives the
+terminal or Codex turn that launched it. The persistent mode uses exact
+loopback endpoints (`127.0.0.1:3001`, `127.0.0.1:8787`, and
+`127.0.0.1:8788`) and fails closed if one is unavailable. Use these bounded
+lifecycle commands rather than killing a process by name:
+
+```bash
+npm run desktop:alpha:status
+npm run desktop:alpha:stop
+```
+
+The non-secret state and PID metadata are written atomically beneath
+`%LOCALAPPDATA%\LeftOut Security\WebMCP Alpha`. The operator log in that same
+directory is private local operator material because it contains a legacy
+recovery pairing code, authenticated MCP URL, and one-use report links; it is truncated
+on each fresh start. Those values are never placed in `status.json`, the
+learning page, its URL, or its storage. `desktop:alpha:stop` submits a run-bound
+clean-stop request and waits at most ten seconds; it never falls back to a
+process-name or force kill. For terminal-bound debugging only, use
+`npm run desktop:alpha:foreground`.
+
+The beginner path does not use that recovery code. Open the learning page,
+select the unpacked extension, and choose **Connect this practice tab**. A
+short-lived connector challenge pairs the exact page automatically. After the
+person approves the exact Scenario 1 task and the page successfully registers
+its one-use capability, the page offers the permit to the extension
+automatically. The extension revalidates and document-binds the offer; manual
+JSON import is recovery-only.
 
 The application always works as an educational range through its explicitly labeled harness. To exercise the actual WebMCP path, use a browser/client that exposes `document.modelContext`. Chrome documents an origin trial and a local `chrome://flags/#enable-webmcp-testing` flag; support is experimental and must be checked in the exact client being demonstrated. See the [Chrome WebMCP overview](https://developer.chrome.com/docs/ai/webmcp) and the [WebMCP proposal](https://github.com/webmachinelearning/webmcp).
 
@@ -215,14 +300,17 @@ The automated suite covers:
   result verification, and local receipt validation;
 - connector authentication, discovery-only inspection, exact one-use
   invocation authority, receipt validation, JSONL chain integrity, and
-  acknowledgement ordering; and
+  acknowledgement ordering;
+- one-use report launch tickets, cookie-bound local receipt viewing, and the
+  desktop-alpha launcher lifecycle; and
 - unpacked-extension manifest authority, document binding, bounded transport,
-  retry behavior, and failure handling.
+  exact permit validation and consume-before-execute enforcement, retry
+  behavior, revocation, and failure handling.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The automated suite passed 123/123 tests,
-typecheck, lint, and production build after the cross-realm result-compatibility
-and approval-dialog fixes. Live connector evidence is recorded separately: the
+separate Android conformance script. The current automated suite passes 140/140
+tests, typecheck, lint, and a production build on Node.js 24. Live connector
+evidence is recorded separately: the
 September 1 target-client run satisfied the bounded end-to-end checks in
 [docs/GO_NO_GO.md](docs/GO_NO_GO.md).
 

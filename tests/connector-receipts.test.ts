@@ -5,11 +5,13 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { PairedPageSummary } from '../products/connector/bridge-coordinator';
+import { createIssueCandidateFromVerifiedReceipt } from '../products/connector/issue-candidate';
 import {
   ReceiptStore,
   REPORT_LIMITATION,
 } from '../products/connector/receipt-store';
 import { validCapabilityReceipt } from './fixtures/capability-receipt';
+import { validGuidedCapabilityReceipt } from './fixtures/guided-capability-receipt';
 
 const tempDirectories: string[] = [];
 
@@ -110,6 +112,30 @@ describe('connector receipt reporting store', () => {
       ),
     ).rejects.toThrow('different capability');
     await expect(store.listVerified()).resolves.toEqual([]);
+  });
+
+  it('persists a guided receipt and maps only its fixed scenario identity into a local issue candidate', async () => {
+    const { store } = await storeFixture();
+    const receipt = await validGuidedCapabilityReceipt(
+      'lesson-5-client-observation/1',
+    );
+    const entry = await store.append(receipt, page, receipt.declaration.name);
+
+    await expect(store.listVerified()).resolves.toEqual([entry]);
+    const candidate = createIssueCandidateFromVerifiedReceipt(entry);
+    expect(candidate).toMatchObject({
+      source: { kind: 'verified-receipt', entryId: entry.entryId },
+      title: 'One client observation was treated as universal support',
+      draft: {
+        context: 'synthetic-lab',
+        category: 'support-overclaim',
+        severity: 'informational',
+        stage: 'discovery',
+        submission: { submittable: false },
+      },
+    });
+    expect(JSON.stringify(candidate)).not.toContain('This browser session');
+    expect(JSON.stringify(candidate)).not.toContain('rawResult');
   });
 
   it('detects retained-file tampering before reporting entries', async () => {

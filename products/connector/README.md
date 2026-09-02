@@ -1,15 +1,25 @@
 # LeftOut WebMCP capability connector
 
-This is a local MVP that joins three otherwise separate surfaces:
+This local MVP connects the beginner-first product journey:
 
-1. a user-selected browser tab running the Scenario 1 WebMCP negotiator;
-2. a tool-only MCP server for ChatGPT/Codex or MCP Inspector; and
-3. a local receipt-reporting dashboard backed by an append-only JSONL hash
-   chain.
+1. **Learn** — a five-lesson synthetic course teaches the shared Understand →
+   Approve → Run → Verify method, with each lesson continuing through the
+   browser-owned bridge;
+2. **Protect** — the browser-owned extension HUD and loopback connector keep
+   observation, guarded authority, invocation, and evidence separate; and
+3. **Report** — a local receipt dashboard, separately redacted issue preview,
+   explicit one-use save action, and temporary review list show the full
+   reporting journey without enabling external submission or publication.
+
+The connector also exposes a tool-only MCP server for ChatGPT/Codex or MCP
+Inspector so an external agent can inspect the paired page and request the one
+already-approved action.
 
 It is intentionally a **tool-only** MCP app. The reporting UI is an ordinary
-read-only local web page, not an in-chat widget. The connector does not create
-approval, generate a capability, or invoke the broad source/proposal tools.
+local web page, not an in-chat widget. Its only mutation is an explicit,
+one-use save to the connector's temporary review list. The connector does not
+create approval, generate a capability, invoke the broad source/proposal tools,
+or submit anything externally.
 
 ## Live validation status
 
@@ -37,6 +47,9 @@ page-side `PASS` receipts but did not complete the connector return path. Their
 one-use grants remain consumed and must not be retried. The successful run does
 not prove cross-version, crash-atomic, hosted, or universal-client behavior.
 This connector remains a local MVP and has not been publicly deployed.
+The desktop-alpha launcher, permit evidence, report tickets, and revocation
+controls added after that run have automated coverage but have not inherited
+the dated live result.
 
 The successful session used post-`f7290d9` page and extension content. The
 running connector came from `f7290d9`; connector source is unchanged by the
@@ -49,19 +62,37 @@ not recaptured, and the future final commit itself was not live-run.
   one approved conflict fallback. An explicit
   `BRIDGE_HOST=::1` selects IPv6 loopback; non-loopback bridge binds are
   rejected.
-- The MCP/report server binds to `127.0.0.1:8787` by default and requires a
-  randomly generated access token.
-- The extension has exact loopback host permissions and pairs a user-selected
-  tab with a one-time eight-digit code.
+- The MCP/report server binds to `127.0.0.1:8787` by default. MCP and receipt
+  APIs require the randomly generated MCP token. Browser report pages use
+  one-use launch tickets exchanged for an HttpOnly, SameSite cookie so the
+  final report URL contains no token. Extension-issued report sessions are
+  bound to their pairing, see only that pairing's receipts, and are invalidated
+  when the pairing is revoked.
+- The extension has exact loopback host permissions. One click obtains and
+  consumes a short-lived, one-use connector challenge bound to the exact
+  extension origin, page origin and path, and client label; the learner copies
+  no pairing secret.
 - MCP inspection performs discovery only.
-- Invocation accepts only
-  `get_training_1042_eligibility_once_<16 lowercase hex characters>` and
-  supplies an empty object. The page must already have registered that tool
-  after its own exact human approval.
-- A returned receipt is fully schema-, contract-, chronology-, state-, and
-  hash-validated before it is appended to the connector ledger.
+- Invocation accepts only the five built-in generated families:
+  `get_training_1042_eligibility_once_`, `update_profile_notice_once_`,
+  `get_synthetic_delivery_status_safe_once_`,
+  `set_training_notification_subscription_once_`, and
+  `record_webmcp_capability_observation_once_`, each followed by exactly 16
+  lowercase hexadecimal characters. Every bridge call supplies `{}`; approved
+  task arguments remain frozen inside the capability contract.
+- Scenario 1 keeps its v1 byte-identity receipt. Scenarios 2–5 use v2 receipts
+  checked against a separate connector-owned profile table: exact source and
+  handler binding, arguments, allowed and prohibited effects, result shape,
+  before/after postcondition, chronology, and consumed identity must agree
+  before the receipt is appended to the ledger.
 - The connector returns safe receipt summaries to the model. The dashboard can
   display the full validated synthetic JSON locally.
+- Receipts and issue drafts are separate stores and purposes. The scriptless
+  local issue preview exposes only fixed, redacted synthetic fields. An exact,
+  one-use action may save that displayed draft to a temporary, session-scoped
+  review list; it cannot submit or publish it. A real intake, moderation
+  service, or security-tooling feed requires a separate privacy and security
+  review.
 
 ## Delivery durability boundary
 
@@ -94,37 +125,55 @@ Use Node.js 24 from the repository root:
 
 ```bash
 npm ci
-npm run connector
+npm run desktop:alpha
 ```
 
-The process prints four values:
+The combined process starts the site on exact loopback port `3001`, starts the
+connector and bridge, and writes a non-secret local runtime descriptor. It
+makes these local destinations available:
 
 - the authenticated MCP URL;
-- the authenticated receipt-dashboard URL;
+- one-use setup and receipt-viewer launch URLs;
 - the loopback browser-bridge URL; and
-- the current one-time browser pairing code.
+- the five-minute learning page.
 
-Load the unpacked extension from `products/extension`, open the local lab at
-`http://localhost:3000`, and pair that tab with the printed code. Each
-successful pairing rotates the code.
+Load the unpacked extension from `products/extension`, open the printed local
+lab URL, open the extension, and select **Connect this practice tab**. The
+extension obtains its short-lived pairing challenge automatically. The
+operator log also contains advanced local recovery material, but the beginner
+path does not require copying any token, code, port, or JSON.
 
 For MCP Inspector, select Streamable HTTP and use the complete printed MCP URL,
-including its `access_token` query parameter. The tool sequence is:
+including its `access_token` query parameter. The beginner sequence is:
 
-1. `list_paired_pages`
-2. `inspect_paired_webmcp_page`
-3. complete the exact approval in the browser page
-4. inspect again and copy the generated tool name
-5. `invoke_approved_one_use_capability`
-6. `get_capability_receipt_summary` or open the dashboard
+1. Complete the exact approval in the browser page.
+2. Wait for the page's automatic one-way permit offer and confirm that the
+   extension HUD says one exact action is protected
+3. Tell the connected agent: “Use the LeftOut connector to run the one approved
+   practice action. Run it once; do not retry.” The zero-input
+   `run_one_approved_practice_action` helper discovers the sole connected page
+   and sole approved action. The human never copies a session ID, generated
+   tool name, or protocol data.
+4. Use `get_capability_receipt_summary` or select **Review receipt or report a
+   concern**
+   in the extension
+
+The helper fails closed before invocation if the page or action is ambiguous.
+The lower-level list, inspect, and exact-name invocation tools remain available
+for advanced diagnosis; they are not part of the beginner handoff.
+
+The permit offer is not approval proof. The extension independently validates
+and binds the untrusted permit to the paired tab, browser document, declaration,
+and bridge session. Manual paste/file import is recovery-only.
 
 The repository also includes a small SDK client for reproducible live calls.
-In PowerShell, set the complete connector URL printed by `npm run connector`,
-then list or invoke tools:
+In PowerShell, set the complete MCP URL printed by the running connector, then
+list or invoke tools:
 
 ```powershell
 $env:MCP_URL = 'http://127.0.0.1:8787/mcp?access_token=REPLACE_WITH_CURRENT_TOKEN'
 npm run mcp:list-tools
+npm run mcp:call -- run_one_approved_practice_action
 npm run mcp:call -- list_paired_pages
 npm run mcp:call -- inspect_paired_webmcp_page '{"session_id":"REPLACE_WITH_SESSION_UUID"}'
 npm run mcp:call -- invoke_approved_one_use_capability '{"session_id":"REPLACE_WITH_SESSION_UUID","tool_name":"REPLACE_WITH_NEW_APPROVED_TOOL"}'

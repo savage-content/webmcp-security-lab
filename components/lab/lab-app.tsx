@@ -7,6 +7,7 @@ import {
   Bot,
   Braces,
   CheckCircle2,
+  ChevronDown,
   Code2,
   ExternalLink,
   FlaskConical,
@@ -16,6 +17,7 @@ import {
   ScanSearch,
   ShieldAlert,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -32,13 +34,17 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+  createCapabilityPermitArtifact,
+  createCapabilityPermitHandoff,
   createEvidenceReceiptArtifact,
+  createLessonCapabilityPermitArtifact,
   createPolicyJsonArtifact,
   type JsonArtifact,
 } from '@/lib/lab/artifacts';
 import { createEvidenceReceipt } from '@/lib/lab/evidence';
 import { runScenario } from '@/lib/lab/engine';
 import { createCapabilityEvidence } from '@/lib/lab/capability-negotiation';
+import { createLessonCapabilityEvidence } from '@/lib/lab/lesson-capabilities';
 import { assessScenarioRisk } from '@/lib/lab/risk';
 import {
   parseCapabilityEvidenceReceipt,
@@ -52,8 +58,10 @@ import {
 import type {
   ConfirmationEvidence,
   EvidenceReceipt,
+  LessonCapabilityScenarioId,
   InvocationChannel,
   JsonValue,
+  ScenarioDefinition,
   ScenarioId,
   ToolDeclaration,
   WebMcpStatus,
@@ -73,6 +81,13 @@ import {
   type CapabilityRunPayload,
 } from './capability-negotiator';
 import {
+  FirstRunGuide,
+  GuidedSecurityLesson,
+  LessonPicker,
+} from './guided-security-lesson';
+import { ExperienceChooser, type ExperienceMode } from './experience-chooser';
+import type { LessonCapabilityRunPayload } from './use-generated-lesson-capability';
+import {
   EvidencePanel,
   type PersistenceState,
   SecureComparison,
@@ -90,21 +105,24 @@ const SESSION_STORAGE_KEY = 'left-out-webmcp-lab-session';
 const surfaceDefinitions = [
   {
     number: '01',
-    label: 'Presented',
-    title: 'What the human sees',
-    detail: 'Labels, controls, confirmation words, and visible state.',
+    label: 'Learn',
+    title: 'Understand WebMCP by using it',
+    detail:
+      'A person and their agent inspect an offer, approve one exact task, run it, and read the proof together.',
   },
   {
     number: '02',
-    label: 'Declared',
-    title: 'What the agent receives',
-    detail: 'Tool identity, description, schema, and annotations.',
+    label: 'Protect',
+    title: 'See and contain live authority',
+    detail:
+      'A browser HUD detects site tools and changes. The Membrane narrows an approved action to the least authority it needs.',
   },
   {
     number: '03',
-    label: 'Effective',
-    title: 'What the code does',
-    detail: 'Invocation, raw result, state changes, and durable evidence.',
+    label: 'Report',
+    title: 'Turn observations into useful evidence',
+    detail:
+      'Privacy-safe issue drafts and receipts support humans, remediation work, and future security-tooling feeds.',
   },
 ];
 
@@ -171,6 +189,8 @@ function getOrCreateSessionId() {
 }
 
 export function LabApp() {
+  const [experienceMode, setExperienceMode] =
+    useState<ExperienceMode>('site-tools');
   const [selectedId, setSelectedId] = useState<ScenarioId>(defaultScenarioId);
   const [scenarioOneSourceRevision, setScenarioOneSourceRevision] = useState(0);
   const scenarioOneSourceRevisionRef = useRef(0);
@@ -234,6 +254,25 @@ export function LabApp() {
         : scenario.secureConfirmationCopy,
     [clientLabel, scenario],
   );
+  const completedLessonIds = useMemo(() => {
+    const completed = new Set<ScenarioId>();
+    for (const item of scenarios) {
+      if (
+        secureReceiptMap[item.id]?.verdict === 'PASS' ||
+        ledger.some(
+          (receipt) =>
+            receipt.scenario.id === item.id && receipt.verdict === 'PASS',
+        )
+      ) {
+        completed.add(item.id);
+      }
+    }
+    return completed;
+  }, [ledger, secureReceiptMap]);
+  const nextScenario = useMemo(() => {
+    const index = scenarios.findIndex((item) => item.id === scenario.id);
+    return index >= 0 ? scenarios[index + 1] : undefined;
+  }, [scenario.id]);
 
   const commitWebMcp = useCallback(
     (update: WebMcpStatus | ((previous: WebMcpStatus) => WebMcpStatus)) => {
@@ -256,14 +295,13 @@ export function LabApp() {
       registration: 'unregistered',
       discovery: 'not-discovered',
       invocation: 'not-observed',
-      detail:
-        'The broad Scenario 1 source tool was explicitly unregistered before the generated capability was registered.',
+      detail: `The broad ${scenario.shortTitle} source tool was explicitly unregistered before the generated capability was registered.`,
       discoveredToolNames: current.discoveredToolNames.filter(
-        (name) => name !== scenarioById['read-only-claim'].tool.name,
+        (name) => name !== scenario.tool.name,
       ),
     }));
     return true;
-  }, [commitWebMcp]);
+  }, [commitWebMcp, scenario.shortTitle, scenario.tool.name]);
 
   const restoreSourceTool = useCallback(() => {
     scenarioOneSourceRevisionRef.current = 0;
@@ -542,6 +580,10 @@ export function LabApp() {
           capability,
         }),
       );
+      setSecureReceiptMap((current) => ({
+        ...current,
+        'read-only-claim': receipt,
+      }));
       setExecutionMessage(
         `Capability receipt ${receipt.id.slice(0, 8)} exists only in this document session. Export it before reset or reload; the capability handler made no evidence POST.`,
       );
@@ -550,16 +592,80 @@ export function LabApp() {
     [clientLabel, scenario],
   );
 
+  const createLocalLessonCapabilityReceipt = useCallback(
+    async (payload: LessonCapabilityRunPayload) => {
+      const capability = createLessonCapabilityEvidence({
+        proposal: payload.proposal,
+        contract: payload.contract,
+        approvedAt: payload.approvedAt,
+        claimedAt: payload.claimedAt,
+        verification: payload.verification,
+        invalidatedAt: payload.claimedAt,
+        invalidationReason: payload.invalidationReason,
+      });
+      const context = {
+        channel: 'negotiated-capability' as const,
+        now: payload.claimedAt,
+        origin: window.location.origin,
+        browser: {
+          userAgent: navigator.userAgent ?? '',
+          language: navigator.language ?? '',
+          platform:
+            (
+              navigator as Navigator & {
+                userAgentData?: { platform?: string };
+              }
+            ).userAgentData?.platform ??
+            navigator.platform ??
+            '',
+        },
+        clientLabel,
+        webMcp: payload.webMcp,
+        confirmation: {
+          presentedCopy: payload.contract.approval.copy,
+          known: true,
+          approved: true,
+          source: 'capability-contract' as const,
+        },
+      };
+      const receipt = await parseCapabilityEvidenceReceipt(
+        createEvidenceReceipt({
+          scenario,
+          declaration: payload.contract.compiled.declaration,
+          argumentsValue: {},
+          context,
+          outcome: payload.outcome,
+          sessionId: sessionIdRef.current || getOrCreateSessionId(),
+          capability,
+        }),
+      );
+      const nextStateMap = {
+        ...stateMapRef.current,
+        [scenario.id]: structuredClone(payload.outcome.after),
+      };
+      stateMapRef.current = nextStateMap;
+      setStateMap(nextStateMap);
+      setSecureReceiptMap((current) => ({
+        ...current,
+        [scenario.id]: receipt,
+      }));
+      setExecutionMessage(
+        `Page receipt ${receipt.id.slice(0, 8)} returned to the caller. The page made no evidence POST; only the connector can validate and store its own linked entry.`,
+      );
+      return receipt;
+    },
+    [clientLabel, scenario],
+  );
+
   useEffect(() => {
-    if (scenario.id === 'read-only-claim' && sourceToolSuppressed) {
+    if (sourceToolSuppressed) {
       sourceEnabledRef.current = false;
       commitWebMcp((current) => ({
         ...current,
         registration: 'unregistered',
         discovery: 'not-discovered',
         invocation: 'not-observed',
-        detail:
-          'The broad Scenario 1 source tool is withdrawn while the negotiated capability lifecycle is active.',
+        detail: `The broad ${scenario.shortTitle} source tool is withdrawn while the negotiated capability lifecycle is active.`,
         discoveredToolNames: current.discoveredToolNames.filter(
           (name) => name !== scenario.tool.name,
         ),
@@ -854,6 +960,26 @@ export function LabApp() {
     }
   }, [scenario]);
 
+  const selectGuidedLesson = useCallback(
+    (nextId: ScenarioId) => {
+      if (nextId !== selectedId) restoreSourceTool();
+      setSelectedId(nextId);
+      setPersistence(receiptMap[nextId] ? 'saved' : 'idle');
+      setSecurePersistence(secureReceiptMap[nextId] ? 'saved' : 'idle');
+      setExecutionMessage('');
+      window.setTimeout(() => {
+        document
+          .getElementById('lesson')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 0);
+    },
+    [receiptMap, restoreSourceTool, secureReceiptMap, selectedId],
+  );
+
+  const startGuidedLesson = useCallback(() => {
+    selectGuidedLesson('read-only-claim');
+  }, [selectGuidedLesson]);
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border bg-background/92 backdrop-blur-xl">
@@ -876,17 +1002,20 @@ export function LabApp() {
             aria-label="Primary navigation"
           >
             <a className="nav-link" href="#top">
-              Heads-up
+              Start
             </a>
-            <a className="nav-link" href="#range">
-              Guided test
+            <a className="nav-link" href="#setup">
+              Learn Site Tools
             </a>
-            <a className="nav-link" href="#builder">
-              Builder fix
+            <a className="nav-link" href="#local-guard-option">
+              Use the Local Guard
             </a>
             <a className="nav-link" href="#ledger">
-              Evidence ledger
+              Review evidence
             </a>
+            <Link className="nav-link" href="/conformance">
+              Advanced tests
+            </Link>
           </nav>
           <div className="flex items-center gap-3">
             <Badge
@@ -917,36 +1046,33 @@ export function LabApp() {
           <div className="max-w-4xl">
             <div className="mb-5 flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-800">
               <Radio className="size-3.5" aria-hidden="true" />
-              Live educational security range
+              Interactive Site Tools learning + safety lab
             </div>
             <h1 className="max-w-4xl text-balance text-[clamp(3rem,7vw,6.8rem)] font-semibold leading-[0.88] tracking-[-0.065em]">
-              Trust the effect,
+              Learn what a website offers your AI
               <span className="block text-muted-foreground">
-                not the label.
+                before you let it run.
               </span>
             </h1>
             <p className="mt-7 max-w-2xl text-pretty text-base leading-7 text-muted-foreground lg:text-lg">
-              A calm heads-up before an agent acts: see the tool a page offered,
-              the authority its schema grants, the safety claims it makes, and
-              the rule that deserves your attention.
+              ChatGPT calls these Site Tools, an implementation of WebMCP.
+              Practice safely with five synthetic lessons. The optional LeftOut
+              Local Guard is a separate desktop prototype for monitoring and
+              one-use enforcement.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Button
                 size="lg"
                 className="h-11 px-4"
-                onClick={() =>
-                  document
-                    .getElementById('range')
-                    ?.scrollIntoView({ behavior: 'smooth' })
-                }
+                onClick={startGuidedLesson}
               >
                 <FlaskConical data-icon="inline-start" />
-                Inspect the detected tool
+                Choose a setup and start
                 <ArrowRight data-icon="inline-end" />
               </Button>
               <span className="flex items-center gap-2 text-xs text-muted-foreground">
                 <CheckCircle2 className="size-4 text-emerald-700" />
-                Five isolated, resettable fixtures
+                Fake data · nothing runs without approval
               </span>
             </div>
           </div>
@@ -956,28 +1082,28 @@ export function LabApp() {
             assessment={riskAssessment}
             webMcp={webMcp}
             secureReceipt={latestSecureReceipt}
-            onInspect={() =>
-              document
-                .getElementById('range')
-                ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }
+            onInspect={startGuidedLesson}
           />
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1480px] px-5 py-10 lg:px-8 lg:py-14">
+      <section
+        id="platform"
+        className="mx-auto max-w-[1480px] scroll-mt-20 px-5 py-10 lg:px-8 lg:py-14"
+      >
         <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              The security method
+              The complete learning path
             </p>
             <h2 className="mt-1 text-3xl font-semibold tracking-[-0.04em]">
-              Three surfaces. One security truth.
+              Learn it. Protect the session. Review what happened.
             </h2>
           </div>
           <p className="max-w-md text-sm leading-6 text-muted-foreground">
-            Names and approval words are claims. Before/after state and observed
-            effects are evidence.
+            Every lesson starts with one plain question and one controlled
+            practice. Schemas, source code, and client experiments stay in the
+            optional advanced lab.
           </p>
         </div>
         <div className="grid gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-3">
@@ -998,6 +1124,14 @@ export function LabApp() {
             </article>
           ))}
         </div>
+        <ExperienceChooser mode={experienceMode} onChange={setExperienceMode} />
+        <FirstRunGuide mode={experienceMode} />
+        <LessonPicker
+          scenarios={scenarios}
+          selectedId={selectedId}
+          completedIds={completedLessonIds}
+          onSelect={selectGuidedLesson}
+        />
       </section>
 
       <section
@@ -1005,348 +1139,421 @@ export function LabApp() {
         className="mx-auto max-w-[1480px] scroll-mt-20 px-5 pb-8 lg:px-8 lg:pb-12"
       >
         <div className="overflow-hidden rounded-xl border border-foreground bg-card shadow-[7px_7px_0_0_var(--accent-strong)]">
-          <div className="grid lg:grid-cols-[270px_minmax(0,1fr)]">
-            <aside className="border-b border-border bg-muted/45 p-3 lg:border-b-0 lg:border-r">
-              <div className="px-3 py-3 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Scenario fixtures
-              </div>
-              <nav aria-label="Security scenarios" className="space-y-1">
-                {scenarios.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    aria-current={item.id === selectedId ? 'page' : undefined}
-                    className={`group flex w-full items-center gap-3 rounded-md px-3 py-3 text-left transition-colors ${
-                      item.id === selectedId
-                        ? 'bg-foreground text-background'
-                        : 'text-muted-foreground hover:bg-background hover:text-foreground'
-                    }`}
-                    onClick={() => {
-                      if (item.id !== 'read-only-claim') {
-                        restoreSourceTool();
-                      }
-                      setSelectedId(item.id);
-                      setPersistence(receiptMap[item.id] ? 'saved' : 'idle');
-                      setSecurePersistence(
-                        secureReceiptMap[item.id] ? 'saved' : 'idle',
-                      );
-                      setExecutionMessage('');
-                    }}
-                  >
-                    <span className="font-mono text-[10px] opacity-60">
-                      {item.ordinal}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold">
-                        {item.shortTitle}
-                      </span>
-                      <span className="mt-0.5 block truncate text-[10px] opacity-65">
-                        {item.category}
-                      </span>
-                    </span>
-                    <ArrowRight className="size-3.5 opacity-0 transition-opacity group-hover:opacity-60" />
-                  </button>
-                ))}
-              </nav>
+          {scenario.id === 'read-only-claim' ? (
+            <CapabilityNegotiator
+              experienceMode={experienceMode}
+              sourceTool={scenario.tool}
+              sourceState={scenarioState}
+              getCurrentSourceTool={getScenarioOneSourceTool}
+              getCurrentSourceState={getScenarioOneSourceState}
+              sourceToolSuppressed={sourceToolSuppressed}
+              onSuppressSourceTool={suppressSourceTool}
+              onRestoreSourceTool={restoreSourceTool}
+              onSourceDrift={driftScenarioOneSource}
+              onCreateLocalReceipt={createLocalCapabilityReceipt}
+              onExport={(receipt) =>
+                setExportArtifact(createEvidenceReceiptArtifact(receipt))
+              }
+              onOfferPermit={async (contract, approvedAt, pageUrl) => {
+                const artifact = await createCapabilityPermitArtifact(
+                  contract,
+                  approvedAt,
+                  pageUrl,
+                );
+                window.postMessage(
+                  createCapabilityPermitHandoff(artifact),
+                  window.location.origin,
+                );
+              }}
+              onExportPermit={async (contract, approvedAt, pageUrl) =>
+                setExportArtifact(
+                  await createCapabilityPermitArtifact(
+                    contract,
+                    approvedAt,
+                    pageUrl,
+                  ),
+                )
+              }
+              onNext={
+                nextScenario
+                  ? () => selectGuidedLesson(nextScenario.id)
+                  : undefined
+              }
+            />
+          ) : (
+            <GuidedSecurityLesson
+              key={scenario.id}
+              experienceMode={experienceMode}
+              scenario={
+                scenario as ScenarioDefinition & {
+                  id: LessonCapabilityScenarioId;
+                }
+              }
+              assessment={riskAssessment}
+              sourceState={scenarioState}
+              clientLabel={clientLabel}
+              webMcp={webMcp}
+              onSuppressSourceTool={suppressSourceTool}
+              onRestoreSourceTool={restoreSourceTool}
+              onCreateReceipt={createLocalLessonCapabilityReceipt}
+              onOfferPermit={async (contract, approvedAt, pageUrl) => {
+                const artifact = await createLessonCapabilityPermitArtifact(
+                  contract,
+                  approvedAt,
+                  pageUrl,
+                );
+                window.postMessage(
+                  createCapabilityPermitHandoff(artifact),
+                  window.location.origin,
+                );
+              }}
+              onNext={
+                nextScenario
+                  ? () => selectGuidedLesson(nextScenario.id)
+                  : undefined
+              }
+            />
+          )}
 
-              <div className="mt-5 rounded-md border border-border bg-background p-3">
-                <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  Safety boundary
-                </p>
-                <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
-                  Generated accounts, synthetic state, same-origin storage, and
-                  no external actions.
-                </p>
-              </div>
-            </aside>
+          <details id="advanced-lab" className="group border-t border-white/10">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 bg-slate-900 px-5 py-4 text-left text-slate-100 outline-none transition-colors hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lime-300 sm:px-8">
+              <span>
+                <span className="block text-sm font-semibold">
+                  Explore the advanced security lab
+                </span>
+                <span className="mt-1 block text-xs leading-5 text-slate-400">
+                  Optional: inspect misleading claims, schemas, source drift,
+                  fixes, and protocol evidence.
+                </span>
+              </span>
+              <ChevronDown className="size-5 shrink-0 transition-transform group-open:rotate-180" />
+            </summary>
 
-            <div className="min-w-0">
-              <div className="p-5 md:p-7 lg:p-8">
-                <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-                  <div className="max-w-3xl">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge
-                        className="bg-amber-100 text-amber-900"
-                        variant="secondary"
-                      >
-                        Deliberately vulnerable
-                      </Badge>
-                      <Badge variant="outline">
-                        Scenario {scenario.ordinal} / v{scenario.version}
-                      </Badge>
-                      <Badge variant="outline">{scenario.riskLabel}</Badge>
-                    </div>
-                    <p className="mt-5 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                      {scenario.category}
-                    </p>
-                    <h2 className="mt-2 max-w-3xl text-3xl font-semibold tracking-[-0.045em] md:text-4xl">
-                      {scenario.summary}
-                    </h2>
-                    <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-                      {scenario.expectedFinding}
-                    </p>
-                  </div>
-
-                  <div className="w-full rounded-lg border border-border bg-background p-3 xl:w-[320px]">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                        Page-scoped registration
-                      </span>
-                      <RegistrationBadge status={webMcp.registration} />
-                    </div>
-                    <p className="mt-3 break-all font-mono text-[11px] font-semibold">
-                      {sourceToolSuppressed && scenario.id === 'read-only-claim'
-                        ? 'broad source withdrawn'
-                        : scenario.tool.name}
-                    </p>
-                    <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
-                      {webMcp.detail}
-                    </p>
-                  </div>
+            <div className="grid lg:grid-cols-[270px_minmax(0,1fr)]">
+              <aside className="border-b border-border bg-muted/45 p-3 lg:border-b-0 lg:border-r">
+                <div className="px-3 py-3 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  Scenario fixtures
                 </div>
-
-                <div className="mt-8 rounded-xl border border-border bg-background p-4 md:p-5">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                    <div>
-                      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Guided human + agent flow
-                      </p>
-                      <h3 className="mt-1 text-lg font-semibold tracking-tight">
-                        Know what is offered before anything runs.
-                      </h3>
-                    </div>
-                    <p className="max-w-lg text-xs leading-5 text-muted-foreground">
-                      Detection and registration are automatic. Invocation is
-                      not. Ask the agent to inspect first, then approve only
-                      this harmless synthetic fixture.
-                    </p>
-                  </div>
-                  <div className="mt-4 grid gap-1.5 sm:grid-cols-5">
-                    <JourneyStep
-                      number="1"
-                      label="Browser support"
-                      done={webMcp.browserSupport === 'supported'}
-                    />
-                    <JourneyStep
-                      number="2"
-                      label="Tool registered"
-                      done={webMcp.registration === 'registered'}
-                    />
-                    <JourneyStep
-                      number="3"
-                      label="Client discovers"
-                      done={webMcp.discovery === 'discovered'}
-                    />
-                    <JourneyStep
-                      number="4"
-                      label="Effect observed"
-                      done={Boolean(latestReceipt)}
-                    />
-                    <JourneyStep
-                      number="5"
-                      label="Fix verified"
-                      done={latestSecureReceipt?.verdict === 'PASS'}
-                    />
-                  </div>
-                  <div className="mt-4">
-                    <PreflightComparison
-                      scenario={scenario}
-                      assessment={riskAssessment}
-                    />
-                  </div>
-                  <div className="mt-3">
-                    <RiskRules assessment={riskAssessment} />
-                  </div>
-                </div>
-
-                <div className="mt-8 grid gap-5 xl:grid-cols-2">
-                  <div>
-                    <SurfaceHeader
-                      number="01"
-                      label="Presented surface"
-                      icon={<Activity />}
-                    />
-                    <div className="rounded-xl border border-border bg-muted/35 p-4 md:p-5">
-                      <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                        {scenario.presented.eyebrow}
-                      </p>
-                      <h3 className="mt-2 text-xl font-semibold tracking-tight">
-                        {scenario.presented.title}
-                      </h3>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        {scenario.presented.description}
-                      </p>
-                      <div className="mt-5">
-                        <PresentedFixture
-                          scenario={scenario}
-                          state={scenarioState}
-                          noticeDraft={noticeDraft}
-                          onNoticeDraftChange={setNoticeDraft}
-                          webMcp={webMcp}
-                        />
-                      </div>
-                      <div className="mt-4 flex items-center gap-2 text-[11px] font-medium text-emerald-800">
-                        <CheckCircle2 className="size-3.5" />
-                        {scenario.presented.apparentPromise}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <SurfaceHeader
-                      number="02"
-                      label="Declared agent surface"
-                      icon={<Bot />}
-                    />
-                    <div className="overflow-hidden rounded-xl border border-[#26354a] bg-[#101722] text-slate-100">
-                      <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-                        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
-                          <Braces className="size-3.5" />
-                          document.modelContext
-                        </div>
-                        <span className="font-mono text-[9px] text-lime-300">
-                          registerTool()
-                        </span>
-                      </div>
-                      <pre className="max-h-[420px] overflow-auto p-4 font-mono text-[10px] leading-5 text-slate-200 md:p-5">
-                        {JSON.stringify(scenario.tool, null, 2)}
-                      </pre>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 rounded-xl border border-border bg-background p-4 md:p-5">
-                  <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="max-w-2xl">
-                      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Choose how to verify
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        Discovery checks never execute the tool. A genuine
-                        WebMCP self-test and the fallback harness both require
-                        explicit approval and are labeled separately in
-                        evidence.
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={resetScenario}
-                        disabled={running}
-                      >
-                        <RefreshCw data-icon="inline-start" />
-                        Reset fixture
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => void checkDiscovery()}
-                        disabled={
-                          running || webMcp.registration !== 'registered'
-                        }
-                      >
-                        <ScanSearch data-icon="inline-start" />
-                        Check discovery only
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setConfirmationMode('webmcp-self-test');
-                          setConfirmOpen(true);
-                        }}
-                        disabled={
-                          running || webMcp.registration !== 'registered'
-                        }
-                      >
-                        <Radio data-icon="inline-start" />
-                        WebMCP self-test
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setConfirmationMode('lab-harness');
-                          setConfirmOpen(true);
-                        }}
-                        disabled={running}
-                      >
-                        <FlaskConical data-icon="inline-start" />
-                        {running ? 'Running…' : 'Fallback harness'}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-                    <ObservationCell
-                      label="Browser API"
-                      value={webMcp.browserSupport}
-                    />
-                    <ObservationCell
-                      label="Registration"
-                      value={webMcp.registration}
-                    />
-                    <ObservationCell
-                      label="Policy"
-                      value={webMcp.permissionsPolicy}
-                    />
-                    <ObservationCell
-                      label="Discovery"
-                      value={webMcp.discovery}
-                    />
-                    <ObservationCell
-                      label="Invocation"
-                      value={webMcp.invocation}
-                    />
-                  </div>
-                  {executionMessage ? (
-                    <output
-                      aria-live="polite"
-                      className="mt-4 flex items-start gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground"
+                <nav aria-label="Security scenarios" className="space-y-1">
+                  {scenarios.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      aria-current={item.id === selectedId ? 'page' : undefined}
+                      className={`group flex w-full items-center gap-3 rounded-md px-3 py-3 text-left transition-colors ${
+                        item.id === selectedId
+                          ? 'bg-foreground text-background'
+                          : 'text-muted-foreground hover:bg-background hover:text-foreground'
+                      }`}
+                      onClick={() => {
+                        if (item.id !== selectedId) restoreSourceTool();
+                        setSelectedId(item.id);
+                        setPersistence(receiptMap[item.id] ? 'saved' : 'idle');
+                        setSecurePersistence(
+                          secureReceiptMap[item.id] ? 'saved' : 'idle',
+                        );
+                        setExecutionMessage('');
+                      }}
                     >
-                      <Info className="mt-0.5 size-3.5 shrink-0" />
-                      {executionMessage}
-                    </output>
-                  ) : null}
-                </div>
-              </div>
+                      <span className="font-mono text-[10px] opacity-60">
+                        {item.ordinal}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold">
+                          {item.shortTitle}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[10px] opacity-65">
+                          {item.category}
+                        </span>
+                      </span>
+                      <ArrowRight className="size-3.5 opacity-0 transition-opacity group-hover:opacity-60" />
+                    </button>
+                  ))}
+                </nav>
 
-              {scenario.id === 'read-only-claim' ? (
-                <CapabilityNegotiator
-                  sourceTool={scenario.tool}
-                  sourceState={scenarioState}
-                  getCurrentSourceTool={getScenarioOneSourceTool}
-                  getCurrentSourceState={getScenarioOneSourceState}
-                  sourceToolSuppressed={sourceToolSuppressed}
-                  onSuppressSourceTool={suppressSourceTool}
-                  onRestoreSourceTool={restoreSourceTool}
-                  onSourceDrift={driftScenarioOneSource}
-                  onCreateLocalReceipt={createLocalCapabilityReceipt}
+                <div className="mt-5 rounded-md border border-border bg-background p-3">
+                  <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    Safety boundary
+                  </p>
+                  <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+                    Generated accounts, synthetic state, same-origin storage,
+                    and no external actions.
+                  </p>
+                </div>
+              </aside>
+
+              <div className="min-w-0">
+                <div className="p-5 md:p-7 lg:p-8">
+                  <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="max-w-3xl">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                          className="bg-amber-100 text-amber-900"
+                          variant="secondary"
+                        >
+                          Deliberately vulnerable
+                        </Badge>
+                        <Badge variant="outline">
+                          Scenario {scenario.ordinal} / v{scenario.version}
+                        </Badge>
+                        <Badge variant="outline">{scenario.riskLabel}</Badge>
+                      </div>
+                      <p className="mt-5 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                        {scenario.category}
+                      </p>
+                      <h2 className="mt-2 max-w-3xl text-3xl font-semibold tracking-[-0.045em] md:text-4xl">
+                        {scenario.summary}
+                      </h2>
+                      <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
+                        {scenario.expectedFinding}
+                      </p>
+                    </div>
+
+                    <div className="w-full rounded-lg border border-border bg-background p-3 xl:w-[320px]">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                          Page-scoped registration
+                        </span>
+                        <RegistrationBadge status={webMcp.registration} />
+                      </div>
+                      <p className="mt-3 break-all font-mono text-[11px] font-semibold">
+                        {sourceToolSuppressed &&
+                        scenario.id === 'read-only-claim'
+                          ? 'broad source withdrawn'
+                          : scenario.tool.name}
+                      </p>
+                      <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+                        {webMcp.detail}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 rounded-xl border border-border bg-background p-4 md:p-5">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                      <div>
+                        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          Guided human + agent flow
+                        </p>
+                        <h3 className="mt-1 text-lg font-semibold tracking-tight">
+                          Know what is offered before anything runs.
+                        </h3>
+                      </div>
+                      <p className="max-w-lg text-xs leading-5 text-muted-foreground">
+                        Detection and registration are automatic. Invocation is
+                        not. Ask the agent to inspect first, then approve only
+                        this harmless synthetic fixture.
+                      </p>
+                    </div>
+                    <div className="mt-4 grid gap-1.5 sm:grid-cols-5">
+                      <JourneyStep
+                        number="1"
+                        label="Browser support"
+                        done={webMcp.browserSupport === 'supported'}
+                      />
+                      <JourneyStep
+                        number="2"
+                        label="Tool registered"
+                        done={webMcp.registration === 'registered'}
+                      />
+                      <JourneyStep
+                        number="3"
+                        label="Client discovers"
+                        done={webMcp.discovery === 'discovered'}
+                      />
+                      <JourneyStep
+                        number="4"
+                        label="Effect observed"
+                        done={Boolean(latestReceipt)}
+                      />
+                      <JourneyStep
+                        number="5"
+                        label="Fix verified"
+                        done={latestSecureReceipt?.verdict === 'PASS'}
+                      />
+                    </div>
+                    <div className="mt-4">
+                      <PreflightComparison
+                        scenario={scenario}
+                        assessment={riskAssessment}
+                      />
+                    </div>
+                    <div className="mt-3">
+                      <RiskRules assessment={riskAssessment} />
+                    </div>
+                  </div>
+
+                  <div className="mt-8 grid gap-5 xl:grid-cols-2">
+                    <div>
+                      <SurfaceHeader
+                        number="01"
+                        label="Presented surface"
+                        icon={<Activity />}
+                      />
+                      <div className="rounded-xl border border-border bg-muted/35 p-4 md:p-5">
+                        <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                          {scenario.presented.eyebrow}
+                        </p>
+                        <h3 className="mt-2 text-xl font-semibold tracking-tight">
+                          {scenario.presented.title}
+                        </h3>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          {scenario.presented.description}
+                        </p>
+                        <div className="mt-5">
+                          <PresentedFixture
+                            scenario={scenario}
+                            state={scenarioState}
+                            noticeDraft={noticeDraft}
+                            onNoticeDraftChange={setNoticeDraft}
+                            webMcp={webMcp}
+                          />
+                        </div>
+                        <div className="mt-4 flex items-center gap-2 text-[11px] font-medium text-emerald-800">
+                          <CheckCircle2 className="size-3.5" />
+                          {scenario.presented.apparentPromise}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <SurfaceHeader
+                        number="02"
+                        label="Declared agent surface"
+                        icon={<Bot />}
+                      />
+                      <div className="overflow-hidden rounded-xl border border-[#26354a] bg-[#101722] text-slate-100">
+                        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+                          <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
+                            <Braces className="size-3.5" />
+                            document.modelContext
+                          </div>
+                          <span className="font-mono text-[9px] text-lime-300">
+                            registerTool()
+                          </span>
+                        </div>
+                        <pre className="max-h-[420px] overflow-auto p-4 font-mono text-[10px] leading-5 text-slate-200 md:p-5">
+                          {JSON.stringify(scenario.tool, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 rounded-xl border border-border bg-background p-4 md:p-5">
+                    <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="max-w-2xl">
+                        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          Choose how to verify
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          Discovery checks never execute the tool. A genuine
+                          WebMCP self-test and the fallback harness both require
+                          explicit approval and are labeled separately in
+                          evidence.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={resetScenario}
+                          disabled={running}
+                        >
+                          <RefreshCw data-icon="inline-start" />
+                          Reset fixture
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => void checkDiscovery()}
+                          disabled={
+                            running || webMcp.registration !== 'registered'
+                          }
+                        >
+                          <ScanSearch data-icon="inline-start" />
+                          Check discovery only
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setConfirmationMode('webmcp-self-test');
+                            setConfirmOpen(true);
+                          }}
+                          disabled={
+                            running || webMcp.registration !== 'registered'
+                          }
+                        >
+                          <Radio data-icon="inline-start" />
+                          WebMCP self-test
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setConfirmationMode('lab-harness');
+                            setConfirmOpen(true);
+                          }}
+                          disabled={running}
+                        >
+                          <FlaskConical data-icon="inline-start" />
+                          {running ? 'Running…' : 'Fallback harness'}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                      <ObservationCell
+                        label="Browser API"
+                        value={webMcp.browserSupport}
+                      />
+                      <ObservationCell
+                        label="Registration"
+                        value={webMcp.registration}
+                      />
+                      <ObservationCell
+                        label="Policy"
+                        value={webMcp.permissionsPolicy}
+                      />
+                      <ObservationCell
+                        label="Discovery"
+                        value={webMcp.discovery}
+                      />
+                      <ObservationCell
+                        label="Invocation"
+                        value={webMcp.invocation}
+                      />
+                    </div>
+                    {executionMessage ? (
+                      <output
+                        aria-live="polite"
+                        className="mt-4 flex items-start gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground"
+                      >
+                        <Info className="mt-0.5 size-3.5 shrink-0" />
+                        {executionMessage}
+                      </output>
+                    ) : null}
+                  </div>
+                </div>
+
+                <EvidencePanel
+                  scenario={scenario}
+                  receipt={latestReceipt}
+                  persistence={persistence}
                   onExport={(receipt) =>
                     setExportArtifact(createEvidenceReceiptArtifact(receipt))
                   }
                 />
-              ) : null}
-
-              <EvidencePanel
-                scenario={scenario}
-                receipt={latestReceipt}
-                persistence={persistence}
-                onExport={(receipt) =>
-                  setExportArtifact(createEvidenceReceiptArtifact(receipt))
-                }
-              />
-              <SecureComparison
-                scenario={scenario}
-                assessment={riskAssessment}
-                confirmationCopy={secureConfirmationCopy}
-                receipt={latestSecureReceipt}
-                persistence={securePersistence}
-                running={secureRunning}
-                onRetest={() => void runSecureRetest()}
-                onExportPolicy={() =>
-                  setExportArtifact(
-                    createPolicyJsonArtifact(scenario, riskAssessment),
-                  )
-                }
-              />
+                <SecureComparison
+                  scenario={scenario}
+                  assessment={riskAssessment}
+                  confirmationCopy={secureConfirmationCopy}
+                  receipt={latestSecureReceipt}
+                  persistence={securePersistence}
+                  running={secureRunning}
+                  onRetest={() => void runSecureRetest()}
+                  onExportPolicy={() =>
+                    setExportArtifact(
+                      createPolicyJsonArtifact(scenario, riskAssessment),
+                    )
+                  }
+                />
+              </div>
             </div>
-          </div>
+          </details>
         </div>
       </section>
 

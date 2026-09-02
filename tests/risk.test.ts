@@ -12,7 +12,9 @@ describe('shared WebMCP awareness policy engine', () => {
     ['client-discovery-variance', 'WMC-005'],
   ] as const)('fires the expected rule for %s', (scenarioId, ruleId) => {
     const assessment = assessScenarioRisk(scenarioById[scenarioId]);
-    expect(assessment.findings.map((finding) => finding.ruleId)).toContain(ruleId);
+    expect(assessment.findings.map((finding) => finding.ruleId)).toContain(
+      ruleId,
+    );
   });
 
   it('maps meaningful findings to ask and support overclaims to warn', () => {
@@ -20,14 +22,17 @@ describe('shared WebMCP awareness policy engine', () => {
       assessScenarioRisk(scenarioById['read-only-claim']).policyAction,
     ).toBe('ask');
     expect(
-      assessScenarioRisk(scenarioById['client-discovery-variance']).policyAction,
+      assessScenarioRisk(scenarioById['client-discovery-variance'])
+        .policyAction,
     ).toBe('warn');
   });
 
-  it('produces extension-ready policy artifacts for every fixture', () => {
+  it('produces explicitly non-enforceable learning policies for every fixture', () => {
     for (const scenario of scenarios) {
       const assessment = assessScenarioRisk(scenario);
       const artifact = createPolicyArtifact(scenario, assessment);
+      expect(artifact.enforceable).toBe(false);
+      expect(artifact.purpose).toBe('learning-only');
       expect(artifact.match.toolName).toBe(scenario.tool.name);
       expect(artifact.decision.rules.length).toBeGreaterThan(0);
       expect(artifact.limitation).toContain('self-reported evidence readiness');

@@ -12,6 +12,7 @@ import {
   createProposalToolDeclaration,
   executeScenarioOneCapability,
   prepareDocumentCapabilityActivation,
+  SCENARIO_ONE_CAPABILITY_TTL_SECONDS,
   sha256Hex,
   validateCapabilityEvidenceIntegrity,
   verifyCapabilityBinding,
@@ -36,7 +37,7 @@ async function setup() {
     origin,
     lockedAt,
     baselineStateHash: await sha256Hex(scenario.initialState),
-    ttlSeconds: 120,
+    ttlSeconds: SCENARIO_ONE_CAPABILITY_TTL_SECONDS,
   });
   const proposal = await createProposalRecord({
     input: createProposalInput(intent),
@@ -145,7 +146,8 @@ describe('Scenario 1 capability negotiation', () => {
       additionalProperties: false,
     });
     expect(contract.compiled.declaration.annotations.readOnlyHint).toBe(true);
-    expect(contract.compiled.expiresAt).toBe('2026-08-31T12:02:02.000Z');
+    expect(SCENARIO_ONE_CAPABILITY_TTL_SECONDS).toBe(300);
+    expect(contract.compiled.expiresAt).toBe('2026-08-31T12:05:02.000Z');
     expect(capabilityApprovalCopy(proposal)).toContain(
       proposal.source.sourceDeclarationHash,
     );
@@ -320,6 +322,12 @@ describe('Scenario 1 capability negotiation', () => {
 
     const brokenVerification = structuredClone(receipt);
     if (!brokenVerification.capability) throw new Error('Missing capability.');
+    if (
+      brokenVerification.capability.protocol !==
+      'webmcp-capability-negotiation/1'
+    ) {
+      throw new Error('Expected Scenario 1 capability evidence.');
+    }
     brokenVerification.capability.verification.baselineStateMatched = false;
     expect(evidenceReceiptSchema.safeParse(brokenVerification).success).toBe(
       false,
@@ -327,6 +335,12 @@ describe('Scenario 1 capability negotiation', () => {
 
     const brokenObservedHash = structuredClone(receipt);
     if (!brokenObservedHash.capability) throw new Error('Missing capability.');
+    if (
+      brokenObservedHash.capability.protocol !==
+      'webmcp-capability-negotiation/1'
+    ) {
+      throw new Error('Expected Scenario 1 capability evidence.');
+    }
     brokenObservedHash.capability.verification.observedStateHash = 'f'.repeat(
       64,
     );

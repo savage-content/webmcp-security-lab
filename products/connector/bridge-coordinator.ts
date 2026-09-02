@@ -7,9 +7,9 @@ import {
 } from 'node:crypto';
 
 import { canonicalJson } from '../../lib/capability-core';
+import { isApprovedCapabilityToolName } from './lesson-capability-policy';
 
-export const APPROVED_CAPABILITY_TOOL_PATTERN =
-  /^get_training_1042_eligibility_once_[0-9a-f]{16}$/;
+export { APPROVED_CAPABILITY_TOOL_PATTERN } from './lesson-capability-policy';
 
 export type BridgeCommand =
   | {
@@ -520,6 +520,25 @@ export class BridgeCoordinator {
     return this.toSummary(session);
   }
 
+  revoke(sessionId: string, bridgeToken: string) {
+    const session = this.authenticate(sessionId, bridgeToken);
+    this.#sessions.delete(sessionId);
+    for (const [commandId, pending] of this.#pending) {
+      if (pending.sessionId !== sessionId) continue;
+      clearTimeout(pending.timer);
+      this.#pending.delete(commandId);
+      this.#committing.delete(commandId);
+      pending.reject(new Error('The paired browser session was revoked.'));
+    }
+    for (const [commandId, completed] of this.#completed) {
+      if (completed.sessionId === sessionId) this.#completed.delete(commandId);
+    }
+    for (const [commandId, rejected] of this.#rejected) {
+      if (rejected.sessionId === sessionId) this.#rejected.delete(commandId);
+    }
+    return this.toSummary(session);
+  }
+
   requestInspection(sessionId: string) {
     return this.enqueue(sessionId, {
       id: this.#commandId(),
@@ -529,9 +548,9 @@ export class BridgeCoordinator {
   }
 
   requestApprovedInvocation(sessionId: string, toolName: string) {
-    if (!APPROVED_CAPABILITY_TOOL_PATTERN.test(toolName)) {
+    if (!isApprovedCapabilityToolName(toolName)) {
       throw new Error(
-        'Only a Scenario 1 generated one-use capability may be invoked.',
+        'Only a generated one-use capability from the built-in lesson registry may be invoked.',
       );
     }
     return this.enqueue(sessionId, {
@@ -552,6 +571,7 @@ export class BridgeCoordinator {
     this.#completed.clear();
     this.#committing.clear();
     this.#rejected.clear();
+    this.#sessions.clear();
   }
 
   private enqueue(sessionId: string, command: BridgeCommand) {

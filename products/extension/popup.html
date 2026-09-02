@@ -3,74 +3,144 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>LeftOut capability bridge</title>
+    <title>LeftOut WebMCP safety</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
     <main>
       <p class="eyebrow">LeftOut Security</p>
-      <h1>Capability bridge</h1>
+      <h1>WebMCP safety</h1>
       <p class="intro">
-        Pair this tab with the loopback connector. Pairing does not approve or
-        invoke a site tool.
+        See what this page offers an AI, what the extension guards, and whether
+        anything ran.
       </p>
 
       <section class="page" aria-labelledby="page-heading">
-        <h2 id="page-heading">Active page</h2>
+        <h2 id="page-heading">This tab</h2>
         <p id="page-origin" class="mono">Checking…</p>
       </section>
 
-      <form id="pair-form">
-        <label for="connector">Local connector</label>
-        <select id="connector" name="connector">
-          <option value="http://127.0.0.1:8788">127.0.0.1:8788</option>
-          <option value="http://localhost:8788">localhost:8788</option>
-          <option value="http://127.0.0.1:48788">127.0.0.1:48788</option>
-          <option value="http://localhost:48788">localhost:48788</option>
-        </select>
+      <section id="hud-summary" class="hud-summary" data-state="checking">
+        <p class="hud-kicker"><span></span>Current status</p>
+        <h2 id="hud-headline">Checking this page for WebMCP</h2>
+        <p id="hud-detail">
+          Reading action declarations only. Nothing can run.
+        </p>
+        <dl class="hud-facts">
+          <div>
+            <dt>Observed</dt>
+            <dd id="hud-observed">Checking</dd>
+          </div>
+          <div>
+            <dt>Protected</dt>
+            <dd id="hud-protected">None</dd>
+          </div>
+          <div>
+            <dt>Run</dt>
+            <dd id="hud-run">Not run</dd>
+          </div>
+        </dl>
+        <p id="hud-next" class="hud-next">Next: keep this tab open</p>
+      </section>
 
-        <label for="pair-code">One-time pairing code</label>
-        <input
-          id="pair-code"
-          name="pairCode"
-          type="text"
-          inputmode="numeric"
-          autocomplete="one-time-code"
-          pattern="[0-9]{8}"
-          maxlength="8"
-          placeholder="12345678"
-          required
-        />
-        <button id="pair-button" type="submit" disabled>Pair active tab</button>
+      <form id="pair-form">
+        <button id="pair-button" type="submit" disabled>
+          Connect this practice tab
+        </button>
+        <p class="helper">
+          Connecting lets the local safety bridge observe this tab. It does not
+          approve or run an action.
+        </p>
+        <details class="advanced">
+          <summary>Advanced connector choice</summary>
+          <label for="connector">Local connector</label>
+          <select id="connector" name="connector">
+            <option value="http://127.0.0.1:8788">
+              Automatic (recommended)
+            </option>
+            <option value="http://localhost:8788">localhost:8788</option>
+            <option value="http://127.0.0.1:48788">127.0.0.1:48788</option>
+            <option value="http://localhost:48788">localhost:48788</option>
+          </select>
+        </details>
       </form>
 
       <div id="status" class="status" role="status" aria-live="polite">
-        Not paired.
+        Not connected. Nothing has run.
       </div>
 
-      <dl id="connection" class="connection" hidden>
-        <div>
-          <dt>Origin</dt>
-          <dd id="connection-origin" class="mono"></dd>
-        </div>
-        <div>
-          <dt>Session</dt>
-          <dd id="connection-session" class="mono"></dd>
-        </div>
-        <div>
-          <dt>Last command</dt>
-          <dd id="connection-command">None</dd>
-        </div>
-      </dl>
-
-      <button id="forget-button" class="secondary" type="button" hidden>
-        Forget local pairing
+      <button id="reports-button" class="secondary" type="button" hidden>
+        Review receipt or report a concern
       </button>
 
+      <details id="technical" class="advanced technical">
+        <summary>Technical details and recovery</summary>
+        <dl id="connection" class="connection" hidden>
+          <div>
+            <dt>Origin</dt>
+            <dd id="connection-origin" class="mono"></dd>
+          </div>
+          <div>
+            <dt>Session</dt>
+            <dd id="connection-session" class="mono"></dd>
+          </div>
+          <div>
+            <dt>Last command</dt>
+            <dd id="connection-command">None</dd>
+          </div>
+        </dl>
+
+        <button id="forget-button" class="secondary" type="button" hidden>
+          Disconnect and revoke pairing
+        </button>
+
+        <section class="permit" aria-labelledby="permit-heading">
+          <h2 id="permit-heading">
+            Advanced recovery: exact capability permit
+          </h2>
+          <p>
+            Importing only narrows the bridge; it does not pair, approve,
+            register, or invoke a tool. Its self-hash detects changes but is not
+            proof that approval occurred.
+          </p>
+          <label for="permit-text">Paste exact capability permit JSON</label>
+          <textarea
+            id="permit-text"
+            rows="7"
+            autocomplete="off"
+            autocapitalize="none"
+            spellcheck="false"
+            placeholder="Paste the complete exported JSON here"
+          ></textarea>
+          <button id="permit-paste-import" type="button" disabled>
+            Verify and import pasted permit
+          </button>
+
+          <p class="permit-alternative">Or import the exported file</p>
+          <label for="permit-file">Choose capability permit JSON file</label>
+          <input id="permit-file" type="file" accept="application/json,.json" />
+          <button id="permit-import" class="secondary" type="button" disabled>
+            Verify and import selected file
+          </button>
+          <div
+            id="permit-status"
+            class="permit-status"
+            role="status"
+            aria-live="polite"
+          >
+            No capability permit imported.
+          </div>
+          <button id="permit-remove" class="secondary" type="button" hidden>
+            Remove capability permit
+          </button>
+        </section>
+      </details>
+
       <p class="limit">
-        This bridge can inspect declarations or invoke one already approved,
-        generated Scenario 1 no-input capability. It cannot create approval or
-        invoke broad and proposal tools.
+        “Observed” means the extension saw page declarations. “Protected” means
+        one exact action matches the LeftOut path. The permit is user-supplied
+        narrowing data, not an approval credential. Native calls by other
+        clients are outside this extension’s enforcement boundary.
       </p>
     </main>
     <script type="module" src="popup.js"></script>

@@ -54,6 +54,9 @@ export function renderDashboardReports(
           ${reportRow('Bridge client', entry.connection.clientLabel)}
           ${reportRow('Tool', entry.receipt.declaration.name)}
           ${reportRow('Contract SHA-256', capability?.contract.contractHash)}
+          ${reportRow('Extension permit SHA-256', entry.adapter?.capabilityPermitSha256)}
+          ${reportRow('Extension enforcement', entry.adapter?.enforcement ?? 'Not recorded')}
+          ${reportRow('Permit consumed', entry.adapter?.consumedAt)}
           ${reportRow('Invalidation', capability?.invalidation.reason)}
           ${reportRow('Receipt SHA-256', entry.receiptHash)}
           ${reportRow('Ledger entry SHA-256', entry.entryHash)}
@@ -63,6 +66,9 @@ export function renderDashboardReports(
           <summary>Show validated local evidence JSON</summary>
           <pre>${escapeHtml(receiptJson)}</pre>
         </details>
+        <div class="report-actions">
+          <a class="button" href="/issues/preview/${escapeHtml(entry.entryId)}">Review a privacy-safe practice report</a>
+        </div>
       </article>`;
     })
     .join('');
@@ -98,6 +104,8 @@ export function createDashboardDocument({
     .status { display: flex; flex-wrap: wrap; gap: 10px; margin: 24px 0; }
     .pill { border: 1px solid #315f4d; border-radius: 999px; padding: 8px 12px; background: #0c1b16; color: #c9fbe3; font: 700 12px ui-monospace, monospace; }
     .notice { border: 1px solid #5e4e20; border-radius: 12px; background: #211c0d; color: #f8e49c; padding: 14px 16px; line-height: 1.5; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 0; }
+    .button { display: inline-block; border: 1px solid #315f4d; border-radius: 9px; padding: 11px 14px; color: #c9fbe3; font-weight: 750; text-decoration: none; }
     #reports { display: grid; gap: 16px; margin-top: 24px; }
     article { border: 1px solid #234b3d; border-radius: 18px; padding: 20px; background: rgba(8, 25, 19, .88); box-shadow: 0 24px 70px rgba(0,0,0,.22); }
     article.selected { outline: 2px solid #a3e635; outline-offset: 2px; }
@@ -112,6 +120,7 @@ export function createDashboardDocument({
     details { margin-top: 16px; border-top: 1px solid #1e3b31; padding-top: 14px; }
     summary { cursor: pointer; color: #b7f7d5; font-weight: 700; }
     pre { overflow: auto; max-height: 420px; padding: 14px; border-radius: 10px; background: #030806; color: #b8c9c0; font: 11px/1.55 ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .report-actions { margin-top: 16px; }
     footer { margin-top: 28px; color: #7e958a; font-size: 12px; line-height: 1.6; }
     @media (max-width: 600px) { main { width: min(100% - 22px, 1120px); padding-top: 28px; } dl { grid-template-columns: 1fr; gap: 5px; } dd { margin-bottom: 8px; } }
   </style>
@@ -121,7 +130,7 @@ export function createDashboardDocument({
   <header>
     <p class="eyebrow">Local connector evidence</p>
     <h1>Capability receipt reports</h1>
-    <p class="lede">A read-only view of locally recorded Scenario 1 capability receipts. Each entry is schema-checked and linked into an append-only SHA-256 chain.</p>
+    <p class="lede">A read-only view of locally recorded guided-lesson capability receipts. Each entry is schema-checked and linked into an append-only SHA-256 chain.</p>
   </header>
   <div class="status" aria-live="polite">
     <span class="pill" id="count">${escapeHtml(countText)}</span>
@@ -129,6 +138,10 @@ export function createDashboardDocument({
     <span class="pill">Local-only MVP</span>
   </div>
   <p class="notice" id="notice">${escapeHtml(REPORT_LIMITATION)}</p>
+  <nav class="actions" aria-label="Local reporting views">
+    <a class="button" href="/issues/preview">Open the local reporting walkthrough</a>
+    <a class="button" href="/issues/review">Open the local review list</a>
+  </nav>
   <section id="reports" aria-label="Capability receipt reports">${reportMarkup}</section>
   <footer>Hash chaining detects edits, reordering, and gaps in the retained local file. It is not a signature, external timestamp, immutable anchor, or independent attestation.</footer>
 </main>

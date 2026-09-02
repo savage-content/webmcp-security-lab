@@ -5,6 +5,7 @@ import {
   sha256Hex,
   validateCapabilityEvidenceIntegrity,
 } from './capability-negotiation';
+import { validateLessonCapabilityEvidenceIntegrity } from './lesson-capabilities';
 import { scenarios } from './scenarios';
 import { SELF_REPORTED_LIMITATION } from './constants';
 import type { EvidenceReceipt, ScenarioId } from './types';
@@ -69,6 +70,166 @@ const scenarioIdSchema = z.enum([
   'confirmation-mismatch',
   'client-discovery-variance',
 ]);
+
+const lessonScenarioIdSchema = z.enum([
+  'over-broad-schema',
+  'tool-result-injection',
+  'confirmation-mismatch',
+  'client-discovery-variance',
+]);
+
+const lessonProfileIdSchema = z.enum([
+  'lesson-2-profile-notice/1',
+  'lesson-3-delivery-status/1',
+  'lesson-4-digest-off/1',
+  'lesson-5-client-observation/1',
+]);
+
+const lessonOperationSchema = z.enum([
+  'replace-profile-notice',
+  'read-delivery-status',
+  'disable-training-notification-subscription',
+  'record-session-capability-observation',
+]);
+
+const lessonSourceSchema = z
+  .object({
+    toolName: z.string().min(1).max(128),
+    sourceDeclarationHash: z.string().regex(/^[0-9a-f]{64}$/),
+    handlerVersion: z.string().min(1).max(160),
+    origin: z.string().min(1),
+  })
+  .strict();
+
+const lessonToolDeclarationSchema = z
+  .object({
+    name: z.string().min(1).max(128),
+    title: z.string().min(1).max(200),
+    description: z.string().min(1).max(700),
+    inputSchema: z.record(z.string(), jsonValueSchema),
+    annotations: z
+      .object({
+        readOnlyHint: z.boolean(),
+        untrustedContentHint: z.boolean(),
+      })
+      .strict(),
+  })
+  .strict();
+
+const lessonProposalInputSchema = z
+  .object({
+    scenario_id: lessonScenarioIdSchema,
+    scenario_version: z.string().min(1),
+    profile_id: lessonProfileIdSchema,
+    operation: lessonOperationSchema,
+    bound_arguments: z.record(z.string(), jsonValueSchema),
+    max_calls: z.literal(1),
+    ttl_seconds: z.number().int().min(30).max(300),
+    allowed_origin: z.string().min(1),
+    baseline_state_hash: z.string().regex(/^[0-9a-f]{64}$/),
+    allowed_effects: z.array(z.string().min(1)).max(4),
+    prohibited_effects: z.array(z.string().min(1)).min(1).max(12),
+  })
+  .strict();
+
+const lessonIntentSchema = z
+  .object({
+    scenarioId: lessonScenarioIdSchema,
+    scenarioVersion: z.string().min(1),
+    profileId: lessonProfileIdSchema,
+    operation: lessonOperationSchema,
+    boundArguments: z.record(z.string(), jsonValueSchema),
+    maxCalls: z.literal(1),
+    ttlSeconds: z.number().int().min(30).max(300),
+    allowedOrigin: z.string().min(1),
+    baseline: z
+      .object({ stateHash: z.string().regex(/^[0-9a-f]{64}$/) })
+      .strict(),
+    allowedEffects: z.array(z.string().min(1)).max(4),
+    prohibitedEffects: z.array(z.string().min(1)).min(1).max(12),
+    lockedAt: z.iso.datetime(),
+  })
+  .strict();
+
+const lessonCapabilityEvidenceSchema = z
+  .object({
+    protocol: z.literal('webmcp-capability-negotiation/2'),
+    scope: z.literal('single-document-session'),
+    receiptPersistence: z.literal('returned-to-caller'),
+    proposal: z
+      .object({
+        input: lessonProposalInputSchema,
+        proposalHash: z.string().regex(/^[0-9a-f]{64}$/),
+        proposedAt: z.iso.datetime(),
+        channel: z.enum(['page-lesson', 'webmcp']),
+        source: lessonSourceSchema,
+      })
+      .strict(),
+    contract: z
+      .object({
+        protocol: z.literal('webmcp-capability-negotiation/2'),
+        capabilityId: z.string().regex(/^cap_[0-9a-f]{24}$/),
+        contractHash: z.string().regex(/^[0-9a-f]{64}$/),
+        intent: lessonIntentSchema,
+        proposalHash: z.string().regex(/^[0-9a-f]{64}$/),
+        source: lessonSourceSchema,
+        approval: z
+          .object({
+            preparedAt: z.iso.datetime(),
+            nonce: z.uuid(),
+            copy: z.string().min(1).max(4_000),
+          })
+          .strict(),
+        compiled: z
+          .object({
+            toolName: z.string().min(1).max(128),
+            declaration: lessonToolDeclarationSchema,
+            handlerVersion: z.string().min(1).max(160),
+            compiledAt: z.iso.datetime(),
+            expiresAt: z.iso.datetime(),
+          })
+          .strict(),
+      })
+      .strict(),
+    approvalEvent: z
+      .object({
+        approvedAt: z.iso.datetime(),
+        contractHash: z.string().regex(/^[0-9a-f]{64}$/),
+      })
+      .strict(),
+    invocation: z
+      .object({ claimedAt: z.iso.datetime(), callNumber: z.literal(1) })
+      .strict(),
+    verification: z
+      .object({
+        passed: z.boolean(),
+        baselineMatched: z.boolean(),
+        observedBeforeStateHash: z.string().regex(/^[0-9a-f]{64}$/),
+        observedAfterStateHash: z.string().regex(/^[0-9a-f]{64}$/),
+        resultMatched: z.boolean(),
+        postconditionMatched: z.boolean(),
+        expectedEffects: z.array(z.string()),
+        observedEffects: z.array(z.string()),
+        violations: z.array(z.string()),
+        checkedAt: z.iso.datetime(),
+      })
+      .strict(),
+    invalidation: z
+      .object({
+        reason: z.enum([
+          'consumed',
+          'expired',
+          'source-drift',
+          'state-drift',
+          'origin-drift',
+          'handler-drift',
+          'registration-failed',
+        ]),
+        at: z.iso.datetime(),
+      })
+      .strict(),
+  })
+  .strict();
 
 export const evidenceReceiptSchema = z
   .object({
@@ -161,122 +322,125 @@ export const evidenceReceiptSchema = z
     remediation: z.string().min(1).max(1200),
     limitation: z.string().default(SELF_REPORTED_LIMITATION),
     capability: z
-      .object({
-        protocol: z.literal('webmcp-capability-negotiation/1'),
-        scope: z.literal('single-document-session'),
-        receiptPersistence: z.literal('local-export-only'),
-        proposal: z.object({
-          input: z.object({
-            account_id: z.literal('TRAINING-1042'),
-            operation: z.literal('read-eligibility'),
-            max_calls: z.literal(1),
-            ttl_seconds: z.number().int().min(30).max(300),
-            allowed_origin: z.string().min(1),
-            baseline_state_hash: z.string().regex(/^[0-9a-f]{64}$/),
-            prohibited_effects: z.tuple([
-              z.literal('account-state-mutation'),
-              z.literal('capability-handler-network-fetch'),
-              z.literal('cross-account-access'),
-            ]),
-            expected_postcondition: z.literal('account-state-byte-identical'),
-          }),
-          proposalHash: z.string().regex(/^[0-9a-f]{64}$/),
-          proposedAt: z.iso.datetime(),
-          channel: z.enum(['webmcp', 'fallback-harness']),
-          source: z.object({
-            toolName: z.string().min(1).max(128),
-            sourceDeclarationHash: z.string().regex(/^[0-9a-f]{64}$/),
-            handlerVersion: z.string().min(1),
-            origin: z.string().min(1),
-          }),
-        }),
-        contract: z.object({
+      .discriminatedUnion('protocol', [
+        z.object({
           protocol: z.literal('webmcp-capability-negotiation/1'),
-          capabilityId: z.string().regex(/^cap_[0-9a-f]{24}$/),
-          contractHash: z.string().regex(/^[0-9a-f]{64}$/),
-          intent: z.object({
-            accountId: z.literal('TRAINING-1042'),
-            operation: z.literal('read-eligibility'),
-            maxCalls: z.literal(1),
-            ttlSeconds: z.number().int().min(30).max(300),
-            allowedOrigin: z.string().min(1),
-            requiredResult: z.object({
+          scope: z.literal('single-document-session'),
+          receiptPersistence: z.literal('local-export-only'),
+          proposal: z.object({
+            input: z.object({
+              account_id: z.literal('TRAINING-1042'),
+              operation: z.literal('read-eligibility'),
+              max_calls: z.literal(1),
+              ttl_seconds: z.number().int().min(30).max(300),
+              allowed_origin: z.string().min(1),
+              baseline_state_hash: z.string().regex(/^[0-9a-f]{64}$/),
+              prohibited_effects: z.tuple([
+                z.literal('account-state-mutation'),
+                z.literal('capability-handler-network-fetch'),
+                z.literal('cross-account-access'),
+              ]),
+              expected_postcondition: z.literal('account-state-byte-identical'),
+            }),
+            proposalHash: z.string().regex(/^[0-9a-f]{64}$/),
+            proposedAt: z.iso.datetime(),
+            channel: z.enum(['webmcp', 'fallback-harness']),
+            source: z.object({
+              toolName: z.string().min(1).max(128),
+              sourceDeclarationHash: z.string().regex(/^[0-9a-f]{64}$/),
+              handlerVersion: z.string().min(1),
+              origin: z.string().min(1),
+            }),
+          }),
+          contract: z.object({
+            protocol: z.literal('webmcp-capability-negotiation/1'),
+            capabilityId: z.string().regex(/^cap_[0-9a-f]{24}$/),
+            contractHash: z.string().regex(/^[0-9a-f]{64}$/),
+            intent: z.object({
               accountId: z.literal('TRAINING-1042'),
-              eligibility: z.literal('eligible'),
-            }),
-            baseline: z.object({
-              stateHash: z.string().regex(/^[0-9a-f]{64}$/),
-              reviewed: z.literal(false),
-              reviewCount: z.literal(0),
-              lastReviewedAt: z.null(),
-            }),
-            prohibitedEffects: z.tuple([
-              z.literal('account-state-mutation'),
-              z.literal('capability-handler-network-fetch'),
-              z.literal('cross-account-access'),
-            ]),
-            expectedPostcondition: z.literal('account-state-byte-identical'),
-            lockedAt: z.iso.datetime(),
-          }),
-          proposalHash: z.string().regex(/^[0-9a-f]{64}$/),
-          source: z.object({
-            toolName: z.string().min(1).max(128),
-            sourceDeclarationHash: z.string().regex(/^[0-9a-f]{64}$/),
-            handlerVersion: z.string().min(1),
-            origin: z.string().min(1),
-          }),
-          approval: z.object({
-            preparedAt: z.iso.datetime(),
-            nonce: z.uuid(),
-            copy: z.string().min(1),
-          }),
-          compiled: z.object({
-            toolName: z.string().min(1).max(128),
-            declaration: z.object({
-              name: z.string().min(1).max(128),
-              title: z.string(),
-              description: z.string().min(1).max(500),
-              inputSchema: z.record(z.string(), jsonValueSchema),
-              annotations: z.object({
-                readOnlyHint: z.boolean(),
-                untrustedContentHint: z.boolean(),
+              operation: z.literal('read-eligibility'),
+              maxCalls: z.literal(1),
+              ttlSeconds: z.number().int().min(30).max(300),
+              allowedOrigin: z.string().min(1),
+              requiredResult: z.object({
+                accountId: z.literal('TRAINING-1042'),
+                eligibility: z.literal('eligible'),
               }),
+              baseline: z.object({
+                stateHash: z.string().regex(/^[0-9a-f]{64}$/),
+                reviewed: z.literal(false),
+                reviewCount: z.literal(0),
+                lastReviewedAt: z.null(),
+              }),
+              prohibitedEffects: z.tuple([
+                z.literal('account-state-mutation'),
+                z.literal('capability-handler-network-fetch'),
+                z.literal('cross-account-access'),
+              ]),
+              expectedPostcondition: z.literal('account-state-byte-identical'),
+              lockedAt: z.iso.datetime(),
             }),
-            handlerVersion: z.string().min(1),
-            compiledAt: z.iso.datetime(),
-            expiresAt: z.iso.datetime(),
+            proposalHash: z.string().regex(/^[0-9a-f]{64}$/),
+            source: z.object({
+              toolName: z.string().min(1).max(128),
+              sourceDeclarationHash: z.string().regex(/^[0-9a-f]{64}$/),
+              handlerVersion: z.string().min(1),
+              origin: z.string().min(1),
+            }),
+            approval: z.object({
+              preparedAt: z.iso.datetime(),
+              nonce: z.uuid(),
+              copy: z.string().min(1),
+            }),
+            compiled: z.object({
+              toolName: z.string().min(1).max(128),
+              declaration: z.object({
+                name: z.string().min(1).max(128),
+                title: z.string(),
+                description: z.string().min(1).max(500),
+                inputSchema: z.record(z.string(), jsonValueSchema),
+                annotations: z.object({
+                  readOnlyHint: z.boolean(),
+                  untrustedContentHint: z.boolean(),
+                }),
+              }),
+              handlerVersion: z.string().min(1),
+              compiledAt: z.iso.datetime(),
+              expiresAt: z.iso.datetime(),
+            }),
+          }),
+          approvalEvent: z.object({
+            approvedAt: z.iso.datetime(),
+            contractHash: z.string().regex(/^[0-9a-f]{64}$/),
+          }),
+          invocation: z.object({
+            claimedAt: z.iso.datetime(),
+            callNumber: z.literal(1),
+          }),
+          verification: z.object({
+            passed: z.boolean(),
+            baselineStateMatched: z.boolean(),
+            observedStateHash: z.string().regex(/^[0-9a-f]{64}$/),
+            requiredResultMatched: z.boolean(),
+            stateByteIdentical: z.boolean(),
+            controlledHandlerViolations: z.array(z.string()),
+            checkedAt: z.iso.datetime(),
+          }),
+          invalidation: z.object({
+            reason: z.enum([
+              'consumed',
+              'expired',
+              'source-drift',
+              'state-drift',
+              'origin-drift',
+              'handler-drift',
+              'registration-failed',
+            ]),
+            at: z.iso.datetime(),
           }),
         }),
-        approvalEvent: z.object({
-          approvedAt: z.iso.datetime(),
-          contractHash: z.string().regex(/^[0-9a-f]{64}$/),
-        }),
-        invocation: z.object({
-          claimedAt: z.iso.datetime(),
-          callNumber: z.literal(1),
-        }),
-        verification: z.object({
-          passed: z.boolean(),
-          baselineStateMatched: z.boolean(),
-          observedStateHash: z.string().regex(/^[0-9a-f]{64}$/),
-          requiredResultMatched: z.boolean(),
-          stateByteIdentical: z.boolean(),
-          controlledHandlerViolations: z.array(z.string()),
-          checkedAt: z.iso.datetime(),
-        }),
-        invalidation: z.object({
-          reason: z.enum([
-            'consumed',
-            'expired',
-            'source-drift',
-            'state-drift',
-            'origin-drift',
-            'handler-drift',
-            'registration-failed',
-          ]),
-          at: z.iso.datetime(),
-        }),
-      })
+        lessonCapabilityEvidenceSchema,
+      ])
       .optional(),
   })
   .superRefine((receipt, context) => {
@@ -302,7 +466,134 @@ export const evidenceReceiptSchema = z
           'Capability-contract confirmation and capability evidence must appear together.',
       });
     }
-    if (receipt.capability) {
+    if (receipt.capability?.protocol === 'webmcp-capability-negotiation/2') {
+      const capability = receipt.capability;
+      const { contract, proposal, verification } = capability;
+      const addCapabilityIssue = (path: (string | number)[], message: string) =>
+        context.addIssue({
+          code: 'custom',
+          path: ['capability', ...path],
+          message,
+        });
+      const expectedProposalInput = {
+        scenario_id: contract.intent.scenarioId,
+        scenario_version: contract.intent.scenarioVersion,
+        profile_id: contract.intent.profileId,
+        operation: contract.intent.operation,
+        bound_arguments: contract.intent.boundArguments,
+        max_calls: contract.intent.maxCalls,
+        ttl_seconds: contract.intent.ttlSeconds,
+        allowed_origin: contract.intent.allowedOrigin,
+        baseline_state_hash: contract.intent.baseline.stateHash,
+        allowed_effects: contract.intent.allowedEffects,
+        prohibited_effects: contract.intent.prohibitedEffects,
+      };
+
+      if (
+        contract.contractHash !== capability.approvalEvent.contractHash ||
+        contract.proposalHash !== proposal.proposalHash ||
+        canonicalJson(contract.source) !== canonicalJson(proposal.source) ||
+        canonicalJson(proposal.input) !== canonicalJson(expectedProposalInput)
+      ) {
+        addCapabilityIssue(
+          ['proposal'],
+          'The v2 proposal, source, intent, approval, and contract must identify one exact capability.',
+        );
+      }
+      if (
+        canonicalJson(receipt.declaration) !==
+          canonicalJson(contract.compiled.declaration) ||
+        Object.keys(receipt.invocation.arguments).length !== 0
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['invocation'],
+          message:
+            'A v2 negotiated receipt must invoke its closed no-input declaration.',
+        });
+      }
+      const derivedPassed =
+        verification.baselineMatched &&
+        verification.resultMatched &&
+        verification.postconditionMatched &&
+        canonicalJson(verification.expectedEffects) ===
+          canonicalJson(verification.observedEffects) &&
+        verification.violations.length === 0;
+      if (
+        verification.passed !== derivedPassed ||
+        receipt.verdict !== (verification.passed ? 'PASS' : 'FAIL')
+      ) {
+        addCapabilityIssue(
+          ['verification'],
+          'The v2 verification verdict must equal its exact component checks.',
+        );
+      }
+      if (
+        receipt.origin !== contract.intent.allowedOrigin ||
+        receipt.scenario.id !== contract.intent.scenarioId ||
+        receipt.scenario.version !== contract.intent.scenarioVersion
+      ) {
+        addCapabilityIssue(
+          ['contract', 'intent'],
+          'Receipt scenario and origin must match the frozen v2 intent.',
+        );
+      }
+      if (
+        receipt.invocation.confirmation.presentedCopy !==
+          contract.approval.copy ||
+        receipt.invocation.confirmation.known !== true ||
+        receipt.invocation.confirmation.approved !== true
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['invocation', 'confirmation'],
+          message: 'Receipt must contain the exact approved v2 contract copy.',
+        });
+      }
+      const times = [
+        contract.intent.lockedAt,
+        proposal.proposedAt,
+        contract.approval.preparedAt,
+        capability.approvalEvent.approvedAt,
+        capability.invocation.claimedAt,
+        verification.checkedAt,
+        capability.invalidation.at,
+      ].map(Date.parse);
+      const expiresAt = Date.parse(contract.compiled.expiresAt);
+      const expectedExpiresAt =
+        Date.parse(contract.compiled.compiledAt) +
+        contract.intent.ttlSeconds * 1_000;
+      if (
+        contract.compiled.compiledAt !== contract.approval.preparedAt ||
+        times.some((time) => !Number.isFinite(time)) ||
+        times.some((time, index) => index > 0 && time < times[index - 1]!) ||
+        capability.invocation.claimedAt !== verification.checkedAt ||
+        receipt.timestamp !== capability.invocation.claimedAt ||
+        Date.parse(capability.invocation.claimedAt) >= expiresAt ||
+        expiresAt !== expectedExpiresAt ||
+        capability.invalidation.reason !== 'consumed'
+      ) {
+        addCapabilityIssue(
+          ['invocation'],
+          'The v2 lifecycle must be chronological, unexpired, and consumed exactly once.',
+        );
+      }
+      if (
+        !['registered', 'unregistered'].includes(
+          receipt.client.webMcp.registration,
+        ) ||
+        receipt.client.webMcp.invocation !== 'observed'
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['client', 'webMcp'],
+          message:
+            'A v2 receipt must record the generated tool as invoked and registered or retired.',
+        });
+      }
+    }
+
+    if (receipt.capability?.protocol === 'webmcp-capability-negotiation/1') {
       const capability = receipt.capability;
       const { contract, proposal, verification } = capability;
       const addCapabilityIssue = (path: (string | number)[], message: string) =>
@@ -489,23 +780,35 @@ export async function parseCapabilityEvidenceReceipt(
     throw new Error('Capability evidence is required.');
   }
 
-  await validateCapabilityEvidenceIntegrity(receipt.capability);
   const beforeHash = await sha256Hex(receipt.effective.before);
   const afterHash = await sha256Hex(receipt.effective.after);
-  if (receipt.capability.verification.observedStateHash !== beforeHash) {
-    throw new Error(
-      'Observed state hash does not match the linked before state.',
-    );
-  }
-  if (
-    receipt.capability.verification.stateByteIdentical !==
-    (beforeHash === afterHash &&
-      canonicalJson(receipt.effective.before) ===
-        canonicalJson(receipt.effective.after))
-  ) {
-    throw new Error(
-      'State identity claim does not match the linked snapshots.',
-    );
+  if (receipt.capability.protocol === 'webmcp-capability-negotiation/1') {
+    await validateCapabilityEvidenceIntegrity(receipt.capability);
+    if (receipt.capability.verification.observedStateHash !== beforeHash) {
+      throw new Error(
+        'Observed state hash does not match the linked before state.',
+      );
+    }
+    if (
+      receipt.capability.verification.stateByteIdentical !==
+      (beforeHash === afterHash &&
+        canonicalJson(receipt.effective.before) ===
+          canonicalJson(receipt.effective.after))
+    ) {
+      throw new Error(
+        'State identity claim does not match the linked snapshots.',
+      );
+    }
+  } else {
+    await validateLessonCapabilityEvidenceIntegrity(receipt.capability);
+    if (
+      receipt.capability.verification.observedBeforeStateHash !== beforeHash ||
+      receipt.capability.verification.observedAfterStateHash !== afterHash
+    ) {
+      throw new Error(
+        'V2 observed state hashes do not match the linked snapshots.',
+      );
+    }
   }
 
   return receipt;

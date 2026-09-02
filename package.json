@@ -7,6 +7,11 @@
   },
   "scripts": {
     "dev": "vinext dev",
+    "desktop:alpha": "tsx scripts/desktop-alpha-operator.mts start",
+    "desktop:alpha:start": "tsx scripts/desktop-alpha-operator.mts start",
+    "desktop:alpha:status": "tsx scripts/desktop-alpha-operator.mts status",
+    "desktop:alpha:stop": "tsx scripts/desktop-alpha-operator.mts stop",
+    "desktop:alpha:foreground": "tsx scripts/desktop-alpha.mts",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",

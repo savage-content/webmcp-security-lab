@@ -17,10 +17,28 @@ import {
 } from './bridge-coordinator';
 import { createDashboardDocument } from './dashboard';
 import {
+  createIssueCandidateFromVerifiedReceipt,
+  createSyntheticLessonIssueCandidate,
+  type LocalIssueCandidateSource,
+} from './issue-candidate';
+import {
+  createIssueDashboardDocument,
+  createIssueReviewListDocument,
+} from './issue-dashboard';
+import { IssueSaveActionManager, LocalIssueReviewStore } from './issue-review';
+import {
   commitApprovedInvocationResult,
   createCapabilityConnectorServer,
 } from './mcp-server';
+import {
+  cookieValue,
+  ReportAccessManager,
+  REPORT_SESSION_COOKIE,
+  type LocalPageTarget,
+} from './report-access';
+import { PairingChallengeManager } from './pairing-challenge';
 import { ReceiptStore, type ConnectorReceiptEntry } from './receipt-store';
+import { createSetupDocument } from './setup';
 
 const MCP_PATH = '/mcp';
 const REQUEST_URL_BASE = 'http://connector.invalid';
@@ -54,12 +72,14 @@ function resolveAccessToken(configuredOption: string | undefined) {
   return configured;
 }
 
-function resolveBridgeHost(configuredOption: string | undefined) {
-  const configured = configuredOption ?? process.env.BRIDGE_HOST ?? '127.0.0.1';
+function resolveLoopbackHost(
+  configuredOption: string | undefined,
+  environmentValue: string | undefined,
+  label: string,
+) {
+  const configured = configuredOption ?? environmentValue ?? '127.0.0.1';
   if (configured !== '127.0.0.1' && configured !== '::1') {
-    throw new Error(
-      'Browser bridge host must be an explicit loopback address.',
-    );
+    throw new Error(`${label} host must be an explicit loopback address.`);
   }
   return configured;
 }
@@ -156,6 +176,38 @@ async function readJsonBody(request: IncomingMessage, limit = 64 * 1024) {
   return JSON.parse(text || '{}') as unknown;
 }
 
+async function readFormBody(request: IncomingMessage, limit = 4 * 1024) {
+  const contentType = request.headers['content-type'] ?? '';
+  if (
+    Array.isArray(contentType) ||
+    contentType.split(';', 1)[0].trim().toLowerCase() !==
+      'application/x-www-form-urlencoded'
+  ) {
+    throw new Error('A URL-encoded local action is required.');
+  }
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of request) {
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    size += bytes.length;
+    if (size > limit) throw new Error('Local action body is too large.');
+    chunks.push(bytes);
+  }
+  const parameters = new URLSearchParams(
+    Buffer.concat(chunks).toString('utf8'),
+  );
+  const values = parameters.getAll('action_token');
+  if (
+    values.length !== 1 ||
+    [...parameters.keys()].length !== 1 ||
+    values[0].length < 20 ||
+    values[0].length > 128
+  ) {
+    throw new Error('One bounded local action token is required.');
+  }
+  return { actionToken: values[0] };
+}
+
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Unexpected connector error.';
 }
@@ -167,24 +219,61 @@ function asRecord(value: unknown) {
   return value as Record<string, unknown>;
 }
 
-function pairInput(value: unknown): PairPageInput {
+function hasExactlyKeys(
+  value: Record<string, unknown>,
+  expected: readonly string[],
+) {
+  const actual = Object.keys(value).sort();
+  const sortedExpected = [...expected].sort();
+  return (
+    actual.length === expected.length &&
+    sortedExpected.every((key, index) => actual[index] === key)
+  );
+}
+
+interface BrowserPairInput extends PairPageInput {
+  challengeToken?: string;
+}
+
+function pairInput(value: unknown): BrowserPairInput {
   const body = asRecord(value);
+  const usesPairCode =
+    typeof body.pair_code === 'string' && body.challenge_token === undefined;
+  const usesChallenge =
+    typeof body.challenge_token === 'string' && body.pair_code === undefined;
   if (
-    typeof body.pair_code !== 'string' ||
     typeof body.origin !== 'string' ||
     typeof body.page_url !== 'string' ||
-    typeof body.client_label !== 'string'
+    typeof body.client_label !== 'string' ||
+    !(usesPairCode || usesChallenge) ||
+    !hasExactlyKeys(body, [
+      usesPairCode ? 'pair_code' : 'challenge_token',
+      'origin',
+      'page_url',
+      'client_label',
+    ])
   ) {
     throw new Error(
-      'Pair code, origin, page URL, and client label are required.',
+      'One pairing credential, origin, page URL, and client label are required.',
     );
   }
   return {
-    pairCode: body.pair_code,
+    pairCode: typeof body.pair_code === 'string' ? body.pair_code : '',
     origin: body.origin,
     pageUrl: body.page_url,
     clientLabel: body.client_label,
+    ...(typeof body.challenge_token === 'string'
+      ? { challengeToken: body.challenge_token }
+      : {}),
   };
+}
+
+function extensionOriginFrom(request: IncomingMessage) {
+  const origin = request.headers.origin;
+  if (typeof origin !== 'string') {
+    throw new Error('The extension origin is required for automatic pairing.');
+  }
+  return origin;
 }
 
 function commandResult(value: unknown): BridgeCommandResult {
@@ -208,6 +297,7 @@ function commandResult(value: unknown): BridgeCommandResult {
 }
 
 export interface CapabilityConnectorOptions {
+  instanceId?: string;
   mcpPort?: number;
   bridgePort?: number;
   bridgeHost?: string;
@@ -216,6 +306,12 @@ export interface CapabilityConnectorOptions {
   allowedOrigins?: string[];
   accessToken?: string;
   pairCode?: string;
+  setup?: {
+    siteUrl: string;
+    extensionPath: string;
+  };
+  reportTicketTtlMs?: number;
+  reportSessionTtlMs?: number;
   log?: (message: string) => void;
 }
 
@@ -225,8 +321,16 @@ export async function startCapabilityConnector(
   const mcpPort = options.mcpPort ?? Number(process.env.MCP_PORT ?? 8787);
   const bridgePort =
     options.bridgePort ?? Number(process.env.BRIDGE_PORT ?? 8788);
-  const bridgeHost = resolveBridgeHost(options.bridgeHost);
-  const publicHost = options.publicHost ?? process.env.MCP_HOST ?? '127.0.0.1';
+  const bridgeHost = resolveLoopbackHost(
+    options.bridgeHost,
+    process.env.BRIDGE_HOST,
+    'Browser bridge',
+  );
+  const publicHost = resolveLoopbackHost(
+    options.publicHost,
+    process.env.MCP_HOST,
+    'Connector',
+  );
   const accessToken = resolveAccessToken(options.accessToken);
   const allowedOrigins =
     options.allowedOrigins ??
@@ -237,9 +341,48 @@ export async function startCapabilityConnector(
     process.env.RECEIPT_LEDGER_PATH ??
     resolve('products/connector/runtime-data/receipts.jsonl');
   const log = options.log ?? console.log;
+  const reportAccess = new ReportAccessManager({
+    ticketTtlMs: options.reportTicketTtlMs,
+    sessionTtlMs: options.reportSessionTtlMs,
+  });
+  const issueSaveActions = new IssueSaveActionManager();
+  const issueReviews = new LocalIssueReviewStore();
+  let publicBaseUrl = '';
+
+  const createLaunchUrl = (target: LocalPageTarget, binding?: string) => {
+    if (!publicBaseUrl) {
+      throw new Error('The connector reporting listener is not ready.');
+    }
+    const issued = reportAccess.issue(target, binding);
+    const url = new URL('/reports/open', publicBaseUrl);
+    url.searchParams.set('ticket', issued.ticket);
+    return { url: url.toString(), expiresAt: issued.expiresAt };
+  };
 
   const receipts = new ReceiptStore({ ledgerPath });
   await receipts.initialize();
+
+  const issueScope = (
+    reportSession: string,
+    authorization: { binding?: string },
+  ) =>
+    authorization.binding
+      ? `pairing:${authorization.binding}`
+      : `report-session:${reportSession}`;
+
+  const issueCandidateForSource = async (
+    source: LocalIssueCandidateSource,
+    binding?: string,
+  ) => {
+    if (source.kind === 'synthetic-lesson') {
+      return createSyntheticLessonIssueCandidate();
+    }
+    const entry = await receipts.getVerified(source.entryId);
+    if (binding && entry.connection.sessionId !== binding) {
+      throw new Error('The selected receipt is outside this report session.');
+    }
+    return createIssueCandidateFromVerifiedReceipt(entry);
+  };
   const coordinator = new BridgeCoordinator({
     pairCode: options.pairCode ?? process.env.BRIDGE_PAIR_CODE,
     allowedOrigins,
@@ -258,6 +401,7 @@ export async function startCapabilityConnector(
     onPairCodeRotated: (newCode) =>
       log(`Next one-time browser pairing code: ${newCode}`),
   });
+  const pairingChallenges = new PairingChallengeManager();
 
   const publicServer = createServer(async (request, response) => {
     const url = requestUrl(request);
@@ -269,9 +413,209 @@ export async function startCapabilityConnector(
       sendJson(response, 200, {
         service: 'leftout-webmcp-capability-connector',
         status: 'ok',
+        ...(options.instanceId ? { instance_id: options.instanceId } : {}),
         mcp_path: MCP_PATH,
         reporting_path: '/receipts',
+        setup_path: '/setup',
       });
+      return;
+    }
+
+    if (request.method === 'GET' && url.pathname === '/reports/open') {
+      const ticketValues = url.searchParams.getAll('ticket');
+      if (
+        ticketValues.length !== 1 ||
+        [...url.searchParams.keys()].length !== 1
+      ) {
+        sendJson(response, 400, {
+          error: 'A single launch ticket is required.',
+        });
+        return;
+      }
+      try {
+        const session = reportAccess.consume(ticketValues[0]);
+        response.writeHead(303, {
+          location: session.target,
+          'set-cookie': `${REPORT_SESSION_COOKIE}=${encodeURIComponent(session.sessionToken)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${session.maxAgeSeconds}`,
+          'cache-control': 'no-store',
+          'referrer-policy': 'no-referrer',
+        });
+        response.end();
+      } catch (error) {
+        sendJson(response, 401, { error: errorMessage(error) });
+      }
+      return;
+    }
+
+    const reportSession = cookieValue(
+      request.headers.cookie,
+      REPORT_SESSION_COOKIE,
+    );
+    if (request.method === 'GET' && url.pathname === '/setup') {
+      if (!reportAccess.authorize(reportSession, '/setup')) {
+        sendJson(response, 401, { error: 'Local setup access denied.' });
+        return;
+      }
+      const document = createSetupDocument({
+        siteUrl: options.setup?.siteUrl ?? allowedOrigins[0],
+        extensionPath:
+          options.setup?.extensionPath ?? resolve('products/extension'),
+        bridgeUrl: `http://${urlHost(bridgeHost)}:${
+          (bridgeServer.address() as { port?: number } | null)?.port ??
+          bridgePort
+        }`,
+        pages: coordinator.listPairedPages(),
+      });
+      response.writeHead(200, {
+        'content-type': 'text/html; charset=utf-8',
+        'content-security-policy': document.contentSecurityPolicy,
+        'cache-control': 'no-store',
+        'x-content-type-options': 'nosniff',
+        'referrer-policy': 'no-referrer',
+      });
+      response.end(document.html);
+      return;
+    }
+
+    const issuePreviewMatch = /^\/issues\/preview(?:\/([0-9a-f-]{36}))?$/u.exec(
+      url.pathname,
+    );
+    if (request.method === 'GET' && issuePreviewMatch) {
+      const issueAuthorization = reportAccess.authorize(
+        reportSession,
+        '/issues/preview',
+      );
+      if (!issueAuthorization) {
+        sendJson(response, 401, { error: 'Issue preview access denied.' });
+        return;
+      }
+      let candidate;
+      try {
+        candidate = issuePreviewMatch[1]
+          ? await issueCandidateForSource(
+              {
+                kind: 'verified-receipt',
+                entryId: issuePreviewMatch[1],
+              },
+              issueAuthorization.binding,
+            )
+          : createSyntheticLessonIssueCandidate();
+      } catch {
+        sendJson(response, 404, {
+          error: 'The selected verified receipt is not available.',
+        });
+        return;
+      }
+      const actionToken = issueSaveActions.issue(
+        issueScope(reportSession, issueAuthorization),
+        candidate.source,
+      );
+      const document = createIssueDashboardDocument({
+        candidate,
+        actionToken,
+      });
+      response.writeHead(200, {
+        'content-type': 'text/html; charset=utf-8',
+        'content-security-policy': document.contentSecurityPolicy,
+        'cache-control': 'no-store',
+        'x-content-type-options': 'nosniff',
+        'referrer-policy': 'no-referrer',
+      });
+      response.end(document.html);
+      return;
+    }
+
+    if (request.method === 'POST' && url.pathname === '/issues/save') {
+      const issueAuthorization = reportAccess.authorize(
+        reportSession,
+        '/issues/preview',
+      );
+      if (!issueAuthorization) {
+        sendJson(response, 401, { error: 'Issue save access denied.' });
+        return;
+      }
+      const scope = issueScope(reportSession, issueAuthorization);
+      try {
+        const { actionToken } = await readFormBody(request);
+        const source = issueSaveActions.consume(actionToken, scope);
+        const candidate = await issueCandidateForSource(
+          source,
+          issueAuthorization.binding,
+        );
+        issueReviews.save(scope, candidate.draft);
+        response.writeHead(303, {
+          location: '/issues/review',
+          'cache-control': 'no-store',
+          'referrer-policy': 'no-referrer',
+        });
+        response.end();
+      } catch (error) {
+        sendJson(response, 400, { error: errorMessage(error) });
+      }
+      return;
+    }
+
+    if (request.method === 'GET' && url.pathname === '/issues/review') {
+      const issueAuthorization = reportAccess.authorize(
+        reportSession,
+        '/issues/preview',
+      );
+      if (!issueAuthorization) {
+        sendJson(response, 401, { error: 'Issue review access denied.' });
+        return;
+      }
+      const document = createIssueReviewListDocument(
+        issueReviews.list(issueScope(reportSession, issueAuthorization)),
+      );
+      response.writeHead(200, {
+        'content-type': 'text/html; charset=utf-8',
+        'content-security-policy': document.contentSecurityPolicy,
+        'cache-control': 'no-store',
+        'x-content-type-options': 'nosniff',
+        'referrer-policy': 'no-referrer',
+      });
+      response.end(document.html);
+      return;
+    }
+
+    const reportMatch = /^\/receipts(?:\/([0-9a-f-]{36}))?$/u.exec(
+      url.pathname,
+    );
+    if (request.method === 'GET' && reportMatch) {
+      const reportAuthorization = reportAccess.authorize(
+        reportSession,
+        '/receipts',
+      );
+      if (!reportAuthorization) {
+        sendJson(response, 401, { error: 'Receipt viewer access denied.' });
+        return;
+      }
+      let entries: ConnectorReceiptEntry[] = [];
+      let loadError: string | undefined;
+      try {
+        entries = await receipts.listVerified();
+        if (reportAuthorization.binding) {
+          entries = entries.filter(
+            (entry) =>
+              entry.connection.sessionId === reportAuthorization.binding,
+          );
+        }
+      } catch {
+        loadError = 'The local receipt chain could not be verified.';
+      }
+      const document = createDashboardDocument({
+        entries,
+        selectedEntryId: reportMatch[1],
+        loadError,
+      });
+      response.writeHead(loadError ? 500 : 200, {
+        'content-type': 'text/html; charset=utf-8',
+        'content-security-policy': document.contentSecurityPolicy,
+        'cache-control': 'no-store',
+        'x-content-type-options': 'nosniff',
+        'referrer-policy': 'no-referrer',
+      });
+      response.end(document.html);
       return;
     }
 
@@ -335,33 +679,6 @@ export async function startCapabilityConnector(
       return;
     }
 
-    const reportMatch = /^\/receipts(?:\/([0-9a-f-]{36}))?$/u.exec(
-      url.pathname,
-    );
-    if (request.method === 'GET' && reportMatch) {
-      let entries: ConnectorReceiptEntry[] = [];
-      let loadError: string | undefined;
-      try {
-        entries = await receipts.listVerified();
-      } catch {
-        loadError = 'The local receipt chain could not be verified.';
-      }
-      const document = createDashboardDocument({
-        entries,
-        selectedEntryId: reportMatch[1],
-        loadError,
-      });
-      response.writeHead(loadError ? 500 : 200, {
-        'content-type': 'text/html; charset=utf-8',
-        'content-security-policy': document.contentSecurityPolicy,
-        'cache-control': 'no-store',
-        'x-content-type-options': 'nosniff',
-        'referrer-policy': 'no-referrer',
-      });
-      response.end(document.html);
-      return;
-    }
-
     sendJson(response, 404, { error: 'Not found.' });
   });
 
@@ -375,12 +692,51 @@ export async function startCapabilityConnector(
       sendJson(response, 200, {
         service: 'leftout-local-browser-bridge',
         status: 'ok',
+        ...(options.instanceId ? { instance_id: options.instanceId } : {}),
       });
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/bridge/challenge') {
+      try {
+        const body = asRecord(await readJsonBody(request));
+        if (
+          !hasExactlyKeys(body, ['origin', 'page_url', 'client_label']) ||
+          typeof body.origin !== 'string' ||
+          typeof body.page_url !== 'string' ||
+          typeof body.client_label !== 'string'
+        ) {
+          throw new Error(
+            'Origin, page URL, and client label are required for pairing.',
+          );
+        }
+        const challenge = pairingChallenges.issue({
+          extensionOrigin: extensionOriginFrom(request),
+          origin: body.origin,
+          pageUrl: body.page_url,
+          clientLabel: body.client_label,
+        });
+        sendJson(response, 201, {
+          challenge_token: challenge.token,
+          expires_at: challenge.expiresAt,
+        });
+      } catch (error) {
+        sendJson(response, 400, { error: errorMessage(error) });
+      }
       return;
     }
     if (request.method === 'POST' && url.pathname === '/bridge/pair') {
       try {
-        const paired = coordinator.pair(pairInput(await readJsonBody(request)));
+        const input = pairInput(await readJsonBody(request));
+        if (input.challengeToken) {
+          pairingChallenges.consume(input.challengeToken, {
+            extensionOrigin: extensionOriginFrom(request),
+            origin: input.origin,
+            pageUrl: input.pageUrl,
+            clientLabel: input.clientLabel,
+          });
+          input.pairCode = coordinator.pairCode;
+        }
+        const paired = coordinator.pair(input);
         sendJson(response, 201, {
           session_id: paired.sessionId,
           bridge_token: paired.bridgeToken,
@@ -397,6 +753,23 @@ export async function startCapabilityConnector(
     const sessionId = url.searchParams.get('session_id') ?? '';
     const bridgeToken = bridgeTokenFrom(request);
     try {
+      if (request.method === 'GET' && url.pathname === '/bridge/report-link') {
+        coordinator.authenticate(sessionId, bridgeToken);
+        const launch = createLaunchUrl('/receipts', sessionId);
+        sendJson(response, 200, {
+          report_url: launch.url,
+          expires_at: launch.expiresAt,
+        });
+        return;
+      }
+      if (request.method === 'POST' && url.pathname === '/bridge/revoke') {
+        coordinator.revoke(sessionId, bridgeToken);
+        reportAccess.revokeBinding(sessionId);
+        issueSaveActions.revokeScope(`pairing:${sessionId}`);
+        issueReviews.revokeScope(`pairing:${sessionId}`);
+        sendJson(response, 200, { revoked: true });
+        return;
+      }
       if (request.method === 'GET' && url.pathname === '/bridge/poll') {
         const command = coordinator.poll(sessionId, bridgeToken);
         if (!command) {
@@ -445,12 +818,14 @@ export async function startCapabilityConnector(
 
   const actualMcpPort = (publicServer.address() as { port: number }).port;
   const actualBridgePort = (bridgeServer.address() as { port: number }).port;
+  publicBaseUrl = `http://${urlHost(publicHost)}:${actualMcpPort}`;
   log(
     `MCP connector: http://${urlHost(publicHost)}:${actualMcpPort}${MCP_PATH}?access_token=${accessToken}`,
   );
-  log(
-    `Receipt dashboard: http://${urlHost(publicHost)}:${actualMcpPort}/receipts?access_token=${accessToken}`,
-  );
+  const initialReportLaunch = createLaunchUrl('/receipts');
+  const initialSetupLaunch = createLaunchUrl('/setup');
+  log(`Receipt dashboard: ${initialReportLaunch.url}`);
+  log(`Local setup center: ${initialSetupLaunch.url}`);
   log(
     `Local browser bridge: http://${urlHost(bridgeHost)}:${actualBridgePort}`,
   );
@@ -464,8 +839,14 @@ export async function startCapabilityConnector(
     bridgeHost,
     coordinator,
     receipts,
+    issueReviews,
+    issueReportLaunchTicket: () => createLaunchUrl('/receipts'),
+    issueSetupLaunchTicket: () => createLaunchUrl('/setup'),
     async close() {
       coordinator.dispose();
+      reportAccess.dispose();
+      issueSaveActions.dispose();
+      issueReviews.dispose();
       await Promise.all([close(publicServer), close(bridgeServer)]);
     },
   };

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "LeftOut WebMCP Capability Bridge",
-  "version": "0.1.3",
-  "description": "Pairs one active browser tab with the local capability connector.",
+  "name": "LeftOut WebMCP Safety",
+  "version": "0.3.0",
+  "description": "Shows WebMCP activity and guards one exact, document-bound action through the local connector.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [
     "http://127.0.0.1:8788/*",
@@ -15,7 +15,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Pair WebMCP capability bridge",
+    "default_title": "Open WebMCP safety",
     "default_popup": "popup.html"
   }
 }

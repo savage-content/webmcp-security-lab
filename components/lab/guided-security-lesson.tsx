@@ -1,0 +1,833 @@
+'use client';
+
+import {
+  AlertTriangle,
+  ArrowRight,
+  Bot,
+  CheckCircle2,
+  Eye,
+  FileCheck2,
+  ShieldCheck,
+} from 'lucide-react';
+import { useState } from 'react';
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { beginnerLessonCopy } from '@/lib/lab/lesson-copy';
+import type {
+  EvidenceReceipt,
+  CompiledLessonCapabilityContract,
+  JsonValue,
+  LessonCapabilityScenarioId,
+  RiskAssessment,
+  ScenarioDefinition,
+  ScenarioId,
+  WebMcpStatus,
+} from '@/lib/lab/types';
+
+import {
+  type LessonCapabilityRunPayload,
+  useGeneratedLessonCapability,
+} from './use-generated-lesson-capability';
+import type { ExperienceMode } from './experience-chooser';
+
+type LessonStage = 1 | 2 | 3 | 4;
+
+export function FirstRunGuide({ mode }: { mode: ExperienceMode }) {
+  const steps =
+    mode === 'site-tools'
+      ? ([
+          {
+            label: 'Open',
+            title: 'Stay in the built-in browser',
+            detail:
+              'Use this page inside ChatGPT Work or Codex. Site Tools run from the page that registered them and stop being available when you leave it.',
+          },
+          {
+            label: 'Model',
+            title: 'Use Sol or Terra',
+            detail:
+              'Current Site Tools support is model- and workspace-dependent. Luna is a negative control; Enterprise and Edu are not supported.',
+          },
+          {
+            label: 'Practice',
+            title: 'Approve one exact action',
+            detail:
+              'The page replaces a broad practice action with one zero-input, one-use action. Approval prepares it but does not run it.',
+          },
+          {
+            label: 'Verify',
+            title: 'Ask the same agent once',
+            detail:
+              'Tell the agent in this browser to run the one approved action once, without retrying. Return here to compare the effect and page evidence.',
+          },
+        ] as const)
+      : mode === 'local-guard'
+        ? ([
+            {
+              label: 'Learn',
+              title: 'Start on this page',
+              detail:
+                'Read a lesson, inspect the actual authority, and freeze one exact practice action before connecting anything.',
+            },
+            {
+              label: 'Protect',
+              title: 'Protect this tab',
+              detail:
+                'Open LeftOut Local Guard and choose “Protect this tab.” Its browser-owned status applies only to calls routed through this local prototype.',
+            },
+            {
+              label: 'Agent',
+              title: 'Use the local relay',
+              detail:
+                'Connect your local MCP-capable agent to the launcher’s relay, then ask it to run the one approved practice action once.',
+            },
+            {
+              label: 'Evidence',
+              title: 'Review the verified local record',
+              detail:
+                'The local relay validates the returned page evidence before adding a linked record and preparing any private redacted issue draft.',
+            },
+          ] as const)
+        : ([
+            {
+              label: 'Learn',
+              title: 'Read every lesson',
+              detail:
+                'Inspect the visible task, declared inputs, safety hints, and safer design without connecting a client.',
+            },
+            {
+              label: 'Compare',
+              title: 'Separate claim from authority',
+              detail:
+                'The page shows what a person sees, what an agent can send, and what the controlled handler would actually do.',
+            },
+            {
+              label: 'Harness',
+              title: 'Optional page-only demonstration',
+              detail:
+                'The explicitly labeled in-page harness can demonstrate effects, but it never counts as Site Tools discovery or client invocation.',
+            },
+            {
+              label: 'Decide',
+              title: 'Choose a live path later',
+              detail:
+                'Switch to the built-in browser path or the LeftOut Local Guard when you are ready to complete an agent-driven run.',
+            },
+          ] as const);
+
+  return (
+    <section
+      aria-labelledby="first-run-heading"
+      className="mt-8 overflow-hidden rounded-xl border border-foreground bg-card"
+    >
+      <div className="border-b border-border px-5 py-5 sm:px-6">
+        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-800">
+          First time here?
+        </p>
+        <h3 id="first-run-heading" className="mt-1 text-xl font-semibold">
+          {mode === 'site-tools'
+            ? 'Use Site Tools directly in the built-in browser.'
+            : mode === 'local-guard'
+              ? 'Use the Local Guard only for the local protected path.'
+              : 'Learn safely without claiming a client invocation.'}
+        </h3>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+          {mode === 'site-tools'
+            ? 'No LeftOut extension or local relay is required for the native Site Tools path. Client availability still depends on the exact model, workspace, rollout, page registration, and session.'
+            : mode === 'local-guard'
+              ? 'This advanced path adds browser-owned monitoring, change alerts, one-use enforcement, and local evidence. It is separate from native ChatGPT Site Tools and OpenAI’s browser extension.'
+              : 'Reading and the explicit page harness need no setup. Harness results are educational observations, not proof that an agent discovered or invoked a Site Tool.'}
+        </p>
+      </div>
+      <ol className="grid gap-px bg-border md:grid-cols-2 xl:grid-cols-4">
+        {steps.map((step, index) => (
+          <li key={step.label} className="bg-card p-5 sm:p-6">
+            <div className="flex items-center gap-2">
+              <span className="flex size-6 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background">
+                {index + 1}
+              </span>
+              <Badge variant="outline">{step.label}</Badge>
+            </div>
+            <p className="mt-4 text-sm font-semibold">{step.title}</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              {step.detail}
+            </p>
+          </li>
+        ))}
+      </ol>
+      <div className="border-t border-amber-300/35 bg-amber-50 px-5 py-4 text-xs leading-5 text-amber-950 sm:px-6">
+        <strong>Evidence boundary:</strong>{' '}
+        {mode === 'site-tools'
+          ? 'The page can prove registration and callback invocation, but it cannot verify the selected model, workspace, client discovery UI, or browser confirmation. Use the advanced conformance screen to record those separately.'
+          : mode === 'local-guard'
+            ? 'The guard can attest only its own routed call and local receipt chain. It cannot attest a native Site Tools call made outside that path.'
+            : 'No agent-driven result is claimed on this path.'}
+      </div>
+    </section>
+  );
+}
+
+export function LessonPicker({
+  scenarios,
+  selectedId,
+  completedIds,
+  onSelect,
+}: {
+  scenarios: ScenarioDefinition[];
+  selectedId: ScenarioId;
+  completedIds: Set<ScenarioId>;
+  onSelect: (id: ScenarioId) => void;
+}) {
+  return (
+    <section aria-labelledby="lessons-heading" className="mt-8">
+      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            Five short security lessons
+          </p>
+          <h3 id="lessons-heading" className="mt-1 text-xl font-semibold">
+            Start anywhere. Nothing runs when you choose a lesson.
+          </h3>
+        </div>
+        <p className="max-w-lg text-xs leading-5 text-muted-foreground">
+          Each lesson gives the human and agent one question, one rule, one
+          controlled practice action, and one receipt.
+        </p>
+      </div>
+      <div className="mt-4 grid gap-2 md:grid-cols-5">
+        {scenarios.map((scenario) => {
+          const active = scenario.id === selectedId;
+          const complete = completedIds.has(scenario.id);
+          return (
+            <button
+              key={scenario.id}
+              type="button"
+              aria-current={active ? 'step' : undefined}
+              className={`min-h-36 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                active
+                  ? 'border-foreground bg-foreground text-background'
+                  : 'border-border bg-card hover:border-foreground/45'
+              }`}
+              onClick={() => onSelect(scenario.id)}
+            >
+              <span className="flex items-center justify-between gap-2">
+                <span className="font-mono text-[10px] opacity-65">
+                  LESSON {scenario.ordinal}
+                </span>
+                {complete ? (
+                  <CheckCircle2 className="size-4 text-emerald-500" />
+                ) : null}
+              </span>
+              <span className="mt-7 block text-sm font-semibold leading-5">
+                {beginnerLessonCopy[scenario.id].title}
+              </span>
+              <span className="mt-2 block text-[11px] leading-4 opacity-70">
+                {scenario.shortTitle}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+export function GuidedSecurityLesson({
+  experienceMode,
+  scenario,
+  assessment,
+  sourceState,
+  clientLabel,
+  webMcp,
+  onSuppressSourceTool,
+  onRestoreSourceTool,
+  onCreateReceipt,
+  onOfferPermit,
+  onNext,
+}: {
+  experienceMode: ExperienceMode;
+  scenario: ScenarioDefinition & { id: LessonCapabilityScenarioId };
+  assessment: RiskAssessment;
+  sourceState: Record<string, JsonValue>;
+  clientLabel: string;
+  webMcp: WebMcpStatus;
+  onSuppressSourceTool: () => true;
+  onRestoreSourceTool: () => void;
+  onCreateReceipt: (
+    payload: LessonCapabilityRunPayload,
+  ) => Promise<EvidenceReceipt>;
+  onOfferPermit: (
+    contract: CompiledLessonCapabilityContract,
+    approvedAt: string,
+    pageUrl: string,
+  ) => Promise<void>;
+  onNext?: () => void;
+}) {
+  const [stage, setStage] = useState<LessonStage>(1);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const copy = beginnerLessonCopy[scenario.id];
+  const secureFields = schemaFields(scenario.secureTool);
+  const capability = useGeneratedLessonCapability({
+    scenario,
+    sourceTool: scenario.tool,
+    sourceState,
+    clientLabel,
+    webMcp,
+    onSuppressSourceTool,
+    onRestoreSourceTool,
+    onCreateReceipt,
+    onOfferPermit,
+  });
+  const receipt = capability.receipt;
+  const currentStage: LessonStage = receipt ? 4 : stage;
+  const statesMatch = receipt
+    ? JSON.stringify(receipt.effective.before) ===
+      JSON.stringify(receipt.effective.after)
+    : false;
+
+  async function prepareApproval() {
+    if (capability.status === 'review' && capability.contract) {
+      setConfirmOpen(true);
+      return;
+    }
+    const frozen = await capability.prepare();
+    if (frozen) setConfirmOpen(true);
+  }
+
+  return (
+    <section
+      id="lesson"
+      className="scroll-mt-20 bg-[#05081a] px-5 py-7 text-slate-100 sm:px-8 lg:px-10 lg:py-10"
+      aria-labelledby={`guided-${scenario.id}`}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge className="border-lime-300/30 bg-lime-300/10 text-lime-200">
+          Lesson {Number(scenario.ordinal)} of 5
+        </Badge>
+        <Badge variant="outline" className="border-white/20 text-slate-200">
+          {experienceMode === 'site-tools'
+            ? 'Built-in Site Tools exercise'
+            : experienceMode === 'local-guard'
+              ? 'Local Guard exercise'
+              : 'Read-only lesson'}
+        </Badge>
+        <Badge variant="outline" className="border-white/20 text-slate-200">
+          Fake data
+        </Badge>
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[0.72fr_1.28fr]">
+        <div>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-lime-300">
+            Learn the risk, then test the fix
+          </p>
+          <h2
+            id={`guided-${scenario.id}`}
+            className="mt-2 text-3xl font-semibold tracking-[-0.04em]"
+          >
+            {copy.title}
+          </h2>
+          <p className="mt-4 text-base leading-7 text-slate-300">
+            {copy.question}
+          </p>
+          <p className="mt-4 text-sm leading-6 text-slate-400">{copy.why}</p>
+          <div className="mt-4 rounded-lg border border-sky-300/20 bg-sky-300/8 p-4">
+            <p className="text-xs font-semibold text-sky-200">
+              What this lesson covers
+            </p>
+            <p className="mt-1 text-xs leading-5 text-slate-300">
+              {experienceMode === 'site-tools'
+                ? 'The page freezes one exact task as a one-use Site Tool. The agent in this built-in browser invokes it, and the page compares the returned effect. Approval alone never runs the action.'
+                : experienceMode === 'local-guard'
+                  ? 'The page freezes one exact task. The Local Guard validates its permit, the connected agent invokes it through the relay, and the relay verifies the returned evidence. Approval alone never runs the action.'
+                  : 'The page lets you inspect the task, declaration, and safer design. Any page-only demonstration remains clearly labeled and does not count as client discovery or invocation.'}
+            </p>
+          </div>
+          <div className="mt-5 rounded-lg border border-lime-300/25 bg-lime-300/8 p-4">
+            <p className="text-xs font-semibold text-lime-200">The rule</p>
+            <p className="mt-1 text-sm leading-6 text-slate-200">{copy.rule}</p>
+          </div>
+        </div>
+
+        <div>
+          <LessonStages current={currentStage} />
+
+          {currentStage === 1 ? (
+            <LessonCard
+              icon={<Eye />}
+              eyebrow="First: understand the mismatch"
+              title="What the person sees is not the whole capability."
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Fact
+                  label="Visible promise"
+                  value={scenario.presented.apparentPromise}
+                />
+                <Fact
+                  label="Security concern"
+                  value={copy.redFlag}
+                  tone="warning"
+                />
+              </div>
+              <Button
+                className="mt-5 w-full bg-lime-300 text-slate-950 hover:bg-lime-200"
+                onClick={() => setStage(2)}
+              >
+                Inspect the agent authority
+                <ArrowRight data-icon="inline-end" />
+              </Button>
+              <p className="mt-2 text-center text-[11px] text-slate-400">
+                Inspection reveals declarations only. It does not invoke a tool.
+              </p>
+            </LessonCard>
+          ) : null}
+
+          {currentStage === 2 ? (
+            <LessonCard
+              icon={<Bot />}
+              eyebrow="Second: inspect, then approve"
+              title="Compare the human task with the agent surface."
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Fact
+                  label="What the person can enter"
+                  value={scenario.presented.inputFields.join(', ') || 'None'}
+                />
+                <Fact
+                  label="What the agent can send"
+                  value={assessment.schemaFields.join(', ') || 'None'}
+                  tone={
+                    assessment.hiddenSchemaFields.length ? 'warning' : 'neutral'
+                  }
+                />
+                <Fact
+                  label="Page says it only reads"
+                  value={
+                    scenario.tool.annotations.readOnlyHint
+                      ? 'Yes — still verify the effect'
+                      : 'No — expect a possible change'
+                  }
+                />
+                <Fact
+                  label="Page warns result text is untrusted"
+                  value={
+                    scenario.tool.annotations.untrustedContentHint
+                      ? 'Yes — keep it isolated as data'
+                      : 'No — the warning is missing'
+                  }
+                />
+              </div>
+              {assessment.hiddenSchemaFields.length ? (
+                <p className="mt-3 rounded-md border border-amber-300/25 bg-amber-300/10 p-3 text-xs leading-5 text-amber-100">
+                  Extra inputs the person never saw:{' '}
+                  {assessment.hiddenSchemaFields.join(', ')}
+                </p>
+              ) : null}
+              {scenario.id === 'client-discovery-variance' ? (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                  <Fact label="Browser API" value={webMcp.browserSupport} />
+                  <Fact label="Registration" value={webMcp.registration} />
+                  <Fact label="Policy" value={webMcp.permissionsPolicy} />
+                  <Fact label="Discovery" value={webMcp.discovery} />
+                  <Fact label="Invocation" value={webMcp.invocation} />
+                </div>
+              ) : null}
+              <div className="mt-4 rounded-md border border-white/10 bg-white/5 p-3">
+                <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-slate-400">
+                  Ask your agent
+                </p>
+                <p className="mt-2 text-xs leading-5 text-slate-200">
+                  “{copy.agentPrompt}”
+                </p>
+              </div>
+              <div className="mt-4 rounded-md border border-lime-300/25 bg-lime-300/8 p-3">
+                <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-lime-200">
+                  Exact practice approval
+                </p>
+                <p className="mt-2 text-xs leading-5 text-slate-200">
+                  {scenario.secureConfirmationCopy}
+                </p>
+                <p className="mt-2 text-[11px] leading-5 text-slate-400">
+                  One secure synthetic run. No automatic retry. Approval alone
+                  will not run it.
+                </p>
+              </div>
+              <Button
+                className="mt-5 w-full bg-lime-300 text-slate-950 hover:bg-lime-200"
+                disabled={capability.status === 'preparing'}
+                onClick={() => void prepareApproval()}
+              >
+                {capability.status === 'preparing'
+                  ? 'Freezing exact action…'
+                  : 'Freeze and review exact approval'}
+                <ArrowRight data-icon="inline-end" />
+              </Button>
+            </LessonCard>
+          ) : null}
+
+          {currentStage === 3 ? (
+            <LessonCard
+              icon={<ShieldCheck />}
+              eyebrow="Third: let the connected agent use the one-use action"
+              title={
+                capability.status === 'ready'
+                  ? 'Ready for browser verification.'
+                  : 'Preparing the browser-owned protection.'
+              }
+            >
+              <p className="rounded-md border border-lime-300/25 bg-lime-300/8 p-3 text-sm leading-6 text-lime-100">
+                {capability.message}
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                {experienceMode === 'site-tools' ? (
+                  <>
+                    <Fact
+                      label="1. Keep this page open"
+                      value="Stay in ChatGPT or Codex’s built-in browser. The action belongs to this page and session."
+                    />
+                    <Fact
+                      label="2. Ask the same agent"
+                      value="Run the one approved practice action once. Do not retry or invoke any other site action."
+                    />
+                    <Fact
+                      label="3. Return here"
+                      value="The page evidence appears after the registered callback completes."
+                    />
+                  </>
+                ) : experienceMode === 'local-guard' ? (
+                  <>
+                    <Fact
+                      label="1. Local Guard"
+                      value="Open LeftOut Local Guard and confirm “Protected: 1 exact action.”"
+                    />
+                    <Fact
+                      label="2. Ask your local agent"
+                      value="Use the LeftOut local relay to run the one approved action once, without retrying."
+                    />
+                    <Fact
+                      label="3. Return here"
+                      value="The page evidence appears after the relay completes the guarded call."
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Fact
+                      label="1. Stay read-only"
+                      value="Do not ask an agent to run the prepared action."
+                    />
+                    <Fact
+                      label="2. Inspect"
+                      value="Review the frozen contract and the security rule it applies."
+                    />
+                    <Fact
+                      label="3. Continue"
+                      value="Choose a live setup above when you want an agent-driven result."
+                    />
+                  </>
+                )}
+              </div>
+              <div className="mt-4 rounded-md border border-sky-300/20 bg-sky-300/8 p-3">
+                <p className="text-xs font-semibold text-sky-200">
+                  No technical details to copy
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-300">
+                  {experienceMode === 'site-tools'
+                    ? 'The agent uses the one approved, zero-input action registered by this page. If the client cannot identify that exact action, it should stop without invoking anything.'
+                    : experienceMode === 'local-guard'
+                      ? 'The local relay finds the one protected practice page and its sole approved, zero-input action. If the page or action is ambiguous, it stops without invoking anything.'
+                      : 'No client action is requested on this path. The technical identifiers remain available only for inspection.'}
+                </p>
+              </div>
+              <details className="mt-4 rounded-md border border-white/10 bg-white/5 p-3">
+                <summary className="cursor-pointer text-xs font-semibold text-slate-200">
+                  Advanced contract details
+                </summary>
+                <dl className="mt-3 grid gap-2 text-[11px] leading-5 text-slate-400 sm:grid-cols-2">
+                  <div>
+                    <dt>Human task fields</dt>
+                    <dd className="text-slate-200">
+                      {secureFields.join(', ') || 'None'} — frozen into the
+                      contract
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Agent-call inputs</dt>
+                    <dd className="text-slate-200">
+                      None; unknown fields rejected
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Profile</dt>
+                    <dd className="break-all text-slate-200">
+                      {capability.contract?.intent.profileId ?? 'Preparing'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Contract hash</dt>
+                    <dd className="break-all text-slate-200">
+                      {capability.contract?.contractHash ?? 'Preparing'}
+                    </dd>
+                  </div>
+                </dl>
+              </details>
+              {['error', 'closed', 'failed'].includes(capability.status) &&
+              !receipt ? (
+                <Button
+                  variant="secondary"
+                  className="mt-4 w-full"
+                  onClick={() => {
+                    capability.reset();
+                    setStage(1);
+                  }}
+                >
+                  Reset safely; nothing will auto-retry
+                </Button>
+              ) : null}
+            </LessonCard>
+          ) : null}
+
+          {currentStage === 4 ? (
+            <LessonCard
+              icon={<FileCheck2 />}
+              eyebrow="Fourth: verify the page result"
+              title={
+                receipt
+                  ? `${receipt.verdict}: page receipt returned`
+                  : 'Preparing the receipt'
+              }
+            >
+              {receipt ? (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Fact
+                      label="Secure action"
+                      value={receipt.declaration.title}
+                    />
+                    <Fact
+                      label="Before and after"
+                      value={
+                        statesMatch
+                          ? 'Identical'
+                          : receipt.verdict === 'PASS'
+                            ? 'Changed exactly as approved'
+                            : 'Changed — review the receipt'
+                      }
+                    />
+                    <Fact
+                      label="Side effects"
+                      value={
+                        receipt.effective.sideEffects.length
+                          ? receipt.effective.sideEffects.join('; ')
+                          : 'None observed'
+                      }
+                    />
+                    <Fact label="Receipt ID" value={receipt.id} />
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-slate-300">
+                    {receipt.debrief}
+                  </p>
+                  <div className="mt-4 rounded-md border border-sky-300/20 bg-sky-300/8 p-4">
+                    <p className="text-xs font-semibold text-sky-200">
+                      {receipt.verdict === 'PASS'
+                        ? 'What was fixed — and why it is safer'
+                        : 'What the safer version was meant to enforce'}
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-slate-300">
+                      <strong className="text-slate-100">Before:</strong>{' '}
+                      {copy.redFlag}
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-slate-300">
+                      <strong className="text-slate-100">Safer design:</strong>{' '}
+                      {copy.rule}
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-slate-300">
+                      <strong className="text-slate-100">Why:</strong>{' '}
+                      {copy.why}
+                    </p>
+                  </div>
+                  <p className="mt-3 text-[11px] leading-5 text-slate-400">
+                    {receipt.limitation}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm leading-6 text-slate-300">
+                  The practice run finished, but this view has not received its
+                  receipt yet. Do not retry automatically.
+                </p>
+              )}
+              {onNext ? (
+                <Button
+                  className="mt-5 w-full bg-lime-300 text-slate-950 hover:bg-lime-200"
+                  onClick={onNext}
+                >
+                  Continue to the next lesson
+                  <ArrowRight data-icon="inline-end" />
+                </Button>
+              ) : (
+                <div className="mt-5 rounded-lg border border-lime-300/25 bg-lime-300/8 p-4">
+                  <p className="text-sm font-semibold text-lime-100">
+                    Course complete
+                  </p>
+                  <p className="mt-2 text-xs leading-5 text-slate-300">
+                    You can now separate a site’s claim, the authority offered
+                    to an agent, the approval a person gave, and the effect a
+                    receipt actually proves.
+                  </p>
+                  <a
+                    href="#ledger"
+                    className="mt-4 flex min-h-10 items-center justify-center rounded-md bg-lime-300 px-4 text-sm font-semibold text-slate-950"
+                  >
+                    Review private evidence
+                  </a>
+                </div>
+              )}
+            </LessonCard>
+          ) : null}
+        </div>
+      </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-amber-100 text-amber-900">
+              <AlertTriangle />
+            </AlertDialogMedia>
+            <AlertDialogTitle>
+              Approve this exact one-use action?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {capability.contract?.approval.copy ??
+                'The exact contract is still being prepared.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-md border border-border bg-muted/50 p-3 text-xs leading-5 text-muted-foreground">
+            Synthetic data only. Approval withdraws the broader practice tool
+            and registers one narrower action. It does not invoke the action.
+            Only the connected agent can use the protected path, once, with no
+            automatic retry.
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Not now</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={capability.status !== 'review'}
+              onClick={() => {
+                setStage(3);
+                void capability.approveAndRegister();
+              }}
+            >
+              Approve and protect; do not run
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </section>
+  );
+}
+
+function LessonStages({ current }: { current: LessonStage }) {
+  const labels = ['Understand', 'Approve', 'Agent run', 'Verify'];
+  return (
+    <ol className="mb-4 grid grid-cols-4 gap-1.5" aria-label="Lesson progress">
+      {labels.map((label, index) => {
+        const stage = (index + 1) as LessonStage;
+        const active = stage === current;
+        const done = stage < current;
+        return (
+          <li
+            key={label}
+            aria-current={active ? 'step' : undefined}
+            className={`rounded-md border px-2 py-2 text-center text-[10px] font-semibold sm:text-xs ${
+              active
+                ? 'border-lime-300/55 bg-lime-300/10 text-lime-200'
+                : done
+                  ? 'border-emerald-400/25 bg-emerald-400/8 text-emerald-200'
+                  : 'border-white/10 text-slate-500'
+            }`}
+          >
+            {index + 1}. {label}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function LessonCard({
+  icon,
+  eyebrow,
+  title,
+  children,
+}: {
+  icon: React.ReactNode;
+  eyebrow: string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-white/12 bg-white/5 p-5 sm:p-6">
+      <div className="flex items-start gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-lime-300 text-slate-950 [&_svg]:size-4">
+          {icon}
+        </span>
+        <div>
+          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-lime-300">
+            {eyebrow}
+          </p>
+          <h3 className="mt-1 text-xl font-semibold tracking-tight">{title}</h3>
+        </div>
+      </div>
+      <div className="mt-5">{children}</div>
+    </div>
+  );
+}
+
+function Fact({
+  label,
+  value,
+  tone = 'neutral',
+}: {
+  label: string;
+  value: string;
+  tone?: 'neutral' | 'warning';
+}) {
+  return (
+    <div
+      className={`rounded-md border p-3 ${
+        tone === 'warning'
+          ? 'border-amber-300/25 bg-amber-300/10'
+          : 'border-white/10 bg-white/5'
+      }`}
+    >
+      <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-slate-400">
+        {label}
+      </p>
+      <p className="mt-2 break-words text-xs font-semibold leading-5 text-slate-100">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function schemaFields(tool: ScenarioDefinition['secureTool']) {
+  const properties = tool.inputSchema.properties;
+  if (
+    !properties ||
+    typeof properties !== 'object' ||
+    Array.isArray(properties)
+  ) {
+    return [];
+  }
+  return Object.keys(properties);
+}

@@ -23,6 +23,7 @@ const HOSTILE_RECEIPT_LABEL =
 const PAGE_URL = 'http://localhost:3000/';
 const REPORT_LIMITATION =
   'This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.';
+const CAPABILITY_PERMIT_SHA256 = '4'.repeat(64);
 
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
@@ -82,6 +83,7 @@ describe('tool-only MCP connector runtime', () => {
   it('serves authenticated MCP tools, relays discovery, and renders committed receipt evidence', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'leftout-connector-'));
     const connector = await startCapabilityConnector({
+      instanceId: 'connector-test-run',
       mcpPort: 0,
       bridgePort: 0,
       accessToken: 'mcp-test-token',
@@ -97,9 +99,20 @@ describe('tool-only MCP connector runtime', () => {
 
     const base = `http://127.0.0.1:${connector.mcpPort}`;
     const bridge = `http://127.0.0.1:${connector.bridgePort}`;
-    await expect(fetch(base).then((response) => response.status)).resolves.toBe(
-      200,
-    );
+    await expect(
+      fetch(base).then((response) => response.json()),
+    ).resolves.toMatchObject({
+      service: 'leftout-webmcp-capability-connector',
+      status: 'ok',
+      instance_id: 'connector-test-run',
+    });
+    await expect(
+      fetch(bridge).then((response) => response.json()),
+    ).resolves.toMatchObject({
+      service: 'leftout-local-browser-bridge',
+      status: 'ok',
+      instance_id: 'connector-test-run',
+    });
     await expect(
       fetch(`${base}/mcp`, { method: 'POST' }).then(
         (response) => response.status,
@@ -151,6 +164,7 @@ describe('tool-only MCP connector runtime', () => {
       'list_paired_pages',
       'inspect_paired_webmcp_page',
       'invoke_approved_one_use_capability',
+      'run_one_approved_practice_action',
       'list_capability_receipts',
       'get_capability_receipt_summary',
     ]);
@@ -163,6 +177,23 @@ describe('tool-only MCP connector runtime', () => {
       destructiveHint: true,
       openWorldHint: true,
       idempotentHint: false,
+    });
+    expect(
+      tools.tools.find(
+        (tool) => tool.name === 'run_one_approved_practice_action',
+      ),
+    ).toMatchObject({
+      inputSchema: {
+        type: 'object',
+        properties: {},
+        additionalProperties: false,
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: true,
+        idempotentHint: false,
+      },
     });
 
     const list = await client.callTool({
@@ -341,12 +372,50 @@ describe('tool-only MCP connector runtime', () => {
     await expect(connector.receipts.listVerified()).resolves.toEqual([]);
 
     const invocationRequest = client.callTool({
-      name: 'invoke_approved_one_use_capability',
-      arguments: {
-        session_id: pairing.session_id,
-        tool_name: receipt.declaration.name,
-      },
+      name: 'run_one_approved_practice_action',
+      arguments: {},
     });
+    const helperInspectionCommand = await waitForBridgeCommand(
+      `${bridge}/bridge/poll?session_id=${pairing.session_id}`,
+      pairing.bridge_token,
+    );
+    expect(helperInspectionCommand).toMatchObject({ kind: 'inspect-tools' });
+    const helperInspectionCompletion = await fetch(
+      `${bridge}/bridge/result?session_id=${pairing.session_id}`,
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${pairing.bridge_token}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          command_id: helperInspectionCommand.command_id,
+          observed_at: '2026-09-01T12:00:45.000Z',
+          observed_origin: 'http://localhost:3000',
+          ok: true,
+          payload: {
+            origin: 'http://localhost:3000',
+            pageUrl: PAGE_URL,
+            observedAt: '2026-09-01T12:00:45.000Z',
+            tools: [
+              {
+                name: receipt.declaration.name,
+                title: receipt.declaration.title,
+                description: receipt.declaration.description,
+                inputSchema: {
+                  type: 'object',
+                  properties: {},
+                  required: [],
+                  additionalProperties: false,
+                },
+                annotations: receipt.declaration.annotations,
+              },
+            ],
+          },
+        }),
+      },
+    );
+    expect(helperInspectionCompletion.status).toBe(202);
     const invocationCommand = await waitForBridgeCommand(
       `${bridge}/bridge/poll?session_id=${pairing.session_id}`,
       pairing.bridge_token,
@@ -365,6 +434,10 @@ describe('tool-only MCP connector runtime', () => {
         origin: 'http://localhost:3000',
         pageUrl: PAGE_URL,
         toolName: receipt.declaration.name,
+        permit: {
+          sha256: CAPABILITY_PERMIT_SHA256,
+          consumedAt: '2026-09-01T12:00:59.000Z',
+        },
         result: receipt,
       },
     });
@@ -381,7 +454,15 @@ describe('tool-only MCP connector runtime', () => {
     );
     expect(invocationCompletion.status).toBe(202);
     const committedEntries = await connector.receipts.listVerified();
-    expect(committedEntries).toMatchObject([{ receiptId: receipt.id }]);
+    expect(committedEntries).toMatchObject([
+      {
+        receiptId: receipt.id,
+        adapter: {
+          capabilityPermitSha256: CAPABILITY_PERMIT_SHA256,
+          enforcement: 'extension-consumed-before-invocation',
+        },
+      },
+    ]);
     const committedEntry = committedEntries[0];
     if (!committedEntry) throw new Error('Expected one committed receipt.');
     const exactRetry = await fetch(
@@ -407,6 +488,8 @@ describe('tool-only MCP connector runtime', () => {
         source_metadata_trust: 'untrusted-page-supplied',
         raw_page_url_included: false,
         client_labels_included: false,
+        capability_permit_sha256: CAPABILITY_PERMIT_SHA256,
+        extension_enforcement: 'extension-consumed-before-invocation',
       },
     });
     const modelVisibleInvocation = JSON.stringify(invocation);
@@ -441,9 +524,16 @@ describe('tool-only MCP connector runtime', () => {
     });
     expect(JSON.stringify(report)).toContain(REPORT_LIMITATION);
 
-    const dashboard = await fetch(
-      `${base}/receipts/${receiptEntryId}?access_token=mcp-test-token`,
-    );
+    const reportLaunch = connector.issueReportLaunchTicket();
+    const launch = await fetch(reportLaunch.url, { redirect: 'manual' });
+    expect(launch.status).toBe(303);
+    expect(launch.headers.get('location')).toBe('/receipts');
+    const reportCookie = launch.headers.get('set-cookie');
+    expect(reportCookie).toContain('HttpOnly');
+    expect(reportCookie).toContain('SameSite=Strict');
+    const dashboard = await fetch(`${base}/receipts/${receiptEntryId}`, {
+      headers: { cookie: reportCookie?.split(';')[0] ?? '' },
+    });
     expect(dashboard.status).toBe(200);
     expect(dashboard.headers.get('content-security-policy')).toContain(
       "default-src 'none'",
@@ -455,6 +545,10 @@ describe('tool-only MCP connector runtime', () => {
     expect(dashboardHtml).toContain(
       'This report reflects self-reported evidence readiness.',
     );
+    expect(dashboardHtml).toContain(
+      'locally recorded guided-lesson capability receipts',
+    );
+    expect(dashboardHtml).not.toContain('Scenario 1 capability receipts');
     expect(dashboardHtml).toContain(receipt.id);
     expect(dashboardHtml).toContain(
       `<span class="verdict pass">${receipt.verdict}</span>`,
@@ -462,12 +556,29 @@ describe('tool-only MCP connector runtime', () => {
     expect(dashboardHtml).toContain(receipt.capability?.contract.contractHash);
     expect(dashboardHtml).toContain(committedEntry.receiptHash);
     expect(dashboardHtml).toContain(committedEntry.entryHash);
+    expect(dashboardHtml).toContain(CAPABILITY_PERMIT_SHA256);
     expect(dashboardHtml).toContain('<article class="selected">');
+    expect(dashboardHtml).toContain(`href="/issues/preview/${receiptEntryId}"`);
     expect(dashboardHtml).not.toContain('<script');
     expect(dashboardHtml).not.toContain(HOSTILE_RECEIPT_LABEL);
     expect(dashboardHtml).toContain(
       HOSTILE_RECEIPT_LABEL.replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
     );
+
+    const issuePreview = await fetch(
+      `${base}/issues/preview/${receiptEntryId}`,
+      { headers: { cookie: reportCookie?.split(';')[0] ?? '' } },
+    );
+    expect(issuePreview.status).toBe(200);
+    const issuePreviewHtml = await issuePreview.text();
+    expect(issuePreviewHtml).toContain('Selected verified local receipt');
+    expect(issuePreviewHtml).toContain(
+      'Read-only claim versus observed effect',
+    );
+    expect(issuePreviewHtml).toContain('annotation-mismatch');
+    expect(issuePreviewHtml).not.toContain(receipt.id);
+    expect(issuePreviewHtml).not.toContain(receiptEntryId);
+    expect(issuePreviewHtml).not.toContain(HOSTILE_RECEIPT_LABEL);
   });
 
   it.each(['', '   '])(
@@ -604,5 +715,365 @@ describe('tool-only MCP connector runtime', () => {
     const probe = createHttpServer();
     await expect(listen(probe, mcpPort)).resolves.toBe(mcpPort);
     await close(probe);
+  });
+});
+
+describe('local browser-facing connector controls', () => {
+  it('pairs automatically with one extension-and-page-bound challenge exactly once', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'leftout-challenge-'));
+    const connector = await startCapabilityConnector({
+      mcpPort: 0,
+      bridgePort: 0,
+      accessToken: 'mcp-challenge-token',
+      pairCode: '12345678',
+      ledgerPath: join(directory, 'receipts.jsonl'),
+      allowedOrigins: ['http://localhost:3000'],
+      log: () => undefined,
+    });
+    cleanups.push(async () => {
+      await connector.close();
+      await rm(directory, { recursive: true, force: true });
+    });
+    const bridge = `http://127.0.0.1:${connector.bridgePort}`;
+    const extensionOrigin = `chrome-extension://${'a'.repeat(32)}`;
+    const challengeBody = {
+      origin: 'http://localhost:3000',
+      page_url: 'http://localhost:3000/lesson?private=yes#step',
+      client_label: 'LeftOut Chrome capability bridge',
+    };
+
+    await expect(
+      fetch(`${bridge}/bridge/challenge`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(challengeBody),
+      }).then((response) => response.status),
+    ).resolves.toBe(400);
+    await expect(
+      fetch(`${bridge}/bridge/challenge`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          origin: extensionOrigin,
+        },
+        body: JSON.stringify({ ...challengeBody, hidden_authority: true }),
+      }).then((response) => response.status),
+    ).resolves.toBe(400);
+
+    const challengeResponse = await fetch(`${bridge}/bridge/challenge`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: extensionOrigin,
+      },
+      body: JSON.stringify(challengeBody),
+    });
+    expect(challengeResponse.status).toBe(201);
+    expect(challengeResponse.headers.get('cache-control')).toBe('no-store');
+    const challenge = (await challengeResponse.json()) as {
+      challenge_token: string;
+      expires_at: string;
+    };
+    expect(challenge.challenge_token).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+    const lifetime = Date.parse(challenge.expires_at) - Date.now();
+    expect(lifetime).toBeGreaterThan(0);
+    expect(lifetime).toBeLessThanOrEqual(60_000);
+
+    const pairBody = {
+      challenge_token: challenge.challenge_token,
+      ...challengeBody,
+    };
+    await expect(
+      fetch(`${bridge}/bridge/pair`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          origin: extensionOrigin,
+        },
+        body: JSON.stringify({ ...pairBody, hidden_authority: true }),
+      }).then((response) => response.status),
+    ).resolves.toBe(400);
+    const pairResponse = await fetch(`${bridge}/bridge/pair`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: extensionOrigin,
+      },
+      body: JSON.stringify(pairBody),
+    });
+    expect(pairResponse.status).toBe(201);
+    await expect(pairResponse.json()).resolves.toMatchObject({
+      origin: 'http://localhost:3000',
+      page_url: 'http://localhost:3000/lesson',
+    });
+    expect(connector.coordinator.listPairedPages()).toHaveLength(1);
+
+    await expect(
+      fetch(`${bridge}/bridge/pair`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          origin: extensionOrigin,
+        },
+        body: JSON.stringify(pairBody),
+      }).then((response) => response.status),
+    ).resolves.toBe(400);
+
+    const mismatchChallengeResponse = await fetch(
+      `${bridge}/bridge/challenge`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          origin: extensionOrigin,
+        },
+        body: JSON.stringify(challengeBody),
+      },
+    );
+    const mismatchChallenge = (await mismatchChallengeResponse.json()) as {
+      challenge_token: string;
+    };
+    const mismatchPairBody = {
+      ...pairBody,
+      challenge_token: mismatchChallenge.challenge_token,
+      page_url: 'http://localhost:3000/other',
+    };
+    await expect(
+      fetch(`${bridge}/bridge/pair`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          origin: extensionOrigin,
+        },
+        body: JSON.stringify(mismatchPairBody),
+      }).then((response) => response.status),
+    ).resolves.toBe(400);
+    await expect(
+      fetch(`${bridge}/bridge/pair`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          origin: extensionOrigin,
+        },
+        body: JSON.stringify({
+          ...pairBody,
+          challenge_token: mismatchChallenge.challenge_token,
+        }),
+      }).then((response) => response.status),
+    ).resolves.toBe(400);
+    expect(connector.coordinator.listPairedPages()).toHaveLength(1);
+  });
+
+  it('uses one-use report tickets, token-free final URLs, and revocable pairing', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'leftout-controls-'));
+    const connector = await startCapabilityConnector({
+      mcpPort: 0,
+      bridgePort: 0,
+      accessToken: 'mcp-control-token',
+      pairCode: '12345678',
+      ledgerPath: join(directory, 'receipts.jsonl'),
+      allowedOrigins: ['http://localhost:3000'],
+      setup: {
+        siteUrl: 'http://localhost:3000',
+        extensionPath: 'C:\\local\\leftout-extension',
+      },
+      log: () => undefined,
+    });
+    cleanups.push(async () => {
+      await connector.close();
+      await rm(directory, { recursive: true, force: true });
+    });
+    const base = `http://127.0.0.1:${connector.mcpPort}`;
+    const bridge = `http://127.0.0.1:${connector.bridgePort}`;
+
+    await expect(
+      fetch(`${base}/receipts?access_token=mcp-control-token`).then(
+        (response) => response.status,
+      ),
+    ).resolves.toBe(401);
+    await expect(
+      fetch(`${base}/issues/preview`).then((response) => response.status),
+    ).resolves.toBe(401);
+    await expect(
+      fetch(`${base}/issues/review`).then((response) => response.status),
+    ).resolves.toBe(401);
+
+    const pairingResponse = await fetch(`${bridge}/bridge/pair`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        pair_code: '12345678',
+        origin: 'http://localhost:3000',
+        page_url: 'http://localhost:3000/',
+        client_label: 'Control test',
+      }),
+    });
+    const pairing = (await pairingResponse.json()) as {
+      session_id: string;
+      bridge_token: string;
+    };
+    const bridgeHeaders = {
+      authorization: `Bearer ${pairing.bridge_token}`,
+    };
+
+    const reportLinkResponse = await fetch(
+      `${bridge}/bridge/report-link?session_id=${pairing.session_id}`,
+      { headers: bridgeHeaders },
+    );
+    expect(reportLinkResponse.status).toBe(200);
+    const reportLink = (await reportLinkResponse.json()) as {
+      report_url: string;
+    };
+    expect(reportLink.report_url).not.toContain('access_token');
+    const launched = await fetch(reportLink.report_url, { redirect: 'manual' });
+    expect(launched.status).toBe(303);
+    expect(launched.headers.get('location')).toBe('/receipts');
+    const cookie = launched.headers.get('set-cookie')?.split(';')[0] ?? '';
+    await expect(
+      fetch(`${base}/receipts`, { headers: { cookie } }).then(
+        (response) => response.status,
+      ),
+    ).resolves.toBe(200);
+    const issuePreview = await fetch(`${base}/issues/preview`, {
+      headers: { cookie },
+    });
+    expect(issuePreview.status).toBe(200);
+    expect(issuePreview.headers.get('content-security-policy')).toContain(
+      "connect-src 'none'",
+    );
+    expect(issuePreview.headers.get('content-security-policy')).toContain(
+      "form-action 'self'",
+    );
+    const issuePreviewHtml = await issuePreview.text();
+    expect(issuePreviewHtml).toContain('Practice only · stays on this device');
+    expect(issuePreviewHtml).toContain('synthetic-not-submittable');
+    expect(issuePreviewHtml).not.toContain('<script');
+    expect(issuePreviewHtml.match(/<form\b/gu)).toHaveLength(1);
+    const actionToken = /name="action_token" value="([A-Za-z0-9_-]+)"/u.exec(
+      issuePreviewHtml,
+    )?.[1];
+    expect(actionToken).toBeTruthy();
+    await expect(
+      fetch(`${base}/issues/save`, {
+        method: 'POST',
+        headers: {
+          cookie,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ action_token: actionToken }),
+      }).then((response) => response.status),
+    ).resolves.toBe(400);
+    const saved = await fetch(`${base}/issues/save`, {
+      method: 'POST',
+      redirect: 'manual',
+      headers: {
+        cookie,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      body: `action_token=${encodeURIComponent(actionToken ?? '')}`,
+    });
+    expect(saved.status).toBe(303);
+    expect(saved.headers.get('location')).toBe('/issues/review');
+    await expect(
+      fetch(`${base}/issues/save`, {
+        method: 'POST',
+        headers: {
+          cookie,
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+        body: `action_token=${encodeURIComponent(actionToken ?? '')}`,
+      }).then((response) => response.status),
+    ).resolves.toBe(400);
+    const reviewList = await fetch(`${base}/issues/review`, {
+      headers: { cookie },
+    });
+    expect(reviewList.status).toBe(200);
+    expect(reviewList.headers.get('content-security-policy')).toContain(
+      "form-action 'none'",
+    );
+    const reviewListHtml = await reviewList.text();
+    expect(reviewListHtml).toContain('Saved locally · not submitted');
+    expect(reviewListHtml).toContain('1 locally saved · 0 feed eligible');
+    expect(reviewListHtml).toContain("not LeftOut Security's inbox");
+    expect(reviewListHtml).not.toContain('<script');
+    expect(reviewListHtml).not.toContain('<form');
+    await expect(
+      fetch(reportLink.report_url, { redirect: 'manual' }).then(
+        (response) => response.status,
+      ),
+    ).resolves.toBe(401);
+
+    const setupLink = connector.issueSetupLaunchTicket();
+    const setupLaunch = await fetch(setupLink.url, { redirect: 'manual' });
+    const setupCookie =
+      setupLaunch.headers.get('set-cookie')?.split(';')[0] ?? '';
+    const setupResponse = await fetch(`${base}/setup`, {
+      headers: { cookie: setupCookie },
+    });
+    const setupHtml = await setupResponse.text();
+    expect(setupResponse.status).toBe(200);
+    expect(setupHtml).toContain('Desktop alpha setup');
+    expect(setupHtml).toContain('C:\\local\\leftout-extension');
+    expect(setupHtml).toContain('Connect a local agent');
+    expect(setupHtml).toContain('cloud-only clients such as ChatGPT Work');
+    expect(setupHtml).not.toContain('12345678');
+    expect(setupHtml).not.toContain('mcp-control-token');
+    expect(setupHtml).not.toContain('access_token');
+    expect(setupHtml).not.toContain('<script');
+
+    const pendingReportLinkResponse = await fetch(
+      `${bridge}/bridge/report-link?session_id=${pairing.session_id}`,
+      { headers: bridgeHeaders },
+    );
+    const pendingReportLink = (await pendingReportLinkResponse.json()) as {
+      report_url: string;
+    };
+
+    const revoked = await fetch(
+      `${bridge}/bridge/revoke?session_id=${pairing.session_id}`,
+      { method: 'POST', headers: bridgeHeaders, body: '{}' },
+    );
+    expect(revoked.status).toBe(200);
+    expect(connector.coordinator.listPairedPages()).toEqual([]);
+    await expect(
+      fetch(`${base}/receipts`, { headers: { cookie } }).then(
+        (response) => response.status,
+      ),
+    ).resolves.toBe(401);
+    await expect(
+      fetch(`${base}/issues/preview`, { headers: { cookie } }).then(
+        (response) => response.status,
+      ),
+    ).resolves.toBe(401);
+    await expect(
+      fetch(`${base}/issues/review`, { headers: { cookie } }).then(
+        (response) => response.status,
+      ),
+    ).resolves.toBe(401);
+    await expect(
+      fetch(pendingReportLink.report_url, { redirect: 'manual' }).then(
+        (response) => response.status,
+      ),
+    ).resolves.toBe(401);
+    await expect(
+      fetch(`${bridge}/bridge/heartbeat?session_id=${pairing.session_id}`, {
+        method: 'POST',
+        headers: bridgeHeaders,
+        body: '{}',
+      }).then((response) => response.status),
+    ).resolves.toBe(401);
+  });
+
+  it('rejects a public connector bind outside explicit loopback addresses', async () => {
+    await expect(
+      startCapabilityConnector({
+        mcpPort: 0,
+        bridgePort: 0,
+        publicHost: '0.0.0.0',
+        accessToken: 'mcp-test-token',
+        pairCode: '12345678',
+        log: () => undefined,
+      }),
+    ).rejects.toThrow('Connector host must be an explicit loopback address');
   });
 });

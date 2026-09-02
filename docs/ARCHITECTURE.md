@@ -2,10 +2,36 @@
 
 ## Product goal
 
-The frozen version 1 lab lets a human and an agent act on the same page while
-preserving enough evidence to compare three security surfaces. The current
-working tree adds a local connector, unpacked extension, and isolated Android
-conformance prototype. None of those additions has been publicly deployed.
+The product teaches a first-time human and agent what WebMCP offers, protects
+one exact approved action through a browser-owned Membrane, and turns verified
+local evidence into a privacy-minimized issue preview. The frozen version 1 lab
+still provides the five synthetic security fixtures. The current working tree
+adds a local connector, unpacked extension, and isolated Android conformance
+prototype. None of those additions has been publicly deployed.
+
+## Three client surfaces
+
+The product keeps three execution surfaces explicit:
+
+1. **ChatGPT Site Tools** — the built-in browser in ChatGPT Work or Codex
+   discovers top-level JavaScript registrations and invokes them under the
+   client's normal safety review. Model, workspace, page registration,
+   discovery, and invocation are captured separately. No LeftOut extension or
+   connector is required for this native path.
+2. **Agent browser context** — OpenAI's external browser extension performs
+   ordinary browser interaction. Its browser actions are not Site Tools
+   discovery or invocation.
+3. **LeftOut Local Guard** — the unpacked extension and loopback connector are
+   an independent Membrane prototype for one selected Chromium document. Its
+   HUD, permit enforcement, and local receipt chain attest only calls routed
+   through that path.
+
+The official client boundary and current top-level-only support are documented
+in [OpenAI's Site Tools documentation](https://learn.chatgpt.com/docs/webmcp).
+The separate computer-use surface is documented in
+[OpenAI's browser extension documentation](https://learn.chatgpt.com/docs/chrome-extension).
+The advanced `/conformance` route implements the scoped test family described
+in [SITE_TOOLS_CONFORMANCE.md](SITE_TOOLS_CONFORMANCE.md).
 
 ## System shape
 
@@ -23,7 +49,7 @@ flowchart LR
   O --> E[Schema-validated evidence receipt]
   E --> D[(Cloudflare D1)]
   E --> J[Downloadable JSON]
-  P --> G[Downloadable policy artifact]
+  P --> G[Downloadable learning-awareness artifact]
 ```
 
 That diagram is the frozen version 1 web/D1 boundary. The local MVP adds a
@@ -34,13 +60,14 @@ flowchart LR
   U[Human approval in page] --> P[Scenario 1 page capability]
   M[Local MCP client] --> C[Loopback connector]
   C --> B[Loopback browser bridge]
-  B --> X[Unpacked MV3 extension]
-  X --> P
-  P --> X
+  B --> X[Unpacked MV3 extension and HUD]
+  X -->|invoke exact protected action once| P
+  P -. untrusted one-way permit offer .-> X
   X --> B
   B --> C
   C --> L[(Local JSONL receipt chain)]
-  C --> R[Local dashboard and MCP summaries]
+  C --> R[Private receipt dashboard and MCP summaries]
+  R --> I[Fixed non-submittable issue preview]
   K[Android conformance prototype] -. no runtime connection .- P
 ```
 
@@ -68,8 +95,8 @@ This is dated single-session evidence, not a universal compatibility claim.
    path.
 5. **Client-observation boundary** — browser API support, registration, permissions policy, discovery, and invocation are recorded separately. External client behavior is not inferred when the page cannot observe it, and a fallback receipt never counts as WebMCP invocation. The shared registered callback cannot distinguish the page's approved `executeTool()` request from a competing client invocation, so it never upgrades browser confirmation to known.
 6. **Awareness-policy boundary** — deterministic rules explain why a declaration deserves allow, warn, or ask treatment. They provide guidance and do not replace browser enforcement or professional validation.
-7. **Negotiated-capability boundary** — the Scenario 1 working slice replaces the broad registration only within one document session. A synchronous generation gate invalidates cached handles, and a monotonic in-memory lease atomically closes logical authority before any awaited work. After the page callback settles successfully, the now-inert capability registration is scheduled for retirement through its `AbortController` after a 50 ms Chrome 152 compatibility delay; post-claim failure retires it immediately. The timer does not observe browser/client delivery. Chrome documents non-cancelling in-flight unregistration beginning in version 153. This is not a cross-tab or server-atomic grant.
-8. **Capability-evidence boundary** — negotiated-capability receipts are created locally after the state-only handler is verified. They are exportable, non-durable, and not independently attested. The ordinary D1 endpoint rejects receipts that retain negotiated-capability markers; because client JSON is not provenance-authenticated, a caller that relabels every marker cannot be distinguished from ordinary self-reported evidence. The current handler path contains no evidence POST, but browser egress is not isolated or independently observed.
+7. **Negotiated-capability boundary** — each built-in lesson can replace its broad registration within one document session with a uniquely named, closed, zero-input capability. V1 retains Lesson 1's byte-identical read contract; V2 freezes the exact profile, arguments, source, baseline, permitted effect, and prohibited effects for Lessons 2–5. A synchronous generation gate invalidates cached handles, and a monotonic in-memory lease atomically closes logical authority before any awaited work. After the page callback settles successfully, the now-inert capability registration is scheduled for retirement through its `AbortController` after a 50 ms Chrome 152 compatibility delay; post-claim failure retires it immediately. The timer does not observe browser/client delivery. Chrome documents non-cancelling in-flight unregistration beginning in version 153. This is not a cross-tab or server-atomic grant.
+8. **Capability-evidence boundary** — negotiated-capability receipts are created locally only after the profile-specific handler result and effect are verified. Lesson 1 receipts are local-export-only; Lessons 2–5 return their v2 receipt to the caller for connector validation and local ledger commitment. Neither form is independently attested. The ordinary D1 endpoint rejects receipts that retain negotiated-capability markers; because client JSON is not provenance-authenticated, a caller that relabels every marker cannot be distinguished from ordinary self-reported evidence. The capability handler path contains no evidence POST, but browser egress is not isolated or independently observed.
 9. **Connector boundary** — the connector is a loopback-only, token-protected
    development process. It may append a returned capability receipt to a local
    JSONL chain only after schema, identity, chronology, state, and hash
@@ -87,7 +114,7 @@ This is dated single-session evidence, not a universal compatibility claim.
     has no runtime connection to the web page or connector. Its JVM and API-36
     checks do not establish generated AppFunction metadata or device behavior.
 
-## Scenario 1 negotiated lifecycle
+## Generated capability lifecycle
 
 ```mermaid
 sequenceDiagram
@@ -108,15 +135,16 @@ sequenceDiagram
   A->>W: Invoke once with {}
   P->>P: Atomically consume lease; close logical authority
   P->>P: Recheck origin/source/version bindings
-  P->>P: Run state-only Scenario 1 handler
-  P->>P: Verify result + byte-identical state
+  P->>P: Run the fixed, versioned lesson handler
+  P->>P: Verify exact result + approved state/effect boundary
   P->>P: Return verified result + linked receipt from callback
   Note over P,W: Start 50 ms compatibility timer after callback settles
   P->>W: Retire registration through AbortSignal
-  P-->>H: Local export-only linked receipt
+  P-->>A: Return linked receipt for connector validation
+  A-->>H: Show verified local receipt/report draft
 ```
 
-The final contract hash covers the complete generated identity and declaration, intent, proposal/source references, approval copy and nonce, declared handler versions, and lifetime. The nested source fingerprint covers the source declaration, origin, and declared source-handler version; neither hash attests executable bytes. A random approval nonce makes otherwise identical approvals compile to different tool names. The broad callback also checks a synchronous registration generation, so a client holding an old tool object receives a rejection after withdrawal even if it can still call the cached JavaScript callback.
+The final contract hash covers the complete generated identity and declaration, intent, proposal/source references, approval copy and nonce, declared handler versions, and lifetime. V2 additionally binds the built-in profile, approved arguments, baseline hash, and exact effect allow/deny lists. The nested source fingerprint covers the source declaration, origin, and declared source-handler version; neither hash attests executable bytes. A random approval nonce makes otherwise identical approvals compile to different tool names. The broad callback also checks a synchronous registration generation, so a client holding an old tool object receives a rejection after withdrawal even if it can still call the cached JavaScript callback.
 
 ## Scenario contract
 
@@ -166,7 +194,7 @@ untrusted input requiring strict parsing and validation.
 
 ## Shared risk and policy engine
 
-The same deterministic engine that powers the human heads-up emits extension-ready policy artifacts. It currently evaluates five bounded rules:
+The same deterministic engine that powers the human heads-up emits learning-only awareness artifacts. These artifacts explain risk but are not extension authority. After exact approval and successful generated-capability registration, the page may offer a self-hashed capability permit through a one-way page-to-extension handoff. V1 is accepted only for Lesson 1. V2 must contain a closed, extension-known lesson profile plus the exact task arguments, baseline, and effect restrictions. The extension treats either page-supplied envelope as untrusted narrowing data, revalidates it, and binds it to the exact tab, browser document, bridge session, origin, path, declaration, contract, expiry, and single use. Manual export and import remain recovery-only. The engine currently evaluates five bounded rules:
 
 - `WMC-001` — read-only annotation conflicts with a known state change;
 - `WMC-002` — declared schema exceeds the human-visible capability;
@@ -192,7 +220,18 @@ connector maintains a separate JSONL report
 only after successful return
 transport and validation; the two stores must not be conflated.
 
-Secure builder retests run the narrowed declaration against a fresh synthetic fixture and produce a distinct `secure-retest` receipt. A retest receives `PASS` only when its declaration, arguments, approval evidence, state transition, result, and side effects satisfy that scenario’s invariants. Every generated receipt and policy artifact carries the required self-reported-readiness limitation.
+Secure builder retests run the narrowed declaration against a fresh synthetic fixture and produce a distinct `secure-retest` receipt. A retest receives `PASS` only when its declaration, arguments, approval evidence, state transition, result, and side effects satisfy that scenario’s invariants. Every generated receipt and learning-awareness artifact carries the required self-reported-readiness limitation.
+
+## Reporting privacy boundary
+
+The receipt ledger and issue-reporting model are separate. The current local
+issue page is a scriptless preview of a fixed, typed, redacted synthetic draft;
+it has no form, submit control, issue store, or outbound network action. Local
+and synthetic observations are never submittable. A future public path would
+require explicit consent, quarantine, human review, and a separately minimized
+publication record before any JSON or NDJSON security-tooling feed. Raw
+receipts, page text, paths, queries, screenshots, tool strings, result strings,
+permits, conversations, and reporter identifiers are not feed fields.
 
 Indexes match the actual read patterns:
 

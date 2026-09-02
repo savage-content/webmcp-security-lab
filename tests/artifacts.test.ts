@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   copyJsonArtifact,
+  createCapabilityPermitHandoff,
   createPolicyJsonArtifact,
   requestJsonDownload,
   type DownloadEnvironment,
@@ -28,11 +29,13 @@ describe('JSON artifact export', () => {
     const parsed = JSON.parse(result.text) as {
       generatedAt: string;
       limitation: string;
+      enforceable: boolean;
     };
 
-    expect(result.filename).toBe('webmcp-policy-over-broad-schema.json');
+    expect(result.filename).toBe('webmcp-awareness-over-broad-schema.json');
     expect(parsed.generatedAt).toBe(generatedAt);
     expect(parsed.limitation).toBe(SELF_REPORTED_LIMITATION);
+    expect(parsed.enforceable).toBe(false);
   });
 
   it('requests a browser download and always cleans up its temporary link', () => {
@@ -80,5 +83,19 @@ describe('JSON artifact export', () => {
         }),
       }),
     ).resolves.toBe('copy-failed');
+  });
+
+  it('creates one strict, bounded, non-invoking permit handoff envelope', () => {
+    const handoff = createCapabilityPermitHandoff(artifact);
+
+    expect(handoff).toEqual({
+      type: 'leftout:webmcp-capability-permit',
+      schemaVersion: 'leftout.page-capability-handoff/1',
+      permitText: artifact.text,
+    });
+    expect(Object.isFrozen(handoff)).toBe(true);
+    expect(() =>
+      createCapabilityPermitHandoff({ filename: 'empty.json', text: '' }),
+    ).toThrow('empty or larger than 64 KiB');
   });
 });

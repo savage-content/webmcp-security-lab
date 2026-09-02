@@ -250,9 +250,13 @@ export function SecureComparison({
             </Button>
             <Button variant="outline" onClick={onExportPolicy}>
               <FileDown data-icon="inline-start" />
-              Export policy
+              Export learning policy
             </Button>
           </div>
+          <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+            Learning policies describe allow, warn, or ask guidance. They are
+            marked non-enforceable and cannot authorize the browser extension.
+          </p>
           {receipt ? (
             <div
               className={`mt-4 rounded-md border p-3 ${

@@ -4,6 +4,7 @@ import type {
   ConfirmationEvidence,
   EvidenceReceipt,
   JsonValue,
+  LessonCapabilityVerification,
   ToolDeclaration,
   WebMcpStatus,
 } from './types';
@@ -146,8 +147,11 @@ export function createScenarioOneCapabilityToolResult(
   receipt: EvidenceReceipt,
 ): ScenarioOneCapabilityToolResult {
   const capability = receipt.capability;
-  if (!capability) {
-    throw new Error('A validated capability receipt is required.');
+  if (
+    !capability ||
+    capability.protocol !== 'webmcp-capability-negotiation/1'
+  ) {
+    throw new Error('A validated Scenario 1 capability receipt is required.');
   }
 
   return {
@@ -162,6 +166,41 @@ export function createScenarioOneCapabilityToolResult(
     structuredContent: {
       receipt: structuredClone(receipt),
     },
+  };
+}
+
+export interface LessonCapabilityToolResult {
+  result: JsonValue;
+  verification: LessonCapabilityVerification;
+  evidence: {
+    receipt_id: string;
+    persistence: 'returned-to-caller';
+    contract_hash: string;
+    invalidation_reason: CapabilityInvalidationReason;
+  };
+  structuredContent: { receipt: EvidenceReceipt };
+}
+
+export function createLessonCapabilityToolResult(
+  receipt: EvidenceReceipt,
+): LessonCapabilityToolResult {
+  const capability = receipt.capability;
+  if (
+    !capability ||
+    capability.protocol !== 'webmcp-capability-negotiation/2'
+  ) {
+    throw new Error('A validated lesson capability receipt is required.');
+  }
+  return {
+    result: structuredClone(receipt.effective.rawResult),
+    verification: structuredClone(capability.verification),
+    evidence: {
+      receipt_id: receipt.id,
+      persistence: 'returned-to-caller',
+      contract_hash: capability.contract.contractHash,
+      invalidation_reason: capability.invalidation.reason,
+    },
+    structuredContent: { receipt: structuredClone(receipt) },
   };
 }
 

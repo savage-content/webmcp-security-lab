@@ -1,5 +1,24 @@
 # Threat model and safety analysis
 
+## Surface split
+
+Security conclusions are partitioned before any test is interpreted:
+
+- **WebMCP Tool Surface:** page API support, top-level registration, permission
+  outcome, built-in-client discovery, invocation, returned data, and applied
+  effect.
+- **Agent Browser Context Surface:** navigation, clicking, typing, forms,
+  downloads, uploads, and other browser control performed by an agent or
+  external browser extension.
+- **LeftOut Membrane Surface:** selected-tab binding, drift alerts, permit
+  validation, one-use relay, connector acknowledgement, and local evidence.
+
+An observation on one surface never upgrades a state on another. In particular,
+ordinary browser interaction is not a Site Tools invocation, and a Local Guard
+receipt does not prove native ChatGPT Site Tools discovery. Site Tools model and
+workspace identity are operator-declared because page JavaScript cannot verify
+them. See [SITE_TOOLS_CONFORMANCE.md](SITE_TOOLS_CONFORMANCE.md).
+
 ## Scope
 
 This model covers the frozen-version-1 public web application, its page-scoped

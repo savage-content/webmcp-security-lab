@@ -20,7 +20,7 @@ import type {
 } from '@/lib/lab/types';
 
 const SAFE_INSPECTION_PROMPT =
-  'Inspect the WebMCP tool registered by this page. Explain its name, input schema, annotations, and likely side effects. Do not invoke it until I approve.';
+  'Tell me whether this page offers any WebMCP actions. Explain in plain language what each action can access or change and which safety claims still need verification. Do not run anything until I approve one specific action.';
 
 export function HeadsUpPanel({
   scenario,
@@ -38,29 +38,29 @@ export function HeadsUpPanel({
   const [copied, setCopied] = useState(false);
   const facts = [
     {
-      label: 'Browser API',
-      value: webMcp.browserSupport,
-      positive: webMcp.browserSupport === 'supported',
-    },
-    {
-      label: 'Page registration',
-      value: webMcp.registration,
+      label: 'Page offered',
+      value: webMcp.registration === 'registered' ? '1 action' : 'Checking',
       positive: webMcp.registration === 'registered',
     },
     {
-      label: 'Policy',
-      value: webMcp.permissionsPolicy,
-      positive: webMcp.permissionsPolicy === 'allowed',
-    },
-    {
-      label: 'Client discovery',
-      value: webMcp.discovery,
+      label: 'AI can see it',
+      value:
+        webMcp.discovery === 'discovered'
+          ? 'Observed'
+          : webMcp.discovery === 'not-checked'
+            ? 'Not checked'
+            : webMcp.discovery,
       positive: webMcp.discovery === 'discovered',
     },
     {
-      label: 'Invocation',
-      value: webMcp.invocation,
+      label: 'Action ran',
+      value: webMcp.invocation === 'observed' ? 'Yes' : 'No',
       positive: webMcp.invocation === 'observed',
+    },
+    {
+      label: 'Page receipt',
+      value: secureReceipt?.verdict === 'PASS' ? 'PASS' : 'Not created',
+      positive: secureReceipt?.verdict === 'PASS',
     },
   ];
 
@@ -78,9 +78,13 @@ export function HeadsUpPanel({
       <div className="flex items-center justify-between gap-3 border-b border-border bg-foreground px-4 py-3 text-background">
         <div className="flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em]">
           <Eye className="size-3.5" aria-hidden="true" />
-          WebMCP heads-up
+          Page-observed Site Tools status
         </div>
-        <Badge className="bg-lime-300 text-slate-950">No auto-run</Badge>
+        <Badge className="bg-lime-300 text-slate-950">
+          {webMcp.invocation === 'observed'
+            ? 'Run observed'
+            : 'Observed · not run'}
+        </Badge>
       </div>
 
       <div className="p-4 md:p-5">
@@ -90,20 +94,33 @@ export function HeadsUpPanel({
           </div>
           <div className="min-w-0">
             <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              {assessment.level} risk · policy: {assessment.policyAction}
+              {webMcp.registration === 'registered'
+                ? 'WebMCP action registered on this page'
+                : 'Checking this page for WebMCP'}
             </p>
-            <h2 id="webmcp-heads-up-title" className="mt-1 text-lg font-semibold tracking-tight">
-              {assessment.headline}
+            <h2
+              id="webmcp-heads-up-title"
+              className="mt-1 text-lg font-semibold tracking-tight"
+            >
+              {webMcp.registration === 'registered'
+                ? 'This page currently offers an action to your AI.'
+                : 'No registered page action is confirmed yet.'}
             </h2>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              {assessment.summary}
+              “Registered” means the page made an action available. It does not
+              mean you approved it, your AI discovered it, the browser showed a
+              safety review, or anything ran. A Local Guard status applies only
+              to calls routed through that separate prototype.
             </p>
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-1.5 sm:grid-cols-5 lg:grid-cols-2 xl:grid-cols-5">
+        <div className="mt-4 grid grid-cols-2 gap-1.5 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
           {facts.map((fact) => (
-            <div key={fact.label} className="rounded-md border border-border bg-background p-2.5">
+            <div
+              key={fact.label}
+              className="rounded-md border border-border bg-background p-2.5"
+            >
               <p className="font-mono text-[8px] uppercase tracking-[0.12em] text-muted-foreground">
                 {fact.label}
               </p>
@@ -118,32 +135,46 @@ export function HeadsUpPanel({
           ))}
         </div>
 
-        <div className="mt-4 rounded-md border border-border bg-muted/45 p-3">
+        <div className="mt-4 rounded-md border border-amber-300/50 bg-amber-50 p-3">
           <div className="flex items-center gap-2 text-xs font-semibold">
             <Bot className="size-3.5" />
-            What an agent can see
+            The action this page declares
           </div>
-          <p className="mt-2 break-all font-mono text-[10px] font-semibold">
-            {scenario.tool.name}
+          <p className="mt-2 text-sm font-semibold">
+            {scenario.presented.title}
           </p>
           <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
-            Inputs: {assessment.schemaFields.join(', ') || 'none'} · readOnlyHint:{' '}
-            {String(scenario.tool.annotations.readOnlyHint)}
+            The page labels it{' '}
+            {scenario.tool.annotations.readOnlyHint
+              ? 'read-only'
+              : 'able to change data'}
+            . That is a claim—not proof. The lesson will compare the schema,
+            code effect, and before/after state.
           </p>
         </div>
 
+        <p className="mt-3 text-[11px] leading-5 text-muted-foreground">
+          Current assessment: <strong>{assessment.level} risk</strong>. The HUD
+          distinguishes what it merely observes from actions protected by the
+          LeftOut Membrane path.
+        </p>
+
         <div className="mt-4 flex flex-wrap gap-2">
           <Button size="sm" onClick={onInspect}>
-            Inspect before acting
+            Start the guided review
             <ChevronRight data-icon="inline-end" />
           </Button>
           <Button size="sm" variant="outline" onClick={() => void copyPrompt()}>
-            {copied ? <Check data-icon="inline-start" /> : <Clipboard data-icon="inline-start" />}
-            {copied ? 'Prompt copied' : 'Copy safe agent prompt'}
+            {copied ? (
+              <Check data-icon="inline-start" />
+            ) : (
+              <Clipboard data-icon="inline-start" />
+            )}
+            {copied ? 'Prompt copied' : 'Copy a safe prompt for my agent'}
           </Button>
           {secureReceipt?.verdict === 'PASS' ? (
             <Badge className="h-7 bg-emerald-100 px-2.5 text-emerald-900">
-              Secure retest passed
+              Page verification passed
             </Badge>
           ) : null}
         </div>

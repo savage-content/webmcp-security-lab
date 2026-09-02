@@ -21,7 +21,9 @@ import {
   sanitizeInspectionPayload,
   sanitizeInvocationPayload,
   sanitizePairResponse,
+  sanitizePairChallengeResponse,
   sanitizePendingCompletion,
+  sanitizeReportLaunchResponse,
 } from '../products/extension/validation.js';
 
 const commandIdentity = {
@@ -32,6 +34,44 @@ const PAGE_URL = 'https://lab.example/scenario';
 const EXECUTION_URL = `${PAGE_URL}?private=yes#state`;
 
 describe('extension authority validation', () => {
+  it('accepts only a short-lived report ticket on the matching loopback host', () => {
+    const now = Date.parse('2026-09-01T12:00:00.000Z');
+    const reportUrl = `http://127.0.0.1:8787/reports/open?ticket=${'a'.repeat(43)}`;
+    expect(
+      sanitizeReportLaunchResponse(
+        {
+          report_url: reportUrl,
+          expires_at: '2026-09-01T12:00:30.000Z',
+        },
+        'http://127.0.0.1:8788',
+        now,
+      ),
+    ).toEqual({
+      reportUrl,
+      expiresAt: '2026-09-01T12:00:30.000Z',
+    });
+    expect(() =>
+      sanitizeReportLaunchResponse(
+        {
+          report_url: `http://localhost:8787/reports/open?ticket=${'a'.repeat(43)}`,
+          expires_at: '2026-09-01T12:00:30.000Z',
+        },
+        'http://127.0.0.1:8788',
+        now,
+      ),
+    ).toThrow('unsafe report launch URL');
+    expect(() =>
+      sanitizeReportLaunchResponse(
+        {
+          report_url: `${reportUrl}&next=https://example.test`,
+          expires_at: '2026-09-01T12:00:30.000Z',
+        },
+        'http://127.0.0.1:8788',
+        now,
+      ),
+    ).toThrow('unsafe report launch URL');
+  });
+
   it('accepts only the approved loopback connector bases', () => {
     expect(FIXED_BRIDGE_PORT).toBe(8788);
     expect(ALTERNATE_BRIDGE_PORT).toBe(48_788);
@@ -142,6 +182,39 @@ describe('extension authority validation', () => {
     ).toThrow(/identity/u);
   });
 
+  it('accepts only an exact, live, short-lived automatic pairing challenge', () => {
+    const now = Date.parse('2026-09-01T12:00:00.000Z');
+    const response = {
+      challenge_token: 'a'.repeat(43),
+      expires_at: '2026-09-01T12:00:30.000Z',
+    };
+    expect(sanitizePairChallengeResponse(response, now)).toEqual({
+      challengeToken: response.challenge_token,
+      expiresAt: response.expires_at,
+    });
+    expect(() =>
+      sanitizePairChallengeResponse({ ...response, hidden: true }, now),
+    ).toThrow(/invalid pairing challenge/u);
+    expect(() =>
+      sanitizePairChallengeResponse(
+        { ...response, challenge_token: 'too-short' },
+        now,
+      ),
+    ).toThrow(/invalid pairing challenge/u);
+    expect(() =>
+      sanitizePairChallengeResponse(
+        { ...response, expires_at: '2026-09-01T12:00:00.000Z' },
+        now,
+      ),
+    ).toThrow(/expired pairing challenge/u);
+    expect(() =>
+      sanitizePairChallengeResponse(
+        { ...response, expires_at: '2026-09-01T12:01:00.001Z' },
+        now,
+      ),
+    ).toThrow(/expired pairing challenge/u);
+  });
+
   it('accepts discovery without granting invocation authority', () => {
     expect(
       sanitizeBridgeCommand({
@@ -162,22 +235,34 @@ describe('extension authority validation', () => {
     ).toThrow(/unknown fields/u);
   });
 
-  it('allows only an exact generated Scenario 1 name with exactly empty arguments', () => {
-    const toolName = 'get_training_1042_eligibility_once_0123456789abcdef';
-    expect(APPROVED_CAPABILITY_TOOL_PATTERN.test(toolName)).toBe(true);
+  it('allows only the five closed generated lesson names with empty arguments', () => {
+    const toolNames = [
+      'get_training_1042_eligibility_once_0123456789abcdef',
+      'update_profile_notice_once_0123456789abcdef',
+      'get_synthetic_delivery_status_safe_once_0123456789abcdef',
+      'set_training_notification_subscription_once_0123456789abcdef',
+      'record_webmcp_capability_observation_once_0123456789abcdef',
+    ];
     expect(hasExactlyEmptyArguments({})).toBe(true);
-    expect(
-      sanitizeBridgeCommand({
-        ...commandIdentity,
-        kind: 'invoke-approved-capability',
-        tool_name: toolName,
-        arguments: {},
-      }),
-    ).toMatchObject({ toolName, arguments: {} });
+    for (const toolName of toolNames) {
+      expect(APPROVED_CAPABILITY_TOOL_PATTERN.test(toolName)).toBe(true);
+      expect(
+        sanitizeBridgeCommand({
+          ...commandIdentity,
+          kind: 'invoke-approved-capability',
+          tool_name: toolName,
+          arguments: {},
+        }),
+      ).toMatchObject({ toolName, arguments: {} });
+    }
 
     for (const rejected of [
       'check_training_eligibility',
       'propose_training_1042_read_capability',
+      'update_profile_notice',
+      'get_synthetic_delivery_status_safe',
+      'set_training_notification_subscription',
+      'record_webmcp_capability_observation',
       'get_training_1042_eligibility_once_0123456789abcdeg',
       'get_training_1042_eligibility_once_0123456789abcdef_extra',
     ]) {
@@ -188,13 +273,13 @@ describe('extension authority validation', () => {
           tool_name: rejected,
           arguments: {},
         }),
-      ).toThrow(/Scenario 1/u);
+      ).toThrow(/synthetic lesson/u);
     }
     expect(() =>
       sanitizeBridgeCommand({
         ...commandIdentity,
         kind: 'invoke-approved-capability',
-        tool_name: toolName,
+        tool_name: toolNames[1],
         arguments: { account_id: 'TRAINING-1042' },
       }),
     ).toThrow(/no-input/u);

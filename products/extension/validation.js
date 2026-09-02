@@ -1,5 +1,9 @@
-export const APPROVED_CAPABILITY_TOOL_PATTERN =
-  /^get_training_1042_eligibility_once_[0-9a-f]{16}$/;
+import {
+  exactEmptyArguments,
+  lessonPolicyForToolName,
+} from './lesson-policy.js';
+
+export { APPROVED_CAPABILITY_TOOL_PATTERN } from './lesson-policy.js';
 
 export const FIXED_BRIDGE_PORT = 8788;
 export const ALTERNATE_BRIDGE_PORT = 48_788;
@@ -27,6 +31,7 @@ export const INSPECTION_FAILURE_CODES = Object.freeze({
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const BRIDGE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
+const REPORT_TICKET_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
 
 export function isPlainRecord(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -121,6 +126,72 @@ export function sanitizePairResponse(value, expectedOrigin) {
   return Object.freeze({ sessionId, bridgeToken, origin, pairedAt });
 }
 
+export function sanitizePairChallengeResponse(value, nowMs = Date.now()) {
+  if (
+    !isPlainRecord(value) ||
+    !hasOnlyKeys(value, ['challenge_token', 'expires_at']) ||
+    typeof value.challenge_token !== 'string' ||
+    !BRIDGE_TOKEN_PATTERN.test(value.challenge_token) ||
+    typeof value.expires_at !== 'string'
+  ) {
+    throw new Error('The connector returned an invalid pairing challenge.');
+  }
+  const expiresAtMs = Date.parse(value.expires_at);
+  if (
+    !Number.isFinite(expiresAtMs) ||
+    expiresAtMs <= nowMs ||
+    expiresAtMs - nowMs > 60_000
+  ) {
+    throw new Error('The connector returned an expired pairing challenge.');
+  }
+  return Object.freeze({
+    challengeToken: value.challenge_token,
+    expiresAt: value.expires_at,
+  });
+}
+
+export function sanitizeReportLaunchResponse(
+  value,
+  connectorBase,
+  nowMs = Date.now(),
+) {
+  if (
+    !isPlainRecord(value) ||
+    !hasOnlyKeys(value, ['expires_at', 'report_url']) ||
+    typeof value.report_url !== 'string' ||
+    typeof value.expires_at !== 'string'
+  ) {
+    throw new Error(
+      'The connector returned an invalid report launch response.',
+    );
+  }
+  const expiresAtMs = Date.parse(value.expires_at);
+  const bridge = new URL(normalizeConnectorBase(connectorBase));
+  const report = new URL(value.report_url);
+  const tickets = report.searchParams.getAll('ticket');
+  if (
+    !Number.isFinite(expiresAtMs) ||
+    expiresAtMs <= nowMs ||
+    expiresAtMs - nowMs > 5 * 60_000 ||
+    report.protocol !== 'http:' ||
+    report.hostname !== bridge.hostname ||
+    report.port !== '8787' ||
+    report.pathname !== '/reports/open' ||
+    report.username ||
+    report.password ||
+    report.hash ||
+    tickets.length !== 1 ||
+    !REPORT_TICKET_PATTERN.test(tickets[0]) ||
+    [...report.searchParams.keys()].length !== 1
+  ) {
+    throw new Error('The connector returned an unsafe report launch URL.');
+  }
+  return Object.freeze({
+    reportUrl: report.toString(),
+    expiresAt: value.expires_at,
+  });
+}
+
 export function hasExactlyEmptyArguments(value) {
   return isPlainRecord(value) && Object.keys(value).length === 0;
 }
@@ -158,6 +229,7 @@ export function sanitizeBridgeCommand(value) {
   }
 
   if (value.kind === 'invoke-approved-capability') {
+    const policy = lessonPolicyForToolName(value.tool_name);
     if (
       !hasOnlyKeys(value, [
         'command_id',
@@ -166,12 +238,11 @@ export function sanitizeBridgeCommand(value) {
         'tool_name',
         'arguments',
       ]) ||
-      typeof value.tool_name !== 'string' ||
-      !APPROVED_CAPABILITY_TOOL_PATTERN.test(value.tool_name) ||
-      !hasExactlyEmptyArguments(value.arguments)
+      !policy ||
+      !exactEmptyArguments(value.arguments)
     ) {
       throw new Error(
-        'The invocation command is not an exact no-input Scenario 1 capability.',
+        'The invocation command is not an exact no-input synthetic lesson capability.',
       );
     }
     return Object.freeze({

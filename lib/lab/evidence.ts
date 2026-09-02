@@ -1,5 +1,4 @@
 import type {
-  CapabilityNegotiationEvidence,
   EvidenceReceipt,
   RunContext,
   RunOutcome,
@@ -37,7 +36,7 @@ export function createEvidenceReceipt({
   context: RunContext;
   outcome: RunOutcome;
   sessionId: string;
-  capability?: CapabilityNegotiationEvidence;
+  capability?: EvidenceReceipt['capability'];
   id?: string;
 }): EvidenceReceipt {
   return {

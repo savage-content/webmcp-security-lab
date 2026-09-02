@@ -465,7 +465,7 @@ describe('local browser bridge coordinator', () => {
         paired.sessionId,
         'check_training_eligibility',
       ),
-    ).toThrow('Only a Scenario 1 generated one-use capability');
+    ).toThrow('built-in lesson registry');
 
     const toolName = 'get_training_1042_eligibility_once_0123456789abcdef';
     const pending = coordinator.requestApprovedInvocation(
@@ -499,6 +499,34 @@ describe('local browser bridge coordinator', () => {
     coordinator.dispose();
   });
 
+  it.each([
+    'update_profile_notice_once_0123456789abcdef',
+    'get_synthetic_delivery_status_safe_once_0123456789abcdef',
+    'set_training_notification_subscription_once_0123456789abcdef',
+    'record_webmcp_capability_observation_once_0123456789abcdef',
+  ])(
+    'queues the built-in guided lesson family %s with no arguments',
+    async (toolName) => {
+      const { coordinator } = coordinatorFixture();
+      const paired = pair(coordinator);
+      const pending = coordinator.requestApprovedInvocation(
+        paired.sessionId,
+        toolName,
+      );
+      const pendingFailure = pending.catch((error: unknown) => error);
+
+      expect(
+        coordinator.poll(paired.sessionId, paired.bridgeToken),
+      ).toMatchObject({
+        kind: 'invoke-approved-capability',
+        toolName,
+        arguments: {},
+      });
+      coordinator.dispose();
+      await expect(pendingFailure).resolves.toBeInstanceOf(Error);
+    },
+  );
+
   it('refuses commands for a page that stopped heartbeating', () => {
     const { coordinator, advance } = coordinatorFixture();
     const paired = pair(coordinator);
@@ -507,6 +535,21 @@ describe('local browser bridge coordinator', () => {
     expect(() => coordinator.requestInspection(paired.sessionId)).toThrow(
       'not currently connected',
     );
+    coordinator.dispose();
+  });
+
+  it('revokes the connector session and rejects queued authority', async () => {
+    const { coordinator } = coordinatorFixture();
+    const paired = pair(coordinator);
+    const pending = coordinator.requestInspection(paired.sessionId);
+    expect(
+      coordinator.revoke(paired.sessionId, paired.bridgeToken),
+    ).toMatchObject({ sessionId: paired.sessionId });
+    await expect(pending).rejects.toThrow('session was revoked');
+    expect(coordinator.listPairedPages()).toEqual([]);
+    expect(() =>
+      coordinator.heartbeat(paired.sessionId, paired.bridgeToken),
+    ).toThrow('authentication failed');
     coordinator.dispose();
   });
 });

@@ -32,6 +32,7 @@ export { canonicalJson, sha256Hex } from '../capability-core';
 export const SOURCE_HANDLER_VERSION = 'scenario-one-source-handler/1.1.0';
 export const CAPABILITY_HANDLER_VERSION = 'scenario-one-read-handler/1.1.0';
 export const PROPOSAL_TOOL_NAME = 'propose_training_1042_read_capability';
+export const SCENARIO_ONE_CAPABILITY_TTL_SECONDS = 5 * 60;
 
 const REQUIRED_PROPOSAL_KEYS = [
   'account_id',

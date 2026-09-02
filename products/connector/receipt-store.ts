@@ -3,10 +3,10 @@ import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 import { canonicalJson, sha256Hex } from '../../lib/capability-core';
-import { parseCapabilityEvidenceReceipt } from '../../lib/lab/schemas';
 import type { EvidenceReceipt } from '../../lib/lab/types';
 
 import type { PairedPageSummary } from './bridge-coordinator';
+import { validateConnectorCapabilityReceipt } from './lesson-capability-policy';
 
 export const REPORT_LIMITATION =
   'This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.';
@@ -30,6 +30,11 @@ export interface ConnectorReceiptEntry {
   };
   receiptId: string;
   receiptHash: string;
+  adapter?: {
+    capabilityPermitSha256: string;
+    enforcement: 'extension-consumed-before-invocation';
+    consumedAt: string;
+  };
   previousEntryHash: string | null;
   entryHash: string;
   receipt: EvidenceReceipt;
@@ -44,6 +49,7 @@ interface ReceiptStoreOptions {
 
 interface ReceiptAppendOptions {
   acceptExactDuplicate?: boolean;
+  adapter?: ConnectorReceiptEntry['adapter'];
 }
 
 function entryHashMaterial(entry: Omit<ConnectorReceiptEntry, 'entryHash'>) {
@@ -76,7 +82,7 @@ export class ReceiptStore {
     const operation = this.#writeChain.then(async () => {
       let receipt: EvidenceReceipt;
       try {
-        receipt = await parseCapabilityEvidenceReceipt(receiptValue);
+        receipt = await validateConnectorCapabilityReceipt(receiptValue);
       } catch {
         throw new ReceiptValidationError(
           'The returned capability receipt failed schema validation.',
@@ -105,7 +111,9 @@ export class ReceiptStore {
           duplicate.connection.sessionId === page.sessionId &&
           duplicate.connection.origin === page.origin &&
           duplicate.connection.pageUrl === page.pageUrl &&
-          duplicate.connection.clientLabel === page.clientLabel
+          duplicate.connection.clientLabel === page.clientLabel &&
+          canonicalJson(duplicate.adapter ?? null) ===
+            canonicalJson(options.adapter ?? null)
         ) {
           return duplicate;
         }
@@ -126,6 +134,9 @@ export class ReceiptStore {
         },
         receiptId: receipt.id,
         receiptHash,
+        ...(options.adapter
+          ? { adapter: structuredClone(options.adapter) }
+          : {}),
         previousEntryHash,
         receipt,
         limitation: REPORT_LIMITATION,
@@ -180,6 +191,20 @@ export class ReceiptStore {
           `Receipt ledger chain failed at line ${index + 1}.`,
         );
       }
+      if (
+        entry.adapter !== undefined &&
+        (!entry.adapter ||
+          !/^[0-9a-f]{64}$/u.test(entry.adapter.capabilityPermitSha256) ||
+          entry.adapter.enforcement !==
+            'extension-consumed-before-invocation' ||
+          typeof entry.adapter.consumedAt !== 'string' ||
+          !Number.isFinite(Date.parse(entry.adapter.consumedAt)) ||
+          Object.keys(entry.adapter).length !== 3)
+      ) {
+        throw new ReceiptValidationError(
+          `Receipt ledger adapter evidence failed at line ${index + 1}.`,
+        );
+      }
       const { entryHash, ...withoutHash } = entry;
       const expectedEntryHash = await sha256Hex(entryHashMaterial(withoutHash));
       const expectedReceiptHash = await sha256Hex(entry.receipt);
@@ -194,7 +219,7 @@ export class ReceiptStore {
         );
       }
       try {
-        await parseCapabilityEvidenceReceipt(entry.receipt);
+        await validateConnectorCapabilityReceipt(entry.receipt);
       } catch {
         throw new ReceiptValidationError(
           `Receipt ledger schema failed at line ${index + 1}.`,

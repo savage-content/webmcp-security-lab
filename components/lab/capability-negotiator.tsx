@@ -2,10 +2,14 @@
 
 import {
   AlertTriangle,
+  ArrowRight,
+  BookOpenCheck,
   Check,
   Clock3,
+  Eye,
   FileCheck2,
   Fingerprint,
+  Info,
   LockKeyhole,
   Play,
   Radio,
@@ -38,6 +42,7 @@ import {
   executeScenarioOneCapability,
   fingerprintSource,
   prepareDocumentCapabilityActivation,
+  SCENARIO_ONE_CAPABILITY_TTL_SECONDS,
   sha256Hex,
   verifyCapabilityBinding,
   type DocumentCapabilityLease,
@@ -64,6 +69,7 @@ import {
   registerPageTool,
   withOneUseRegistrationRetirement,
 } from '@/lib/lab/webmcp';
+import type { ExperienceMode } from './experience-chooser';
 
 export interface CapabilityRunPayload {
   proposal: CapabilityProposalRecord;
@@ -114,6 +120,7 @@ function shortHash(value?: string) {
 }
 
 export function CapabilityNegotiator({
+  experienceMode,
   sourceTool,
   sourceState,
   sourceToolSuppressed,
@@ -124,7 +131,11 @@ export function CapabilityNegotiator({
   onSourceDrift,
   onCreateLocalReceipt,
   onExport,
+  onOfferPermit,
+  onExportPermit,
+  onNext,
 }: {
+  experienceMode: ExperienceMode;
   sourceTool: ToolDeclaration;
   sourceState: Record<string, JsonValue>;
   getCurrentSourceTool: () => ToolDeclaration;
@@ -137,9 +148,21 @@ export function CapabilityNegotiator({
     payload: CapabilityRunPayload,
   ) => Promise<EvidenceReceipt>;
   onExport: (receipt: EvidenceReceipt) => void;
+  onOfferPermit: (
+    contract: CompiledCapabilityContract,
+    approvedAt: string,
+    pageUrl: string,
+  ) => Promise<void>;
+  onExportPermit: (
+    contract: CompiledCapabilityContract,
+    approvedAt: string,
+    pageUrl: string,
+  ) => Promise<void>;
+  onNext?: () => void;
 }) {
   const [intent, setIntent] = useState<LockedCapabilityIntent>();
   const [proposal, setProposal] = useState<CapabilityProposalRecord>();
+  const proposalRef = useRef<CapabilityProposalRecord | undefined>(undefined);
   const [contract, setContract] = useState<CompiledCapabilityContract>();
   const [proposalRegistration, setProposalRegistration] =
     useState<WebMcpStatus>(initialRegistration);
@@ -176,6 +199,7 @@ export function CapabilityNegotiator({
   const proposalOperationRef = useRef(0);
   const workflowPhaseRef = useRef<WorkflowPhase>('idle');
   const [approvalEventAt, setApprovalEventAt] = useState<string>();
+  const [guidedAdvance, setGuidedAdvance] = useState(false);
 
   const transitionPhase = useCallback((phase: WorkflowPhase) => {
     workflowPhaseRef.current = phase;
@@ -210,8 +234,12 @@ export function CapabilityNegotiator({
   }, []);
 
   const stageProposal = useCallback(
-    async (input: unknown, channel: CapabilityProposalRecord['channel']) => {
-      if (!intent || workflowPhaseRef.current !== 'proposal') {
+    async (
+      input: unknown,
+      channel: CapabilityProposalRecord['channel'],
+      lockedIntent: LockedCapabilityIntent | undefined = intent,
+    ) => {
+      if (!lockedIntent || workflowPhaseRef.current !== 'proposal') {
         throw new Error('Lock an intent before proposing a capability.');
       }
       const epoch = operationEpochRef.current;
@@ -220,7 +248,7 @@ export function CapabilityNegotiator({
       const sourceSnapshot = structuredClone(getCurrentSourceTool());
       const record = await createProposalRecord({
         input: normalizeInput(input),
-        intent,
+        intent: lockedIntent,
         sourceTool: sourceSnapshot,
         proposedAt: new Date().toISOString(),
         channel,
@@ -235,6 +263,7 @@ export function CapabilityNegotiator({
         throw new Error('The proposal operation was superseded.');
       }
       setProposal(record);
+      proposalRef.current = record;
       setContract(undefined);
       setApprovalEventAt(undefined);
       setReceipt(undefined);
@@ -377,7 +406,7 @@ export function CapabilityNegotiator({
   }, [onRestoreSourceTool]);
 
   async function lockIntent() {
-    if (workflowPhaseRef.current !== 'idle') return;
+    if (workflowPhaseRef.current !== 'idle') return undefined;
     const currentState = structuredClone(getCurrentSourceState());
     if (
       currentState.accountId !== 'TRAINING-1042' ||
@@ -388,14 +417,16 @@ export function CapabilityNegotiator({
       setMessage(
         'Reset the Scenario 1 fixture before locking intent; the approved baseline must start with reviewed=false, reviewCount=0, and lastReviewedAt=null.',
       );
-      return;
+      return undefined;
     }
     transitionPhase('locking');
     const epoch = operationEpochRef.current + 1;
     operationEpochRef.current = epoch;
     const stateGeneration = stateObservationGenerationRef.current;
     const baselineStateHash = await sha256Hex(structuredClone(currentState));
-    if (!mountedRef.current || operationEpochRef.current !== epoch) return;
+    if (!mountedRef.current || operationEpochRef.current !== epoch) {
+      return undefined;
+    }
     if (
       stateObservationGenerationRef.current !== stateGeneration ||
       canonicalJson(getCurrentSourceState()) !== canonicalJson(currentState)
@@ -404,16 +435,17 @@ export function CapabilityNegotiator({
       setMessage(
         'The fixture changed while intent was being locked. Reset it and try again.',
       );
-      return;
+      return undefined;
     }
     const next = createLockedIntent({
       origin: window.location.origin,
       lockedAt: new Date().toISOString(),
       baselineStateHash,
-      ttlSeconds: 120,
+      ttlSeconds: SCENARIO_ONE_CAPABILITY_TTL_SECONDS,
     });
     setIntent(next);
     setProposal(undefined);
+    proposalRef.current = undefined;
     setContract(undefined);
     setReceipt(undefined);
     setReceiptState('idle');
@@ -433,12 +465,20 @@ export function CapabilityNegotiator({
     setInvalidationReason(undefined);
     setCapabilityStatus('idle');
     setMessage(
-      'Human intent locked: one eligibility read for TRAINING-1042, 120-second TTL, no account mutation, capability-handler fetch, or cross-account access.',
+      'Human intent locked: one eligibility read for TRAINING-1042, five-minute TTL, no account mutation, capability-handler fetch, or cross-account access.',
     );
+    return next;
   }
 
-  async function prepareContractForReview() {
-    if (!intent || !proposal || workflowPhaseRef.current !== 'proposal') {
+  async function prepareContractForReview(
+    preparedIntent: LockedCapabilityIntent | undefined = intent,
+    preparedProposal: CapabilityProposalRecord | undefined = proposal,
+  ) {
+    if (
+      !preparedIntent ||
+      !preparedProposal ||
+      workflowPhaseRef.current !== 'proposal'
+    ) {
       return;
     }
     transitionPhase('preparing');
@@ -465,7 +505,7 @@ export function CapabilityNegotiator({
     const [currentHash, currentStateHash] = await Promise.all([
       fingerprintSource({
         tool: sourceSnapshot,
-        handlerVersion: proposal.source.handlerVersion,
+        handlerVersion: preparedProposal.source.handlerVersion,
         origin: window.location.origin,
       }),
       sha256Hex(stateSnapshot),
@@ -474,7 +514,7 @@ export function CapabilityNegotiator({
     if (
       sourceObservationGenerationRef.current !== sourceGeneration ||
       canonicalJson(getCurrentSourceTool()) !== canonicalJson(sourceSnapshot) ||
-      currentHash !== proposal.source.sourceDeclarationHash
+      currentHash !== preparedProposal.source.sourceDeclarationHash
     ) {
       invalidate(
         'source-drift',
@@ -485,7 +525,7 @@ export function CapabilityNegotiator({
     if (
       stateObservationGenerationRef.current !== stateGeneration ||
       canonicalJson(getCurrentSourceState()) !== canonicalJson(stateSnapshot) ||
-      currentStateHash !== intent.baseline.stateHash
+      currentStateHash !== preparedIntent.baseline.stateHash
     ) {
       invalidate(
         'state-drift',
@@ -495,8 +535,8 @@ export function CapabilityNegotiator({
     }
 
     const compiled = await compileCapabilityContract({
-      intent,
-      proposal,
+      intent: preparedIntent,
+      proposal: preparedProposal,
       preparedAt: new Date().toISOString(),
     });
     if (!mountedRef.current || operationEpochRef.current !== epoch) return;
@@ -527,6 +567,31 @@ export function CapabilityNegotiator({
     setMessage(
       `Contract ${compiled.contractHash.slice(0, 12)} is frozen for review. It has not been approved or registered.`,
     );
+  }
+
+  async function prepareGuidedApproval() {
+    if (workflowPhaseRef.current !== 'idle') return;
+    setGuidedAdvance(true);
+    try {
+      const lockedIntent = await lockIntent();
+      if (!lockedIntent) return;
+      await stageProposal(
+        createProposalInput(lockedIntent),
+        'fallback-harness',
+        lockedIntent,
+      );
+      const preparedProposal = proposalRef.current;
+      if (!preparedProposal) {
+        throw new Error('The exact proposal could not be prepared.');
+      }
+      await prepareContractForReview(lockedIntent, preparedProposal);
+    } catch (error) {
+      setMessage(
+        `The lesson stopped safely before approval: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    } finally {
+      setGuidedAdvance(false);
+    }
   }
 
   async function approveAndRegister() {
@@ -876,9 +941,16 @@ export function CapabilityNegotiator({
 
     transitionPhase('active');
     setCapabilityStatus('registered');
-    setMessage(
-      `Registered ${contract.compiled.toolName}. The broad source and proposal tools are unregistered.`,
-    );
+    try {
+      await onOfferPermit(contract, approvedAt, window.location.href);
+      setMessage(
+        'The exact capability is registered and its narrowing rule was offered to the connected browser guard. Nothing has run. Check the browser-owned HUD for authoritative protection status.',
+      );
+    } catch {
+      setMessage(
+        'The exact capability is registered, but its browser-guard handoff could not be prepared. Nothing has run. The local practice check remains available; advanced recovery can export the rule manually.',
+      );
+    }
   }
 
   async function runCapabilitySelfTest() {
@@ -888,7 +960,7 @@ export function CapabilityNegotiator({
     const modelContext = getModelContext();
     if (!modelContext?.getTools || !modelContext.executeTool) {
       setMessage(
-        'This client does not expose the optional same-origin discovery/invocation APIs. An external WebMCP client may still discover the registered tool.',
+        'This browser can register the approved action but cannot invoke its own page action. Nothing ran. Leave this page open and ask the connected agent to run the one guarded action once with no retry.',
       );
       return;
     }
@@ -924,6 +996,7 @@ export function CapabilityNegotiator({
   }
 
   function resetNegotiation() {
+    setGuidedAdvance(false);
     proposalControllerRef.current?.abort();
     proposalActiveRef.current = false;
     proposalGenerationRef.current = crypto.randomUUID();
@@ -940,6 +1013,7 @@ export function CapabilityNegotiator({
     sourceWithdrawnRef.current = false;
     setIntent(undefined);
     setProposal(undefined);
+    proposalRef.current = undefined;
     setContract(undefined);
     setReceipt(undefined);
     setReceiptState('idle');
@@ -968,237 +1042,734 @@ export function CapabilityNegotiator({
     ['Invoke + verify', Boolean(receipt)],
     ['Close authority', Boolean(invalidationReason)],
   ] as const;
+  const lessonStep = receipt
+    ? 4
+    : capabilityStatus === 'registered'
+      ? 3
+      : contract || workflowPhase === 'registering'
+        ? 2
+        : 1;
+  const lessonBusy =
+    guidedAdvance ||
+    ['locking', 'preparing', 'registering'].includes(workflowPhase);
+  const lessonStopped = workflowPhase === 'closed' && !receipt;
+  const stateStayedIdentical = receipt
+    ? canonicalJson(receipt.effective.before) ===
+      canonicalJson(receipt.effective.after)
+    : false;
+  const lessonSteps = [
+    ['1', 'Understand'],
+    ['2', 'Approve'],
+    ['3', 'Run'],
+    ['4', 'Verify'],
+  ] as const;
+  const expiryLabel = contract
+    ? new Date(contract.compiled.expiresAt).toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    : 'Five minutes after preparation';
 
   return (
-    <section className="border-t border-foreground bg-slate-950 px-5 py-8 text-slate-100 lg:px-8">
-      <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-        <div className="max-w-3xl">
+    <section
+      id="lesson"
+      className="scroll-mt-20 border-t border-foreground bg-slate-950 px-5 py-8 text-slate-100 lg:px-8"
+    >
+      <div className="mx-auto max-w-5xl">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge className="border-lime-300/30 bg-lime-300/10 text-lime-200">
+            Lesson 1 of 5
+          </Badge>
+          <Badge variant="outline" className="border-white/20 text-slate-200">
+            Practice only
+          </Badge>
+          <Badge variant="outline" className="border-white/20 text-slate-200">
+            Fake account
+          </Badge>
+          <Badge variant="outline" className="border-white/20 text-slate-200">
+            Nothing runs without approval
+          </Badge>
+        </div>
+
+        <div className="mt-5 max-w-3xl">
           <div className="flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-lime-300">
-            <LockKeyhole className="size-4" />
-            Scenario 1 vertical slice · local branch only
+            <BookOpenCheck className="size-4" />
+            Learn by doing · about five minutes
           </div>
-          <h3 className="mt-3 text-2xl font-semibold tracking-tight">
-            Compile one human-approved task into less authority.
-          </h3>
-          <p className="mt-3 text-sm leading-6 text-slate-300">
-            The proposal cannot execute the source handler. Approval withdraws
-            the broad tool before registering a uniquely named, no-input,
-            one-use capability bound to this origin, source fingerprint, and
-            versioned pure handler.
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+            Try one safe WebMCP action
+          </h2>
+          <p className="mt-3 text-base leading-7 text-slate-300">
+            WebMCP lets a website offer actions to an AI. You will inspect one
+            offer, limit it to an exact task, approve it, run it once, and
+            verify what actually happened.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="outline" className="border-white/20 text-slate-200">
-            {sourceToolSuppressed ? 'Source withdrawn' : 'Source registered'}
-          </Badge>
-          <Badge variant="outline" className="border-white/20 text-slate-200">
-            Capability: {capabilityStatus}
-          </Badge>
-        </div>
-      </div>
 
-      <div className="mt-6 grid gap-1.5 sm:grid-cols-4 xl:grid-cols-7">
-        {steps.map(([label, done], index) => (
-          <div
-            key={label}
-            className={`rounded-md border px-3 py-3 ${done ? 'border-lime-400/45 bg-lime-300/10' : 'border-white/12 bg-white/5'}`}
-          >
-            <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.12em] text-slate-400">
-              {index + 1}
-              {done ? <Check className="size-3.5 text-lime-300" /> : null}
+        <ol
+          className="mt-6 grid gap-2 sm:grid-cols-4"
+          aria-label="Lesson progress"
+        >
+          {lessonSteps.map(([number, label], index) => {
+            const stepNumber = index + 1;
+            const complete = lessonStep > stepNumber;
+            const current = lessonStep === stepNumber;
+            return (
+              <li
+                key={label}
+                aria-current={current ? 'step' : undefined}
+                className={
+                  current
+                    ? 'rounded-lg border border-lime-300/60 bg-lime-300/10 p-3'
+                    : complete
+                      ? 'rounded-lg border border-lime-300/25 bg-lime-300/5 p-3'
+                      : 'rounded-lg border border-white/10 bg-white/5 p-3'
+                }
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={
+                      complete || current
+                        ? 'flex size-6 items-center justify-center rounded-full bg-lime-300 text-xs font-bold text-slate-950'
+                        : 'flex size-6 items-center justify-center rounded-full bg-white/10 text-xs text-slate-400'
+                    }
+                  >
+                    {complete ? <Check className="size-3.5" /> : number}
+                  </span>
+                  <span className="text-sm font-semibold">{label}</span>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+
+        <div className="mt-4 overflow-hidden rounded-xl border border-white/15 bg-white/[0.06]">
+          {lessonStopped ? (
+            <div className="p-5 sm:p-7">
+              <div className="flex items-start gap-4">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-300/15 text-amber-200">
+                  <AlertTriangle className="size-5" />
+                </div>
+                <div className="max-w-2xl">
+                  <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-200">
+                    Stopped safely
+                  </p>
+                  <h3 className="mt-2 text-2xl font-semibold">Nothing ran.</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">
+                    The permission expired or could not be verified, so the
+                    Membrane closed it. The practice account was not changed and
+                    the lesson did not retry.
+                  </p>
+                  <Button
+                    className="mt-5 bg-lime-300 text-slate-950 hover:bg-lime-200"
+                    onClick={resetNegotiation}
+                  >
+                    <RefreshCw data-icon="inline-start" />
+                    Start with a fresh permission
+                  </Button>
+                </div>
+              </div>
             </div>
-            <p className="mt-2 text-xs font-semibold">{label}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-6 grid gap-4 xl:grid-cols-3">
-        <NegotiationCard
-          icon={<LockKeyhole />}
-          eyebrow="Human intent"
-          title="Fixed authority ceiling"
-        >
-          <ul className="space-y-1.5 text-xs leading-5 text-slate-300">
-            <li>Target: TRAINING-1042 only</li>
-            <li>Effect: read eligibility once</li>
-            <li>TTL: 120 seconds</li>
-            <li>
-              Prohibited: account mutation, handler fetch, cross-account access
-            </li>
-          </ul>
-          <Button
-            className="mt-4 w-full"
-            variant="secondary"
-            onClick={() => void lockIntent()}
-            disabled={workflowPhase !== 'idle'}
-          >
-            <LockKeyhole data-icon="inline-start" />
-            {intent ? 'Intent locked' : 'Lock human intent'}
-          </Button>
-        </NegotiationCard>
-
-        <NegotiationCard
-          icon={<Fingerprint />}
-          eyebrow="Agent proposal"
-          title="No execution authority"
-        >
-          <dl className="space-y-2 text-xs">
-            <HashRow
-              label="Source"
-              value={proposal?.source.sourceDeclarationHash}
-            />
-            <HashRow label="Proposal" value={proposal?.proposalHash} />
-            <HashRow
-              label="Registration"
-              value={proposalRegistration.registration}
-              hash={false}
-            />
-          </dl>
-          <Button
-            className="mt-4 w-full"
-            variant="secondary"
-            disabled={!intent || workflowPhase !== 'proposal'}
-            onClick={() =>
-              intent &&
-              void stageProposal(
-                createProposalInput(intent),
-                'fallback-harness',
-              )
-            }
-          >
-            <FileCheck2 data-icon="inline-start" />
-            Stage exact proposal (harness)
-          </Button>
-        </NegotiationCard>
-
-        <NegotiationCard
-          icon={<ShieldCheck />}
-          eyebrow="Compiled capability"
-          title="No-input and single use"
-        >
-          <dl className="space-y-2 text-xs">
-            <HashRow label="Contract" value={contract?.contractHash} />
-            <HashRow
-              label="Tool"
-              value={contract?.compiled.toolName}
-              hash={false}
-            />
-            <HashRow
-              label="Expires"
-              value={contract?.compiled.expiresAt}
-              hash={false}
-            />
-          </dl>
-          <Button
-            ref={approvalTriggerRef}
-            className="mt-4 h-auto min-h-10 w-full border border-lime-200/70 bg-lime-300 px-4 py-2.5 text-slate-950 shadow-sm hover:bg-lime-200 focus-visible:ring-lime-300/60"
-            aria-haspopup="dialog"
-            aria-expanded={approvalOpen}
-            disabled={
-              !proposal || !['proposal', 'review'].includes(workflowPhase)
-            }
-            onClick={() =>
-              workflowPhase === 'review'
-                ? setApprovalOpen(true)
-                : void prepareContractForReview()
-            }
-          >
-            <ShieldCheck data-icon="inline-start" />
-            {workflowPhase === 'review'
-              ? 'Review and approve exact capability'
-              : 'Prepare exact approval'}
-          </Button>
-        </NegotiationCard>
-      </div>
-
-      <div className="mt-4 flex flex-col gap-3 rounded-lg border border-white/12 bg-white/5 p-4 lg:flex-row lg:items-center lg:justify-between">
-        <output aria-live="polite" className="text-xs leading-5 text-slate-300">
-          {message}
-        </output>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => void runCapabilitySelfTest()}
-            disabled={capabilityStatus !== 'registered'}
-          >
-            <Radio data-icon="inline-start" />
-            Invoke through WebMCP
-          </Button>
-          <Button
-            variant="outline"
-            className="border-white/20 bg-transparent text-slate-100 hover:bg-white/10 hover:text-white"
-            onClick={onSourceDrift}
-            disabled={capabilityStatus !== 'registered'}
-          >
-            <Unplug data-icon="inline-start" />
-            Change source declaration
-          </Button>
-          <Button
-            ref={resetNegotiationRef}
-            variant="outline"
-            className="border-white/20 bg-transparent text-slate-100 hover:bg-white/10 hover:text-white"
-            onClick={resetNegotiation}
-          >
-            <RefreshCw data-icon="inline-start" />
-            Reset negotiation
-          </Button>
+          ) : lessonStep === 1 ? (
+            <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
+              <div className="p-5 sm:p-7">
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-lime-300">
+                  First: understand the offer
+                </p>
+                <h3 className="mt-2 text-2xl font-semibold">
+                  The page offers your AI a read action.
+                </h3>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+                  An offered action is not permission and is not proof of
+                  safety. Its name may sound harmless while its inputs or code
+                  grant more authority than you expect.
+                </p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <LessonFact
+                    icon={<Eye />}
+                    label="Page offers"
+                    value="Check eligibility"
+                  />
+                  <LessonFact
+                    icon={<LockKeyhole />}
+                    label="You limit"
+                    value="One fake account"
+                  />
+                  <LessonFact
+                    icon={<ShieldCheck />}
+                    label="Receipt proves"
+                    value="What changed"
+                  />
+                </div>
+              </div>
+              <div className="border-t border-white/10 bg-slate-900/70 p-5 sm:p-7 lg:border-l lg:border-t-0">
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  Your practice task
+                </p>
+                <p className="mt-3 text-lg font-semibold">
+                  Is TRAINING-1042 eligible?
+                </p>
+                <ul className="mt-4 space-y-2 text-sm text-slate-300">
+                  <li className="flex gap-2">
+                    <Check className="mt-0.5 size-4 shrink-0 text-lime-300" />
+                    Read eligibility once
+                  </li>
+                  <li className="flex gap-2">
+                    <Check className="mt-0.5 size-4 shrink-0 text-lime-300" />
+                    Do not change the account
+                  </li>
+                  <li className="flex gap-2">
+                    <Check className="mt-0.5 size-4 shrink-0 text-lime-300" />
+                    Do not retry automatically
+                  </li>
+                </ul>
+                <Button
+                  size="lg"
+                  className="mt-6 h-auto min-h-11 w-full whitespace-normal bg-lime-300 px-4 py-3 text-slate-950 hover:bg-lime-200"
+                  onClick={() => void prepareGuidedApproval()}
+                  disabled={lessonBusy}
+                >
+                  <ShieldCheck data-icon="inline-start" />
+                  {lessonBusy
+                    ? 'Preparing a safe review…'
+                    : 'Prepare one-task approval'}
+                  {!lessonBusy ? <ArrowRight data-icon="inline-end" /> : null}
+                </Button>
+                <p className="mt-3 text-center text-xs leading-5 text-slate-400">
+                  This inspects and limits the action. It does not run it.
+                </p>
+              </div>
+            </div>
+          ) : lessonStep === 2 ? (
+            <div className="p-5 sm:p-7">
+              <div className="flex items-start gap-4">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-lime-300/15 text-lime-200">
+                  <ShieldCheck className="size-5" />
+                </div>
+                <div className="max-w-2xl">
+                  <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-lime-300">
+                    Review before anything runs
+                  </p>
+                  <h3 className="mt-2 text-2xl font-semibold">
+                    Ready for your decision.
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">
+                    The general site action has been narrowed to one read of
+                    TRAINING-1042. The AI cannot choose another account, add
+                    instructions, or use the permission twice.
+                  </p>
+                  <Button
+                    ref={approvalTriggerRef}
+                    className="mt-5 bg-lime-300 text-slate-950 hover:bg-lime-200"
+                    aria-haspopup="dialog"
+                    aria-expanded={approvalOpen}
+                    onClick={() => setApprovalOpen(true)}
+                    disabled={workflowPhase !== 'review'}
+                  >
+                    <ShieldCheck data-icon="inline-start" />
+                    Review the exact approval
+                  </Button>
+                  <p className="mt-3 text-xs text-slate-400">
+                    Approval creates a five-minute, one-use permission. It does
+                    not run the check.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : lessonStep === 3 ? (
+            <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
+              <div className="p-5 sm:p-7">
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-lime-300">
+                  Approved and ready
+                </p>
+                <h3 className="mt-2 text-2xl font-semibold">
+                  The check has not run yet.
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-slate-300">
+                  Your approval created a zero-input capability for this page,
+                  this exact synthetic account, and one use. The broader site
+                  action has been withdrawn while it is active.
+                </p>
+                <p className="mt-3 text-xs leading-5 text-slate-400">
+                  {experienceMode === 'site-tools'
+                    ? 'The action is registered on this page for the agent in the same built-in browser. Page registration does not by itself prove that the client discovered it.'
+                    : experienceMode === 'local-guard'
+                      ? 'If the Local Guard is connected, the page offered it the exact narrowing rule. Its browser-owned status is authoritative only for calls routed through that local path.'
+                      : 'This read-only path does not claim that any client discovered or invoked the action.'}
+                </p>
+                <div className="mt-5 rounded-lg border border-lime-300/20 bg-lime-300/5 p-4 text-sm text-slate-200">
+                  <strong className="text-white">What this run means:</strong>{' '}
+                  {experienceMode === 'site-tools'
+                    ? 'the agent in this built-in browser invokes the registered Site Tool directly.'
+                    : experienceMode === 'local-guard'
+                      ? 'the connected local agent invokes the registered action through the Local Guard and relay.'
+                      : 'no agent-driven invocation is claimed until you choose a live setup.'}{' '}
+                  The capability consumes its authority before the handler
+                  executes.
+                </div>
+              </div>
+              <div className="border-t border-white/10 bg-slate-900/70 p-5 sm:p-7 lg:border-l lg:border-t-0">
+                <p className="text-sm font-semibold">
+                  {experienceMode === 'read-only'
+                    ? 'The protected action is prepared, not run'
+                    : 'Hand one action to your agent'}
+                </p>
+                <p className="mt-2 text-xs leading-5 text-slate-400">
+                  Expected: Eligible. Before and after state must be identical.
+                </p>
+                <div className="mt-5 rounded-lg border border-sky-300/25 bg-sky-300/8 p-4">
+                  <p className="text-sm font-semibold text-sky-100">
+                    {experienceMode === 'site-tools'
+                      ? 'Your agent in this built-in browser runs this step'
+                      : experienceMode === 'local-guard'
+                        ? 'Your connected local agent runs this step'
+                        : 'No invocation on the read-only path'}
+                  </p>
+                  <ol className="mt-3 space-y-2 text-xs leading-5 text-slate-300">
+                    {experienceMode === 'site-tools' ? (
+                      <>
+                        <li>
+                          1. Keep this page open in ChatGPT or Codex&apos;s
+                          built-in browser.
+                        </li>
+                        <li>
+                          2. Use Sol or Terra; model and workspace availability
+                          are separate from page registration.
+                        </li>
+                        <li>
+                          3. Tell the same agent: “Run the one approved practice
+                          action once. Do not retry.”
+                        </li>
+                      </>
+                    ) : experienceMode === 'local-guard' ? (
+                      <>
+                        <li>1. Leave this lesson open.</li>
+                        <li>
+                          2. In LeftOut Local Guard, confirm “Protected: 1 exact
+                          action.”
+                        </li>
+                        <li>
+                          3. Ask your connected local agent to run the one
+                          approved action once, with no retry.
+                        </li>
+                      </>
+                    ) : (
+                      <>
+                        <li>1. Do not ask an agent to invoke the action.</li>
+                        <li>
+                          2. Review the exact target, lifetime, and prohibited
+                          effects below.
+                        </li>
+                        <li>
+                          3. Choose a live setup above when you want to complete
+                          the run.
+                        </li>
+                      </>
+                    )}
+                  </ol>
+                  <p className="mt-3 text-xs leading-5 text-sky-100">
+                    The receipt will appear here automatically. The page has not
+                    run anything itself.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-5 sm:p-7">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex items-start gap-4">
+                  <div
+                    className={
+                      receipt?.verdict === 'PASS'
+                        ? 'flex size-11 shrink-0 items-center justify-center rounded-full bg-lime-300 text-slate-950'
+                        : 'flex size-11 shrink-0 items-center justify-center rounded-full bg-red-300 text-slate-950'
+                    }
+                  >
+                    {receipt?.verdict === 'PASS' ? (
+                      <Check className="size-6" />
+                    ) : (
+                      <AlertTriangle className="size-6" />
+                    )}
+                  </div>
+                  <div className="max-w-2xl">
+                    <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-lime-300">
+                      Evidence receipt
+                    </p>
+                    <h3 className="mt-2 text-2xl font-semibold">
+                      {receipt?.verdict} — the action{' '}
+                      {receipt?.verdict === 'PASS'
+                        ? 'matched'
+                        : 'did not match'}{' '}
+                      your approval
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">
+                      A receipt compares the task you approved with the result
+                      and observable effects. This synthetic run is evidence for
+                      this one action, not proof that every WebMCP tool is safe.
+                    </p>
+                  </div>
+                </div>
+                {receipt ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() => onExport(receipt)}
+                    >
+                      <FileCheck2 data-icon="inline-start" />
+                      Save receipt
+                    </Button>
+                    {onNext ? (
+                      <Button onClick={onNext}>
+                        Continue to Lesson 2
+                        <ArrowRight data-icon="inline-end" />
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <ReceiptFact label="Approved" value="Read TRAINING-1042 once" />
+                <ReceiptFact
+                  label="Returned"
+                  value={
+                    receipt?.verdict === 'PASS'
+                      ? 'Eligible'
+                      : 'Unexpected result'
+                  }
+                />
+                <ReceiptFact
+                  label="Before and after"
+                  value={stateStayedIdentical ? 'Identical' : 'Different'}
+                  good={stateStayedIdentical}
+                />
+                <ReceiptFact
+                  label="Side effects"
+                  value={
+                    receipt?.effective.sideEffects.length
+                      ? receipt.effective.sideEffects.join(', ')
+                      : 'None detected'
+                  }
+                  good={!receipt?.effective.sideEffects.length}
+                />
+                <ReceiptFact label="One-use permission" value="Closed" />
+                <ReceiptFact
+                  label="Receipt ID"
+                  value={receipt?.id ?? 'Unavailable'}
+                />
+              </div>
+            </div>
+          )}
         </div>
+
+        <details className="mt-4 rounded-lg border border-white/12 bg-white/5">
+          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-lime-300">
+            <span className="flex items-center gap-2">
+              <Info className="size-4 text-lime-300" />
+              How the Membrane limits this action
+            </span>
+          </summary>
+          <div className="grid gap-3 border-t border-white/10 p-4 text-xs leading-5 text-slate-300 sm:grid-cols-2 lg:grid-cols-4">
+            <p>
+              <strong className="block text-white">Exact target</strong>Bound to
+              TRAINING-1042.
+            </p>
+            <p>
+              <strong className="block text-white">No late inputs</strong>The
+              capability accepts zero fields.
+            </p>
+            <p>
+              <strong className="block text-white">One use</strong>Authority
+              closes before execution.
+            </p>
+            <p>
+              <strong className="block text-white">Fail closed</strong>Drift,
+              expiry, or mismatch stops the run.
+            </p>
+          </div>
+        </details>
       </div>
 
-      {receipt ? (
-        <div
-          className={`mt-4 flex flex-col gap-3 rounded-lg border p-4 md:flex-row md:items-center md:justify-between ${
-            receipt.verdict === 'PASS'
-              ? 'border-lime-400/35 bg-lime-300/10'
-              : 'border-red-400/35 bg-red-300/10'
-          }`}
-        >
-          <div className="flex items-start gap-3">
-            {receipt.verdict === 'PASS' ? (
-              <Check className="mt-0.5 size-5 text-lime-300" />
-            ) : (
-              <AlertTriangle className="mt-0.5 size-5 text-red-300" />
-            )}
-            <div>
-              <p className="text-sm font-semibold">
-                {receipt.verdict} · local receipt {receipt.id}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-slate-300">
-                {receipt.capability?.verification.baselineStateMatched
-                  ? 'Locked baseline and required result matched.'
-                  : 'The locked baseline did not match at invocation.'}{' '}
-                Controlled handler checks found{' '}
-                {receipt.capability?.verification.controlledHandlerViolations
-                  .length ?? 0}{' '}
-                violations. Logical authority:{' '}
-                {receipt.capability?.invalidation.reason}.
+      <details className="mx-auto mt-6 max-w-5xl rounded-xl border border-white/12 bg-black/20">
+        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-lime-300">
+          Advanced security tests and protocol evidence
+          <span className="mt-1 block text-xs font-normal text-slate-400">
+            Schemas, hashes, source drift, connector permits, and manual
+            controls
+          </span>
+        </summary>
+        <div className="border-t border-white/10 p-5">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="max-w-3xl">
+              <div className="flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-lime-300">
+                <LockKeyhole className="size-4" />
+                Scenario 1 vertical slice · local branch only
+              </div>
+              <h3 className="mt-3 text-2xl font-semibold tracking-tight">
+                Compile one human-approved task into less authority.
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                The proposal cannot execute the source handler. Approval
+                withdraws the broad tool before registering a uniquely named,
+                no-input, one-use capability bound to this origin, source
+                fingerprint, and versioned pure handler.
               </p>
             </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge
+                variant="outline"
+                className="border-white/20 text-slate-200"
+              >
+                {sourceToolSuppressed
+                  ? 'Source withdrawn'
+                  : 'Source registered'}
+              </Badge>
+              <Badge
+                variant="outline"
+                className="border-white/20 text-slate-200"
+              >
+                Capability: {capabilityStatus}
+              </Badge>
+            </div>
           </div>
-          <Button variant="secondary" onClick={() => onExport(receipt)}>
-            <FileCheck2 data-icon="inline-start" />
-            Export linked receipt
-          </Button>
-        </div>
-      ) : null}
 
-      <div className="mt-4 grid gap-3 text-xs text-slate-300 md:grid-cols-3">
-        <EvidenceFact
-          icon={<Play />}
-          label="Invocation"
-          value={receipt ? 'Observed once' : 'Not observed'}
-        />
-        <EvidenceFact
-          icon={<Clock3 />}
-          label="Persistence"
-          value={receiptState}
-        />
-        <EvidenceFact
-          icon={<Unplug />}
-          label="Logical authority"
-          value={invalidationReason ?? 'Not observed'}
-        />
-      </div>
+          <div className="mt-6 grid gap-1.5 sm:grid-cols-4 xl:grid-cols-7">
+            {steps.map(([label, done], index) => (
+              <div
+                key={label}
+                className={`rounded-md border px-3 py-3 ${done ? 'border-lime-400/45 bg-lime-300/10' : 'border-white/12 bg-white/5'}`}
+              >
+                <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.12em] text-slate-400">
+                  {index + 1}
+                  {done ? <Check className="size-3.5 text-lime-300" /> : null}
+                </div>
+                <p className="mt-2 text-xs font-semibold">{label}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 grid gap-4 xl:grid-cols-3">
+            <NegotiationCard
+              icon={<LockKeyhole />}
+              eyebrow="Human intent"
+              title="Fixed authority ceiling"
+            >
+              <ul className="space-y-1.5 text-xs leading-5 text-slate-300">
+                <li>Target: TRAINING-1042 only</li>
+                <li>Effect: read eligibility once</li>
+                <li>TTL: 5 minutes</li>
+                <li>
+                  Prohibited: account mutation, handler fetch, cross-account
+                  access
+                </li>
+              </ul>
+              <Button
+                className="mt-4 w-full"
+                variant="secondary"
+                onClick={() => void lockIntent()}
+                disabled={workflowPhase !== 'idle'}
+              >
+                <LockKeyhole data-icon="inline-start" />
+                {intent ? 'Intent locked' : 'Lock human intent'}
+              </Button>
+            </NegotiationCard>
+
+            <NegotiationCard
+              icon={<Fingerprint />}
+              eyebrow="Agent proposal"
+              title="No execution authority"
+            >
+              <dl className="space-y-2 text-xs">
+                <HashRow
+                  label="Source"
+                  value={proposal?.source.sourceDeclarationHash}
+                />
+                <HashRow label="Proposal" value={proposal?.proposalHash} />
+                <HashRow
+                  label="Registration"
+                  value={proposalRegistration.registration}
+                  hash={false}
+                />
+              </dl>
+              <Button
+                className="mt-4 w-full"
+                variant="secondary"
+                disabled={!intent || workflowPhase !== 'proposal'}
+                onClick={() =>
+                  intent &&
+                  void stageProposal(
+                    createProposalInput(intent),
+                    'fallback-harness',
+                  )
+                }
+              >
+                <FileCheck2 data-icon="inline-start" />
+                Stage exact proposal (harness)
+              </Button>
+            </NegotiationCard>
+
+            <NegotiationCard
+              icon={<ShieldCheck />}
+              eyebrow="Compiled capability"
+              title="No-input and single use"
+            >
+              <dl className="space-y-2 text-xs">
+                <HashRow label="Contract" value={contract?.contractHash} />
+                <HashRow
+                  label="Tool"
+                  value={contract?.compiled.toolName}
+                  hash={false}
+                />
+                <HashRow
+                  label="Expires"
+                  value={contract?.compiled.expiresAt}
+                  hash={false}
+                />
+              </dl>
+              <Button
+                ref={approvalTriggerRef}
+                className="mt-4 h-auto min-h-10 w-full border border-lime-200/70 bg-lime-300 px-4 py-2.5 text-slate-950 shadow-sm hover:bg-lime-200 focus-visible:ring-lime-300/60"
+                aria-haspopup="dialog"
+                aria-expanded={approvalOpen}
+                disabled={
+                  !proposal || !['proposal', 'review'].includes(workflowPhase)
+                }
+                onClick={() =>
+                  workflowPhase === 'review'
+                    ? setApprovalOpen(true)
+                    : void prepareContractForReview()
+                }
+              >
+                <ShieldCheck data-icon="inline-start" />
+                {workflowPhase === 'review'
+                  ? 'Review and approve exact capability'
+                  : 'Prepare exact approval'}
+              </Button>
+            </NegotiationCard>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 rounded-lg border border-white/12 bg-white/5 p-4 lg:flex-row lg:items-center lg:justify-between">
+            <output
+              aria-live="polite"
+              className="text-xs leading-5 text-slate-300"
+            >
+              {message}
+            </output>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => void runCapabilitySelfTest()}
+                disabled={capabilityStatus !== 'registered'}
+              >
+                <Radio data-icon="inline-start" />
+                Invoke through WebMCP
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  contract &&
+                  approvalEventAt &&
+                  void onExportPermit(
+                    contract,
+                    approvalEventAt,
+                    window.location.href,
+                  ).catch(() =>
+                    setMessage(
+                      'The extension permit could not be exported. The capability remains registered but no bridge authority was created.',
+                    ),
+                  )
+                }
+                disabled={
+                  capabilityStatus !== 'registered' ||
+                  !contract ||
+                  !approvalEventAt
+                }
+              >
+                <FileCheck2 data-icon="inline-start" />
+                Export extension permit
+              </Button>
+              <Button
+                variant="outline"
+                className="border-white/20 bg-transparent text-slate-100 hover:bg-white/10 hover:text-white"
+                onClick={onSourceDrift}
+                disabled={capabilityStatus !== 'registered'}
+              >
+                <Unplug data-icon="inline-start" />
+                Change source declaration
+              </Button>
+              <Button
+                ref={resetNegotiationRef}
+                variant="outline"
+                className="border-white/20 bg-transparent text-slate-100 hover:bg-white/10 hover:text-white"
+                onClick={resetNegotiation}
+              >
+                <RefreshCw data-icon="inline-start" />
+                Reset negotiation
+              </Button>
+            </div>
+          </div>
+
+          {receipt ? (
+            <div
+              className={`mt-4 flex flex-col gap-3 rounded-lg border p-4 md:flex-row md:items-center md:justify-between ${
+                receipt.verdict === 'PASS'
+                  ? 'border-lime-400/35 bg-lime-300/10'
+                  : 'border-red-400/35 bg-red-300/10'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                {receipt.verdict === 'PASS' ? (
+                  <Check className="mt-0.5 size-5 text-lime-300" />
+                ) : (
+                  <AlertTriangle className="mt-0.5 size-5 text-red-300" />
+                )}
+                <div>
+                  <p className="text-sm font-semibold">
+                    {receipt.verdict} · local receipt {receipt.id}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-slate-300">
+                    {receipt.capability?.protocol ===
+                      'webmcp-capability-negotiation/1' &&
+                    receipt.capability.verification.baselineStateMatched
+                      ? 'Locked baseline and required result matched.'
+                      : 'The locked baseline did not match at invocation.'}{' '}
+                    Controlled handler checks found{' '}
+                    {receipt.capability?.protocol ===
+                    'webmcp-capability-negotiation/1'
+                      ? receipt.capability.verification
+                          .controlledHandlerViolations.length
+                      : 0}{' '}
+                    violations. Logical authority:{' '}
+                    {receipt.capability?.invalidation.reason}.
+                  </p>
+                </div>
+              </div>
+              <Button variant="secondary" onClick={() => onExport(receipt)}>
+                <FileCheck2 data-icon="inline-start" />
+                Export linked receipt
+              </Button>
+            </div>
+          ) : null}
+
+          <div className="mt-4 grid gap-3 text-xs text-slate-300 md:grid-cols-3">
+            <EvidenceFact
+              icon={<Play />}
+              label="Invocation"
+              value={receipt ? 'Observed once' : 'Not observed'}
+            />
+            <EvidenceFact
+              icon={<Clock3 />}
+              label="Persistence"
+              value={receiptState}
+            />
+            <EvidenceFact
+              icon={<Unplug />}
+              label="Logical authority"
+              value={invalidationReason ?? 'Not observed'}
+            />
+          </div>
+        </div>
+      </details>
 
       <AlertDialog open={approvalOpen} onOpenChange={setApprovalOpen}>
         <AlertDialogContent
@@ -1216,11 +1787,10 @@ export function CapabilityNegotiator({
             <AlertDialogMedia className="bg-amber-100 text-amber-900">
               <AlertTriangle />
             </AlertDialogMedia>
-            <AlertDialogTitle>
-              Withdraw the broad tool and register one exact capability?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Approve one read-only check?</AlertDialogTitle>
             <AlertDialogDescription className="max-w-none text-left leading-6 [overflow-wrap:anywhere]">
-              {approvalCopy}
+              Review exactly what will happen before deciding. Approving creates
+              a one-use permission; it does not run the check.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {proposal ? (
@@ -1230,34 +1800,20 @@ export function CapabilityNegotiator({
                   label="Target"
                   value={contract?.intent.accountId ?? 'Not created'}
                 />
+                <ApprovalFact label="Allowed" value="Read eligibility once" />
                 <ApprovalFact
-                  label="Operation"
-                  value={humanizeContractToken(contract?.intent.operation)}
+                  label="Not allowed"
+                  value="Change data, access another account, or run twice"
                 />
                 <ApprovalFact
-                  label="Input schema"
-                  value={describeInputSchema(
-                    contract?.compiled.declaration.inputSchema,
-                  )}
-                />
-                <ApprovalFact
-                  label="Required postcondition"
-                  value={humanizeContractToken(
-                    contract?.intent.expectedPostcondition,
-                  )}
+                  label="Inputs"
+                  value="None — the target cannot be changed later"
                 />
                 <ApprovalFact
                   label="Use limit"
-                  value={
-                    contract
-                      ? `${contract.intent.maxCalls} invocation maximum`
-                      : 'Not created'
-                  }
+                  value="One attempt; no automatic retry"
                 />
-                <ApprovalFact
-                  label="Expires"
-                  value={contract?.compiled.expiresAt ?? 'Not created'}
-                />
+                <ApprovalFact label="Expires" value={expiryLabel} />
               </div>
               <p className="mt-3 rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm font-medium leading-5 text-amber-950">
                 Approval registers this capability. It does not invoke it.
@@ -1267,6 +1823,12 @@ export function CapabilityNegotiator({
                   Technical contract and hashes
                 </summary>
                 <div className="space-y-2 border-t border-border bg-muted/50 p-4 font-mono text-[10px] leading-5 text-muted-foreground [overflow-wrap:anywhere]">
+                  <p className="font-sans text-xs leading-5 text-foreground">
+                    The local package can detect accidental changes with its
+                    self-hash. It is not a digital signature or independent
+                    proof that a person approved it.
+                  </p>
+                  <p>approval_copy: {approvalCopy}</p>
                   <p>contract_sha256: {contract?.contractHash}</p>
                   <p>proposal_sha256: {contract?.proposalHash}</p>
                   <p>capability_id: {contract?.capabilityId}</p>
@@ -1332,18 +1894,58 @@ export function CapabilityNegotiator({
               ref={cancelApprovalRef}
               className="min-h-11 w-full sm:w-auto"
             >
-              Cancel
+              Not now
             </AlertDialogCancel>
             <AlertDialogAction
               className="h-auto min-h-11 w-full whitespace-normal px-4 py-2.5 text-center sm:w-auto"
               onClick={() => void approveAndRegister()}
             >
-              Approve exact one-use capability
+              Approve one read-only check
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </section>
+  );
+}
+
+function LessonFact({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+      <span className="text-lime-300 [&_svg]:size-4">{icon}</span>
+      <p className="mt-3 text-xs font-semibold text-white">{label}</p>
+      <p className="mt-1 text-xs leading-5 text-slate-400">{value}</p>
+    </div>
+  );
+}
+
+function ReceiptFact({
+  label,
+  value,
+  good,
+}: {
+  label: string;
+  value: string;
+  good?: boolean;
+}) {
+  return (
+    <div className="min-w-0 rounded-lg border border-white/10 bg-white/5 p-3">
+      <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-2 break-words text-sm font-semibold text-white [overflow-wrap:anywhere]">
+        {good ? <Check className="mr-1.5 inline size-4 text-lime-300" /> : null}
+        {value}
+      </p>
+    </div>
   );
 }
 
@@ -1358,30 +1960,6 @@ function ApprovalFact({ label, value }: { label: string; value: string }) {
       </p>
     </div>
   );
-}
-
-function humanizeContractToken(value: string | undefined) {
-  if (!value) return 'Not created';
-  return value
-    .split('-')
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
-function describeInputSchema(
-  inputSchema: Record<string, JsonValue> | undefined,
-) {
-  if (!inputSchema) return 'Not created';
-  const properties = inputSchema.properties;
-  const fieldCount =
-    properties && typeof properties === 'object' && !Array.isArray(properties)
-      ? Object.keys(properties).length
-      : 0;
-  const fieldLabel = `${fieldCount} ${fieldCount === 1 ? 'field' : 'fields'}`;
-  return inputSchema.additionalProperties === false
-    ? `${fieldLabel} · unknown fields rejected`
-    : fieldLabel;
 }
 
 function NegotiationCard({

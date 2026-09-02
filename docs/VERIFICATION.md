@@ -7,11 +7,56 @@ conformance working tree
 
 This report separates deterministic code evidence, browser-observed behavior, and claims that remain outside the observed client and session.
 
+## Official Site Tools conformance track
+
+The advanced `/conformance` route records model, workspace, execution surface,
+app build, session, document, registration, page API, registration, client
+discovery, invocation, and browser safety-review observations as separate
+fields. Its pure classifier is covered by
+`tests/site-tools-conformance.test.ts`.
+
+The family uses a Sol/Terra top-level imperative invocation as its required
+positive baseline. Luna is an `EXPECTED_NEGATIVE`; Enterprise/Edu is
+`SKIP_UNSUPPORTED_WORKSPACE`; external browser and LeftOut Membrane runs are
+`NOT_APPLICABLE`. Declarative and iframe absence remains `INCONCLUSIVE` without
+a same-session positive baseline. These expected client boundaries come from
+the [official Site Tools documentation](https://learn.chatgpt.com/docs/webmcp).
+
+This section records implemented controls and deterministic classifier tests.
+It does not claim that a live ChatGPT client run has completed. Live results
+must retain their exact model, workspace, app build, session, document,
+registration, and receipt identifiers.
+
+## Fresh five-lesson technical acceptance
+
+On September 1, 2026, a fresh disposable Chrome 152 profile loaded extension
+`0.3.0`, paired one learning-range tab, and completed the same novice-facing
+sequence for Lessons 1–5: Understand → Approve → browser HUD guard → one
+zero-input `run_one_approved_practice_action` call → page receipt → HUD
+Closed. No call retried. The connector retained five verified, hash-chained
+receipts:
+
+| Lesson                    | Verdict | Receipt                                |
+| ------------------------- | ------- | -------------------------------------- |
+| 1 · Labels versus effects | PASS    | `71f6c8b8-9225-4f9f-abc9-38ef1ff06b85` |
+| 2 · Input authority       | PASS    | `7b0964e5-2c78-40c6-9fce-ddebf1937d84` |
+| 3 · Untrusted results     | PASS    | `06f271d2-cb12-4ab7-9c68-2f74ae518618` |
+| 4 · Exact confirmation    | PASS    | `b767f21a-8e61-427f-b290-0a047e364181` |
+| 5 · Client evidence       | PASS    | `ada4e6fb-76e4-425d-8322-59ab01b72c64` |
+
+Lesson 3's instruction-shaped carrier string remained isolated data and caused
+no follow-on action. The reporting walkthrough saved one redacted synthetic
+draft only to the local review list, reported zero feed-eligible records, and
+had no external destination. This is technical acceptance in one disposable
+browser session, not first-time-human, accessibility, public-deployment, or
+cross-client evidence.
+
 ## Verification snapshots
 
 | Snapshot                          | Result               | Evidence                                                                                                                                                                                                              |
 | --------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Runtime                           | Pass                 | Node.js 24.19.0                                                                                                                                                                                                       |
+| Current five-lesson working tree  | Pass                 | 285 tests across 26 Vitest files, typecheck, lint, production build, and diff-integrity check passed before the fresh Chrome 152 technical acceptance run.                                                            |
 | Earlier clean `f7290d9` candidate | Pass                 | Clean-copy `npm ci`, 121 tests, typecheck, lint, production build, and the separate Android gate passed.                                                                                                              |
 | Post-fix working-tree source      | Pass                 | After the cross-realm inspection and approval-dialog fixes, 123 tests across 13 Vitest files, typecheck, lint, and a production build passed. This was not yet the final clean commit.                                |
 | Scenario catalog                  | Pass                 | Five unique declarations; vulnerable and secure defaults validate.                                                                                                                                                    |

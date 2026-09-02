@@ -140,6 +140,8 @@ export function createPolicyArtifact(
   return {
     schemaVersion: '1.0',
     kind: 'webmcp-awareness-policy',
+    purpose: 'learning-only',
+    enforceable: false,
     generatedAt,
     match: {
       toolName: scenario.tool.name,
