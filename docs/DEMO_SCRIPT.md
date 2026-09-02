@@ -1,55 +1,86 @@
 # Three-minute demo script
 
-**Target runtime:** 2:45–2:55
+**Target runtime:** 2:40–2:55
 
-> **FROZEN VERSION 1 SCRIPT — DO NOT RECORD OR PUBLISH AS THE CURRENT MVP.**
-> Two connector receipt-return attempts failed; a later fresh one-call local
-> session completed the Chrome, unpacked-extension, connector, ledger, and
-> dashboard path. That bounded `PASS` does not update this frozen script or
-> establish universal compatibility. The extension remains unpacked, the
-> Android work is conformance-only, and the current MVP is not publicly
-> deployed. See [GO_NO_GO.md](GO_NO_GO.md).
+**Status:** recording candidate; no final video has been recorded
 
-## 0:00–0:25 — Heads-up before action
+Use a fresh eligible Sol or Terra built-in-browser session. Keep one live lab
+tab open throughout. Invoke only the exact generated synthetic capability and
+do not retry. If discovery or invocation is unavailable, record that limitation
+instead of substituting ordinary browser automation and calling it WebMCP.
 
-> This page just offered my agent a WebMCP tool. Before anything runs, Left Out Security gives me a calm heads-up: the tool name, inputs, safety claims, permission and registration state, and the exact rule that deserves attention. Detection is automatic. Invocation is not.
+## 0:00–0:25 — A website just offered the agent an action
 
-Show the opening heads-up. Point to “No auto-run,” the five separate state cells, and `WMC-001`.
+> WebMCP lets this page offer an action directly to my AI in the same browser
+> session. An offer is not approval, and a read-only label is not proof. This
+> lab teaches a person and their agent to inspect the authority and verify the
+> effect together.
 
-## 0:25–0:50 — Human and agent inspect together
+Show the first viewport, “Observed · not run,” and the separate facts for page
+offer, client discovery, invocation, and receipt.
 
-> The page says eligibility lookup. The agent sees the same reassuring description and `readOnlyHint: true`. I ask the agent to inspect the registered tool but not call it yet. Registration, policy, discovery, and invocation are different facts, so the lab never turns one green badge into a universal claim.
+## 0:25–0:45 — Choose only a path this client supports
 
-Ask: “Inspect the WebMCP tool on this page. Explain its schema and annotations. Do not invoke it.” Show discovery while invocation remains “not-observed.”
+> The setup gate checks the actual page API. It recommends built-in Site Tools
+> only when detected, keeps the separate Local Guard path explicit, and always
+> offers a no-invocation learning path. One observation never becomes a
+> universal-support claim.
 
-## 0:50–1:35 — Approve and expose the hidden effect
+Choose the detected built-in path. Briefly show the six-step tour and finish at
+Lesson 1.
 
-> Before approval, the lab aligns three things: what I was shown, what the agent was declared, and the predicted risk. Now I approve one harmless synthetic call.
+## 0:45–1:20 — Inspect and reduce authority
 
-Approve the actual page tool with `account_id: TRAINING-1042`. Show `reviewed: false → true` and `reviewCount: 0 → 1`.
+> The page offers a broad eligibility tool. We compare the human task with the
+> declared schema and handler effect, then reduce it to one read of synthetic
+> account TRAINING-1042. The generated capability accepts no inputs, expires,
+> permits one attempt, forbids mutation and cross-account access, and cannot be
+> retried automatically.
 
-> The handler returned a normal eligibility result—but it also wrote state. The receipt labels the channel `webmcp`, preserves before and after state, and explains why the claim fails. An annotation can guide an agent; it cannot constrain code.
+Open the exact approval. Point to target, allowed effect, prohibited effects,
+empty inputs, use limit, expiry, and “approval does not invoke.” Approve once.
 
-Show the Effective column and receipt id.
+## 1:20–1:45 — Ask the agent once
 
-## 1:35–2:20 — Translate the same finding for a builder
+Say to the same agent:
 
-> The user’s warning now becomes a builder’s repair plan: truthful naming, a narrow schema, implementation before and after, and the regression test to add. I run the secure contract against a fresh fixture.
+> Run the one approved practice action once. Do not retry or invoke another
+> Site Tool.
 
-Scroll to Builder fix and run the secure retest. Show `PASS` and the appended ledger receipt.
+Show the agent selecting the uniquely named generated action. Do not run the
+broad source tool, a fallback harness, or a second action.
 
-> The secure read handler leaves state byte-for-byte unchanged. That closes the loop: detect, understand, approve, observe, fix, and verify.
+## 1:45–2:10 — Verify what actually happened
 
-## 2:20–2:40 — Reusable policy
+> The receipt compares the required result with before and after state, checks
+> side effects, and proves whether the one-use authority closed. We trust this
+> observed evidence—not the original name or annotation.
 
-> The same risk engine exports an allow, warn, ask, or block policy artifact.
-> That is a foundation for future browser tooling; it is not evidence that the
-> current connector completed end-to-end receipt transport.
+Show PASS or FAIL, byte-identical state, zero side effects, closed authority,
+and the receipt ID. A failure is still a valid demo result if reported honestly.
 
-Show the policy-artifact button and briefly switch to Scenario 02 so the live tool and rule change to `update_short_notice` / `WMC-002`.
+## 2:10–2:35 — Teach the wider security model
 
-## 2:40–2:55 — Close
+> Four more synthetic lessons cover over-broad inputs, instruction-shaped
+> results, misleading confirmation, and client-support overclaims. The optional
+> Local Guard explores browser monitoring and one-use enforcement, but it is a
+> separate local preview—not part of OpenAI’s built-in Site Tools gate.
 
-> Five controlled fixtures. Real page-defined WebMCP. One experience for people and builders. Trust the effect, not the label.
+Show the five lesson cards and the Local Guard explanation without claiming a
+signed release or invoking another action.
+
+## 2:35–2:50 — Evidence without automatic reporting
+
+> A receipt is private evidence. A report is a separate, minimized lead for
+> human review. Synthetic exercises are never feed eligible, and nothing is
+> published automatically.
+
+Show the safe-report explanation and the explicit zero-automatic-publication
+boundary.
+
+## 2:50–2:55 — Close
+
+> See what the site offered. Approve less. Verify what happened. Trust the
+> effect, not the label.
 
 This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.

@@ -394,8 +394,9 @@ Read [SECURITY.md](SECURITY.md) before extending a fixture.
 
 ## Contest materials
 
-- [Frozen Devpost draft](docs/CONTEST_SUBMISSION.md)
-- [Frozen three-minute video script](docs/DEMO_SCRIPT.md)
+- [Submission readiness gate](docs/CONTEST_READINESS.md)
+- [Current contest submission candidate](docs/CONTEST_SUBMISSION.md)
+- [Current three-minute video script](docs/DEMO_SCRIPT.md)
 - [Contest-period work log](docs/CONTEST_PERIOD_WORK.md)
 - [Verification report](docs/VERIFICATION.md)
 - [Current go/no-go decision](docs/GO_NO_GO.md)

@@ -1,15 +1,10 @@
 # Contest submission copy
 
-> **FROZEN VERSION 1 DRAFT — DO NOT SUBMIT AS THE CURRENT MVP.** The existing
-> public URL remains available only as the frozen version 1 baseline. The
-> completed [prior-art audit](../PRIOR_ART.md) is a NO-GO for novelty,
-> patentability, or freedom-to-operate clearance claims. The current local MVP
-> completed one later bounded connector receipt-return run after two earlier
-> failures, but it has not been publicly deployed and does not establish
-> universal compatibility. Recording this frozen script as the current MVP and
-> public submission remain blocked by [GO_NO_GO.md](GO_NO_GO.md). This document
-> is not evidence of originality, priority, legal clearance, or current-MVP
-> deployment.
+> **CURRENT CANDIDATE — NOT YET SUBMITTED.** The public application is live,
+> but submission remains blocked until the public GitHub branch, final video,
+> and contest-form rules pass [CONTEST_READINESS.md](CONTEST_READINESS.md).
+> This copy makes no novelty, patentability, universal-compatibility, or
+> production-security claim.
 
 ## Project title
 
@@ -21,77 +16,119 @@ Trust the effect, not the label.
 
 ## Links
 
-- **Frozen version 1 app:** <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>
+- **Live application:** <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>
 - **Open-source repository:** <https://github.com/savage-content/webmcp-security-lab>
-- **Demo video:** add the public YouTube URL after recording
+- **Demo video:** not yet recorded; this is a submission blocker
 
 ## One-sentence summary
 
-A controlled WebMCP test range where a human and an agent use the same page
-while append-only evidence records whether the visible interface, declared
-agent capability, and actual behavior match.
+An interactive WebMCP security range where a first-time learner and their agent
+inspect what a page offers, reduce it to one exact action, run it once, and
+compare the promise with the observed effect and receipt.
 
 ## The problem
 
-Agent-ready pages introduce a new security surface. A button can say “preview,” a tool description can say “read-only,” and an annotation can repeat that claim—while the handler still performs a write. Likewise, a tool result can contain instruction-shaped untrusted text, and a page can confuse registration with discovery by a particular client.
+WebMCP lets a page offer actions directly to an AI agent in the same live
+browser session. Names, descriptions, schemas, annotations, confirmation copy,
+and returned success text can all differ from what a handler actually does.
+Registration also does not prove client discovery, safety review, invocation,
+or universal browser support.
 
-Security review cannot stop at names, schemas, confirmation copy, or returned success text. We need to observe the Effective Surface.
+People need a practical way to see those distinctions before trusting a new
+agent-facing web action. Builders need a repeatable way to inspect, constrain,
+verify, and explain them.
 
 ## The solution
 
-The WebMCP Security Lab provides five deliberately vulnerable, harmless fixtures. The selected fixture is registered as a real page-scoped tool through `document.modelContext.registerTool()`. A supported client can discover and invoke it, while any browser can run the same handler through a clearly labeled educational fallback.
+The lab starts with a required client/setup check and a six-step first-time
+walkthrough. Five harmless synthetic lessons then teach:
 
-Every run captures:
+1. trust the effect, not a read-only label;
+2. give an agent only the fields its task needs;
+3. treat instruction-shaped tool output as untrusted data;
+4. require confirmation text to name the real change; and
+5. keep API support, registration, policy, discovery, and invocation separate.
 
-- the Presented Surface;
-- the exact Declared Agent Surface;
-- the Effective Surface, including raw result and before/after state;
-- a pass/fail verdict, debrief, and remediation; and
-- a downloadable JSON receipt, with ordinary frozen-version-1 receipts
-  eligible for append-only D1 persistence.
+Each lesson compares the human-visible task, declared Site Tool, and effective
+result. The learner can reduce a broad practice action to a uniquely named,
+zero-input, one-use capability. Approval registers that narrower capability but
+does not invoke it. A compatible agent may invoke it once, without retry, and
+the page records before/after state, side effects, authority closure, and a
+receipt.
 
-## Why human + agent collaboration matters
+The public experience also explains the optional LeftOut Local Guard: a
+separate, local development preview for Chromium monitoring, change alerts,
+one-use enforcement, and local receipt review. It is not required for the
+built-in Site Tools path and is not represented as a hosted service or signed
+store release.
 
-The human contributes intent, context, and approval. The agent contributes structured capability discovery and repeatable invocation. The lab puts both views side by side, then grounds the conversation in shared evidence. That makes subtle security mismatches legible to developers, reviewers, and non-specialist judges.
+## Why the human and agent work together
 
-## Five fixtures
+The human supplies intent and decides whether one exact action is acceptable.
+The agent inspects the declared capability and, only after approval, invokes
+the protected action. Both return to the same page to compare what was shown,
+what was declared, and what was observed.
 
-1. A read-only eligibility lookup that marks a synthetic account reviewed.
-2. A short-notice tool whose schema quietly exposes target and instruction fields.
-3. A delivery-status result with controlled prompt-injection text.
-4. A preview confirmation that changes a synthetic subscription.
-5. A universal-support claim that collapses registration, policy, and client discovery.
+The walkthrough deliberately separates:
 
-Each includes a secure-design comparison with a narrow schema, truthful description and confirmation, and verifiable result.
+- offered;
+- discovered;
+- approved;
+- invoked; and
+- verified.
 
-## How it was built
+That shared evidence makes new protocol behavior understandable without
+pretending that a green badge or a reassuring annotation is enforcement.
 
-- React 19 and Vinext for the web experience.
-- The imperative WebMCP API on `document.modelContext` with feature detection and abort-driven registration lifecycle.
-- Pure TypeScript scenario engine shared by WebMCP and the fallback harness.
-- Zod validation for inputs and complete evidence receipts.
-- Cloudflare D1 plus Drizzle migrations for append-only evidence.
-- Vitest coverage for state transitions, schema boundaries, prompt-injection output, and receipt generation.
-- A Cloudflare Worker-compatible Sites deployment for the frozen version 1
-  baseline. The current MVP has not been publicly deployed.
+## Technical implementation
 
-## Safety
+- React 19 and Vinext for the public learning experience.
+- Top-level imperative `document.modelContext.registerTool()` registration
+  with browser feature detection and registration-lifecycle cleanup.
+- Pure TypeScript fixtures and capability contracts.
+- Exact, zero-input, one-use generated capabilities for the controlled path.
+- Zod validation, before/after comparison, and append-only evidence receipts.
+- Cloudflare D1 persistence for public lab receipts.
+- A deterministic, allowlisted Manifest V3 Local Guard preview package.
+- A disconnected, privacy-minimized reporting and moderation core; no public
+  intake or feed endpoint is enabled.
 
-No credentials, real accounts, production APIs, email, purchases, exfiltration, or uncontrolled external effects are used. Every identity and object is visibly synthetic, every fixture is resettable, and every client limitation is reported rather than guessed.
+## Verification
 
-## What was added during the contest period
+The current candidate passed a clean Node.js 24 install, 339 automated tests,
+typecheck, lint, production build, deterministic Local Guard packaging, and a
+live non-invoking walkthrough/accessibility regression. Earlier bounded browser
+runs produced passing receipts for all five synthetic lessons through the
+local extension/connector path.
 
-The recoverable repository history timestamps the application architecture, visual system, scenario engine, five fixtures, WebMCP registration, evidence schema and D1 adapter, tests, migrations, safety materials, deployment configuration, social preview, and demo script within the contest window. Repository history has two joined roots and one retained older-checkout commit, as documented in the prior-art audit. This chronology is not a claim of independent invention; several constituent security controls have earlier public prior art.
+The automated checks do not replace a first-time human study, screen-reader
+operator, contest-rules audit, or final recorded demo. Those gates remain
+explicit in [CONTEST_READINESS.md](CONTEST_READINESS.md).
+
+## Safety and claim boundary
+
+All accounts, deliveries, notices, subscriptions, and observations are
+synthetic. The public lab needs no credentials, production integrations,
+purchases, messages, email, or uncontrolled external effect. Instruction-shaped
+fixture text remains data and causes no follow-on action.
+
+The project does not claim that WebMCP is universally available, that Site Tool
+metadata is trustworthy, that the optional Local Guard is a production control,
+or that this work is novel, patented, independently validated, or cleared for
+freedom to operate.
 
 ## Current limitations
 
-WebMCP is experimental and client support varies. The lab treats this as
-evidence, not an inconvenience: unsupported and undiscovered states are
-first-class outputs. Two connector receipt-return attempts failed; a later
-fresh run completed the local extension-to-connector path, but the successful
-session did not retain a fresh exact browser-version readout and does not prove
-the replay-during-delay or broader compatibility matrix. The extension remains
-unpacked, the Android work is conformance-only, and public deployment or
-submission remains blocked by the dated public-release NO-GO.
+- Site Tools availability depends on the exact client, model, workspace,
+  rollout, registration, and session.
+- The built-in client currently supports only a subset of the broader WebMCP
+  proposal, so the lab records unsupported surfaces rather than converting
+  their absence into a security pass.
+- The Local Guard remains an unsigned developer preview with a loopback
+  companion.
+- Reporting remains local/disconnected until authentication, privacy,
+  retention, abuse, review, correction, and publication controls exist.
+- Android is a conformance prototype, not a device-validated product.
+- Real first-time-human, screen-reader, and 200% zoom acceptance remain pending.
 
 This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
