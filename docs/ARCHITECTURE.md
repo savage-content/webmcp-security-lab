@@ -4,10 +4,10 @@
 
 The product teaches a first-time human and agent what WebMCP offers, protects
 one exact approved action through a browser-owned Membrane, and turns verified
-local evidence into a privacy-minimized issue preview. The frozen version 1 lab
-still provides the five synthetic security fixtures. The current working tree
-adds a local connector, unpacked extension, and isolated Android conformance
-prototype. None of those additions has been publicly deployed.
+local evidence into a privacy-minimized issue preview. Public commit `5ba6e97`
+adds the required setup gate and first-visit walkthrough to the five synthetic
+fixtures. The Local Guard, connector, moderation core, reporting workbench, and
+isolated Android conformance prototype remain local and undeployed.
 
 ## Three client surfaces
 
@@ -232,6 +232,13 @@ require explicit consent, quarantine, human review, and a separately minimized
 publication record before any JSON or NDJSON security-tooling feed. Raw
 receipts, page text, paths, queries, screenshots, tool strings, result strings,
 permits, conversations, and reporter identifiers are not feed fields.
+
+The local productization candidate adds a pure moderation state machine. A
+strict public-web draft begins in `quarantined`, can reach `published` only
+through `under_review` and `accepted_private`, and must then pass the separate
+hostname-consent and evidence-basis projection gate. The module adds no network
+route or durable store; caller-supplied state is not treated as authenticated
+human review.
 
 Indexes match the actual read patterns:
 

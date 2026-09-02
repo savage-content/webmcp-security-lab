@@ -1,0 +1,7 @@
+flowchart LR
+  P[Untrusted WebMCP page] -->|selected-tab MAIN-world adapter| E[Unpacked Local Guard extension]
+  E -->|HTTP on exact loopback ports| B[Loopback bridge]
+  B --> C[Local connector]
+  A[Local MCP agent] -->|URL token| C
+  C --> L[(Local receipt ledger)]
+  E -. browser profile compromise remains in scope boundary .- P

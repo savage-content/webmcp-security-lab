@@ -21,10 +21,10 @@ and the local [conformance family](docs/SITE_TOOLS_CONFORMANCE.md).
 
 **License:** [MIT](LICENSE)
 
-> **Working status (September 2, 2026): the last explicitly deployed Sites
-> version contains a separately saved five-lesson beginner page; repository HEAD
-> and working-tree changes are not deployment evidence. The Local Guard,
-> connector, and reporting workbench remain local development software.** A
+> **Working status (September 2, 2026): commit `5ba6e97` is explicitly deployed
+> as Sites version 10 at the public URL. It includes the required setup gate,
+> six-step first-visit walkthrough, and five-lesson beginner page. The Local
+> Guard, connector, and reporting workbench remain local development software.** A
 > fresh Chrome 152 run completed all five lessons
 > through the unpacked extension and loopback connector with one zero-input
 > call per lesson and no retries. All five receipts returned `PASS`, the HUD
@@ -43,15 +43,15 @@ run used the then-current page, extension, and restarted connector in a fresh
 Chrome 152 profile. Neither run proves a future commit, signed package, direct
 Site Tools support, or another client.
 
-| Current component                                    | Status                                                                                                                      |
-| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Public learning range                                | The last explicitly deployed saved version is live; it does not establish that repository HEAD or this working tree is live |
-| Five guided page capabilities                        | `PASS` in one fresh Chrome 152 sequence; one exact call per lesson and no retries                                           |
-| Connector receipt path                               | `PASS` for five validated receipts, the hash chain, local redacted draft, and zero feed-eligible records                    |
-| Browser extension                                    | Manifest V3 development prototype validated locally; unpacked and unsigned                                                  |
-| Android                                              | JVM/API conformance prototype; not device-invokable                                                                         |
-| Deployment split                                     | Last explicitly deployed saved version: learning site only; this working tree, extension, and connector are not live        |
-| Novelty, patentability, or freedom-to-operate claims | NO-GO under the technical prior-art review; no legal infringement conclusion                                                |
+| Current component                                    | Status                                                                                                      |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Public learning range                                | Commit `5ba6e97`, Sites version 10, is live with the setup gate, first-visit walkthrough, and five lessons  |
+| Five guided page capabilities                        | `PASS` in one fresh Chrome 152 sequence; one exact call per lesson and no retries                           |
+| Connector receipt path                               | `PASS` for five validated receipts, the hash chain, local redacted draft, and zero feed-eligible records    |
+| Browser extension                                    | Manifest V3 development preview; deterministic package and integrity manifest now available, still unsigned |
+| Android                                              | JVM/API conformance prototype; not device-invokable                                                         |
+| Deployment split                                     | Public learning site only; Local Guard, connector, moderation core, and reporting workbench are not hosted  |
+| Novelty, patentability, or freedom-to-operate claims | NO-GO under the technical prior-art review; no legal infringement conclusion                                |
 
 ## Why this lab exists
 
@@ -87,8 +87,9 @@ session-scoped `/conformance` family that captures model, workspace, app build,
 document, registration, discovery, and invocation separately. A fresh Chrome
 152 technical acceptance run completed Lessons 1–5 through the Local Guard
 path. A live Sol/Terra built-in-client conformance run remains outstanding. A
-public intake,
-moderation service, and machine feed remain intentionally disabled pending a
+A strict quarantine/moderation state machine and minimized feed projection are
+implemented locally, but public intake, reviewer authentication, durable
+moderation storage, and feed serving remain intentionally disabled pending a
 dedicated privacy and security review.
 
 ## The guided experience
@@ -229,6 +230,8 @@ connector runtime.
 See [docs/PRODUCT.md](docs/PRODUCT.md),
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and
 [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
+The productization choices and rollout gates are in the
+[Local Guard and reporting hardening review](docs/hardening/local-guard-reporting-2026-09-02/hardening.md).
 
 ## Local development
 
@@ -247,6 +250,18 @@ bridge, setup center, non-secret status descriptor, and receipt viewer—run:
 ```bash
 npm run desktop:alpha
 ```
+
+Create a deterministic, allowlisted Local Guard preview ZIP plus per-file and
+archive SHA-256 metadata with:
+
+```bash
+npm run local-guard:package
+```
+
+This package is a reviewable developer preview, not a signed Chrome Web Store
+release. Packaging fails if the MV3 permissions, exact loopback hosts, runtime
+file allowlist, local popup references, symlink boundary, or dynamic-code rule
+changes.
 
 This starts a hidden, detached operator worker on Windows, waits until it is
 ready, and then returns control to the terminal. It therefore survives the
@@ -315,7 +330,7 @@ The automated suite covers:
   behavior, revocation, and failure handling.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The current automated suite passes 318/318
+separate Android conformance script. The current automated suite passes 339/339
 tests, typecheck, lint, and a production build on Node.js 24. Live connector
 evidence is recorded separately: the
 September 1 target-client run satisfied the bounded end-to-end checks in
@@ -350,10 +365,10 @@ Receipts can be downloaded as JSON. There are no update or delete endpoints. Req
 
 ## Deployment
 
-The public URL hosts only the Sites version that was last explicitly deployed;
-repository and working-tree changes are not live merely because they exist,
-are committed, or are pushed.
-That deployment contains the beginner page and synthetic Site Tools fixtures.
+The public URL currently hosts commit `5ba6e97` as Sites version 10. Repository
+and later working-tree changes are not live merely because they exist, are
+committed, or are pushed. That deployment contains the beginner page and
+synthetic Site Tools fixtures.
 It does not host or distribute the Local Guard extension, loopback
 connector, private reporting workbench, public intake, moderation service,
 security-tooling feed, or Android client.

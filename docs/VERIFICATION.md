@@ -1,16 +1,46 @@
 # Verification report
 
-> Historical verification snapshot from September 1, 2026. A separately saved
-> version of the beginner web learning page was subsequently published, but the Local Guard, connector,
-> private reporting workbench, and Android prototype remain outside that public
-> deployment. Current automated counts are recorded in the README.
+> The September 1 technical evidence is retained below. A September 2 addendum
+> records the explicitly deployed novice release and the local productization
+> candidate. Local Guard, connector, private reporting, moderation, and Android
+> remain outside the public deployment.
 
-**Report date:** 2026-09-01
-**Scope:** frozen version 1.0.2 browser evidence plus the local, undeployed
-`codex/capability-negotiator` web, connector, unpacked-extension, and Android
-conformance working tree
+**Report date:** 2026-09-02
+**Scope:** public commit `5ba6e97`, historical version 1.0.2 browser evidence,
+and the local undeployed Local Guard, connector, moderation, and Android
+candidate
 
 This report separates deterministic code evidence, browser-observed behavior, and claims that remain outside the observed client and session.
+
+## September 2 public novice and productization addendum
+
+Commit `5ba6e97` was saved as Sites version 10 and deployed successfully to
+<https://left-out-webmcp-security-lab.taitfor.chatgpt.site>. In the Codex
+in-app browser, the live page exposed the required setup check and automatically
+opened the six-step first-time walkthrough. The page detected the actual Site
+Tools page API, recommended the viable built-in path, unlocked Lesson 1, and
+presented an exact `TRAINING-1042` read-only approval. The dialog named the
+target, effect, no-input boundary, one-attempt/no-retry limit, prohibited
+changes, expiry, and the distinction between approval and invocation. The test
+selected **Not now**; no generated capability was approved or invoked.
+
+The live accessibility tree had one main landmark, one H1, coherent heading
+levels, named navigation, and no unnamed buttons, links, textboxes, checkboxes,
+or comboboxes. Keyboard Tab moved through the approval controls, Escape closed
+the dialog, and focus returned to its launcher. Source checks cover responsive
+dialog scrolling and the 360 CSS px Local Guard popup. The live baseline lacked
+a reduced-motion override; the next release candidate adds it to the public
+page and extension. Independent first-time-human, real screen-reader, 200%
+zoom, and human 360 px popup acceptance remain pending and are not inferred
+from automation. See [NOVICE_ACCEPTANCE.md](NOVICE_ACCEPTANCE.md).
+
+The local productization candidate adds a deterministic, allowlisted Local
+Guard ZIP and SHA-256 release manifest plus a strict public-web-only quarantine
+state machine. Publication requires `under_review` → `accepted_private` →
+`published` and the existing consent/evidence gate. Synthetic and local records
+remain ineligible. No public intake, reviewer authentication, durable moderation
+store, or feed route was added. The current suite passes 339 tests across 36
+files; the exact full verification gate is recorded with the release commit.
 
 ## Official Site Tools conformance track
 
@@ -61,7 +91,8 @@ cross-client evidence.
 | Snapshot                          | Result               | Evidence                                                                                                                                                                                                              |
 | --------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Runtime                           | Pass                 | Node.js 24.19.0                                                                                                                                                                                                       |
-| Current five-lesson working tree  | Pass                 | 285 tests across 26 Vitest files, typecheck, lint, production build, and diff-integrity check passed before the fresh Chrome 152 technical acceptance run.                                                            |
+| Current productization candidate  | Pass                 | 339 tests across 36 Vitest files passed; typecheck, lint, production build, deterministic package generation, and clean-commit status are release gates.                                                              |
+| Earlier five-lesson working tree  | Pass                 | 285 tests across 26 Vitest files, typecheck, lint, production build, and diff-integrity check passed before the fresh Chrome 152 technical acceptance run.                                                            |
 | Earlier clean `f7290d9` candidate | Pass                 | Clean-copy `npm ci`, 121 tests, typecheck, lint, production build, and the separate Android gate passed.                                                                                                              |
 | Post-fix working-tree source      | Pass                 | After the cross-realm inspection and approval-dialog fixes, 123 tests across 13 Vitest files, typecheck, lint, and a production build passed. This was not yet the final clean commit.                                |
 | Scenario catalog                  | Pass                 | Five unique declarations; vulnerable and secure defaults validate.                                                                                                                                                    |
@@ -99,12 +130,12 @@ still running from `f7290d9`; it was not a live test of a future final commit.
 
 | Component                                           | Result                      | Evidence boundary                                                                                                                                                                                                                    |
 | --------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Frozen version 1 URL                                | Published baseline          | The existing public site does not contain or validate the current working MVP.                                                                                                                                                       |
+| Public novice URL                                   | Published baseline          | Commit `5ba6e97`, Sites version 10, contains the required setup gate, first-visit walkthrough, and five-lesson page; it does not host Local Guard or reporting services.                                                             |
 | Scenario 1 page invocation                          | **Pass, local only**        | The latest fresh call produced receipt `d421aaaf-262d-4fbe-81ab-e93acb5efce9` with byte-identical state and zero effects; earlier page-only receipts remain bounded to their failed transport attempts.                              |
 | Connector receipt transport                         | **Pass, one local session** | Session `a5512afe-c096-4909-97b9-b2b5af1194eb` returned, validated, appended, and displayed the exact receipt under ledger entry `abc6b79c-c4fc-44b4-b2ce-5da7e525b5fa`. This does not convert the two earlier failures into passes. |
-| Extension                                           | Limited                     | Manifest V3 version `0.1.3` was loaded unpacked and paired to the exact local retest page; no signed or store-distributed package was tested.                                                                                        |
+| Extension                                           | Limited                     | Manifest V3 `0.3.0` completed one five-lesson unpacked run. A deterministic preview package now exists locally; no signed or store-distributed package was tested.                                                                   |
 | Android                                             | Conformance only            | JVM behavior and the API-36 boundary do not establish generated AppFunction metadata or on-device discovery and invocation.                                                                                                          |
-| Public deployment of current MVP                    | Not performed               | Hosting configuration and the frozen version 1 deployment are not deployment evidence for this working tree.                                                                                                                         |
+| Public deployment of local products                 | Not performed               | Local Guard, connector, report viewer, moderation core, feed projection, and Android are not hosted or distributed by the public lab.                                                                                                |
 | Novelty, patentability, or freedom-to-operate claim | **No-go**                   | The technical prior-art review permits no such claim and supplies no legal infringement conclusion or clearance.                                                                                                                     |
 
 ## Evidence-integrity checks

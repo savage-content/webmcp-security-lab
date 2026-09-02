@@ -185,6 +185,17 @@ describe('desktop alpha launcher contract', () => {
     ).toBe(false);
   });
 
+  it('honors an isolated runtime-directory override in operator mode', () => {
+    vi.stubEnv('LEFTOUT_ALPHA_RUNTIME_DIRECTORY', 'C:\\isolated-runtime');
+    try {
+      expect(desktopAlphaOperatorPaths().runtimeDirectory).toBe(
+        'C:\\isolated-runtime',
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('honors only a stop request bound to the current run', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'leftout-alpha-stop-'));
     const requestPath = join(directory, 'stop-request.json');

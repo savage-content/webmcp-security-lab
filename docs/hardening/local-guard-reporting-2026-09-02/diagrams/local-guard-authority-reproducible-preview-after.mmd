@@ -1,0 +1,8 @@
+flowchart LR
+  P[Untrusted WebMCP page] -->|selected document only| E[Allowlisted MV3 files]
+  M[Deterministic release manifest] -->|permissions and SHA-256 gate| E
+  E -->|exact loopback hosts only| B[Loopback bridge]
+  B --> C[Local connector]
+  A[Local MCP agent] -->|short-lived local token| C
+  C --> L[(Local receipt ledger)]
+  G[Preview-only release channel] --> M

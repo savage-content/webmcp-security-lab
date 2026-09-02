@@ -1,0 +1,8 @@
+flowchart LR
+  P[Untrusted WebMCP page] -->|selected document only| E[Signed Local Guard extension]
+  E -->|extension-ID allowlisted native messaging| H[Installed native host]
+  A[Local MCP agent] -->|stdio or OS-owned IPC| H
+  H --> L[(Private receipt ledger)]
+  I[Signed installer and updater] --> E
+  I --> H
+  H -. no browser-accessible bridge port .- P

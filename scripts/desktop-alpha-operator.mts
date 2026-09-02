@@ -39,7 +39,8 @@ export interface DesktopAlphaOperatorPaths {
 }
 
 export function desktopAlphaOperatorPaths(
-  runtimeDirectory = defaultDesktopAlphaRuntimeDirectory(),
+  runtimeDirectory = process.env.LEFTOUT_ALPHA_RUNTIME_DIRECTORY ??
+    defaultDesktopAlphaRuntimeDirectory(),
 ): DesktopAlphaOperatorPaths {
   return {
     runtimeDirectory,

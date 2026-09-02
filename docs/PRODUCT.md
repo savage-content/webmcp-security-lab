@@ -62,11 +62,14 @@ Current alpha coverage is deliberately visible: all five lessons can produce a
 page-scoped one-use capability. The Local Guard path is wired end to end through
 the extension, relay, receipt, and reporting workbench; a fresh Chrome 152 run
 completed all five lessons with one zero-input call per lesson and no retries.
-The direct built-in Site Tools path is implemented in the page but still needs a
-live, model-captured Sol/Terra acceptance run. First-time human, accessibility,
-and broader cross-client acceptance remain outstanding. The first-visit tour
-has automated content coverage and a desktop-browser interaction pass, but it
-has not yet completed formal screen-reader or mobile acceptance.
+The direct built-in Site Tools path is implemented and the deployed
+`5ba6e97` release completed a model-controlled browser acceptance through the
+exact approval boundary without invoking a tool. A live authorized invocation,
+first-time independent human, screen-reader, 200% zoom, and broader cross-client
+acceptance remain outstanding. The browser accessibility tree, control names,
+keyboard dialog path, Escape behavior, focus restoration, responsive dialog
+contract, and 360 px popup contract have passed technical checks. See
+[NOVICE_ACCEPTANCE.md](NOVICE_ACCEPTANCE.md).
 
 ### Protect
 
@@ -119,8 +122,10 @@ Every automated result and related report must state exactly:
 
 > This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
 
-Public submission, moderation, and feeds remain disabled until a dedicated
-privacy and security review approves the destination, retention, abuse controls,
+A strict quarantine transition core and minimized feed projection now exist as
+local code. Public submission, authenticated moderation, durable review storage,
+and feed serving remain disabled until a dedicated privacy and security review
+approves the destination, identity boundary, retention, abuse controls,
 publication standard, and incident process.
 
 ## Agent behavior

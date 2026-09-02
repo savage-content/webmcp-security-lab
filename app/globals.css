@@ -150,7 +150,8 @@
     border-radius: var(--radius-xl);
     outline: 4px solid var(--accent-strong);
     outline-offset: 5px;
-    box-shadow: 0 0 0 10px color-mix(in oklch, var(--background) 78%, transparent);
+    box-shadow: 0 0 0 10px
+      color-mix(in oklch, var(--background) 78%, transparent);
   }
 
   .nav-link {
@@ -159,5 +160,20 @@
 
   .footer-link {
     @apply inline-flex items-center gap-1.5 transition-colors hover:text-foreground;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -1,0 +1,6 @@
+flowchart LR
+  R[Verified local receipt] --> D[Strict redacted draft]
+  D -->|explicit one-use save| Q[Session-scoped local review]
+  Q --> V[Local human preview]
+  Q -. synthetic and local blocked .-> F[Feed projection]
+  S[Connector stop or revoke] -->|erase scope| Q

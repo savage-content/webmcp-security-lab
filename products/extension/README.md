@@ -24,8 +24,8 @@ with Chrome 152 cancelling an in-flight call after registration abort, but no
 retained browser trace proves that cause. The later run completed successfully
 with the 50 ms callback-settlement shim, but replay during that delay remains
 mocked-test evidence and the successful browser version was not recaptured. It
-does not establish universal compatibility. This remains an unpacked local
-prototype, not a signed package, Chrome Web Store release, or public deployment.
+does not establish universal compatibility. This remains a local development
+preview, not a signed package, Chrome Web Store release, or public deployment.
 Manifest `0.3.0` adds the local safety HUD, one-click loopback challenge,
 automatic untrusted permit handoff, exact browser-document/session binding,
 connector-side revocation, and safe report opening. Those additions have
@@ -47,6 +47,21 @@ re-importing a permit cannot restore its one-use authority.
    offer as untrusted narrowing data, revalidates it, and binds it to the exact
    tab, document, and bridge session. Manual JSON/file import remains under
    **Technical details and recovery**; it is not part of the learner path.
+
+## Build the reviewable preview package
+
+From the repository root, run:
+
+```bash
+npm run local-guard:package
+```
+
+The command writes a deterministic ZIP, release manifest, and `SHA256SUMS.txt`
+under ignored `outputs/local-guard/`. It packages only the reviewed runtime
+allowlist and fails on MV3 permission drift, host-permission drift, unexpected
+service worker or popup references, symlinked inputs, or dynamic code. The
+result is still an unsigned developer preview; reproducibility does not provide
+a publisher identity or Chrome Web Store review.
 
 The bridge token is kept in `chrome.storage.local` and is never shown to the
 page or popup. The extension badge distinguishes observed, protected, changed,

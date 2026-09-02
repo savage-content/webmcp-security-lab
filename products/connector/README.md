@@ -90,9 +90,11 @@ not recaptured, and the future final commit itself was not live-run.
 - Receipts and issue drafts are separate stores and purposes. The scriptless
   local issue preview exposes only fixed, redacted synthetic fields. An exact,
   one-use action may save that displayed draft to a temporary, session-scoped
-  review list; it cannot submit or publish it. A real intake, moderation
-  service, or security-tooling feed requires a separate privacy and security
-  review.
+  review list; it cannot submit or publish it. A pure quarantine/moderation
+  state machine and minimized published-record projection are implemented and
+  tested, but they have no network or persistence route. A real intake,
+  authenticated moderation service, durable audit store, or security-tooling
+  feed requires a separate privacy and security review.
 
 ## Delivery durability boundary
 

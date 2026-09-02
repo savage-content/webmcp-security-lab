@@ -1,0 +1,5 @@
+flowchart LR
+  R[Verified local receipt] --> D[Strict redacted draft]
+  D --> Q[In-memory local review list]
+  Q --> X[No external endpoint]
+  Q -. ineligible .-> F[Security feed]

@@ -1,0 +1,530 @@
+{
+  "documentType": "codex-security.hardening-analysis",
+  "schemaVersion": "1.0",
+  "analysisId": "hardening_20260902_local_guard_reporting",
+  "sourceEvidence": {
+    "kind": "source_document_collection",
+    "label": "Local Guard and reporting source evidence",
+    "collectionSha256": "eab7c0cc8b710ed613fdc9cc155322e388eac9bfcad9ecce48e9ede2b7fb00cb",
+    "artifactCount": 12,
+    "targetRevision": "5ba6e97095918d8877e1e12c98faabb3b81a869f",
+    "sourceDrift": "present"
+  },
+  "assessment": {
+    "outcome": "opportunities_identified",
+    "summary": "The source supports a reproducible local preview now and two structural production gates: an owned desktop channel and authenticated quarantined reporting."
+  },
+  "constraints": {
+    "profile": "balanced",
+    "changeHorizons": ["incremental", "medium_term", "foundational"],
+    "nonNegotiables": [
+      "No automatic reporting or Site Tool invocation.",
+      "Synthetic and local exercises never enter external intake or a feed.",
+      "One-use authority is consumed before awaited work and never retried automatically.",
+      "Every automated result and report carries the required self-reported-evidence limitation."
+    ],
+    "assumptions": [
+      "No signing identity, production identity provider, moderation operator, approved retention policy, or performance budget was supplied."
+    ]
+  },
+  "opportunities": [
+    {
+      "opportunityId": "local-guard-authority-boundary",
+      "title": "Own the Local Guard authority boundary",
+      "summary": "Separate a reproducible developer preview from a signed desktop product with an OS-owned browser-to-host channel.",
+      "diagnosis": "The enforcement code is narrow, but unpacked installation and loopback HTTP leave publisher and inter-process authority at a development boundary.",
+      "evidence": [
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E-LG-1",
+          "path": "products/extension/manifest.json",
+          "claim": "The extension requests activeTab, scripting, storage, and exact loopback hosts only."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E-LG-2",
+          "path": "products/extension/background.js",
+          "claim": "The service worker owns document binding, permit validation, consume-before-execute, and no-retry enforcement."
+        },
+        {
+          "claimType": "inferred",
+          "sourceKind": "threat_model",
+          "evidenceId": "E-DOC-2",
+          "path": "docs/THREAT_MODEL.md",
+          "claim": "A general desktop release needs publisher identity and a stronger local channel; packaging alone cannot remove compromised-host risk."
+        }
+      ],
+      "desiredInvariants": [
+        "Every shipped byte is allowlisted and integrity-recorded.",
+        "A general release has a verifiable publisher and update identity.",
+        "The browser-to-host channel accepts only the installed extension identity.",
+        "Document-bound one-use authority cannot survive navigation, expiry, mismatch, or disconnect."
+      ],
+      "proposalPath": "proposals/local-guard-authority-boundary.md",
+      "options": [
+        {
+          "optionId": "reproducible-local-preview",
+          "title": "Reproducible loopback preview",
+          "kind": "incremental",
+          "summary": "Keep exact loopback transport and add a deterministic allowlisted ZIP, hashes, and an explicit preview release channel.",
+          "diagramPaths": {
+            "before": "diagrams/local-guard-authority-before.mmd",
+            "after": "diagrams/local-guard-authority-reproducible-preview-after.mmd"
+          },
+          "evidenceCoverage": [
+            {
+              "evidenceId": "E-LG-1",
+              "effect": "addresses",
+              "tacticalFixRequired": true,
+              "rationale": "Packaging fails when MV3 permission or host authority differs from the reviewed allowlist."
+            },
+            {
+              "evidenceId": "E-LG-2",
+              "effect": "unaffected",
+              "tacticalFixRequired": true,
+              "rationale": "Existing document and one-use enforcement remains the runtime control."
+            },
+            {
+              "evidenceId": "E-DOC-2",
+              "effect": "mitigates",
+              "tacticalFixRequired": true,
+              "rationale": "Release integrity improves, while trusted-local-machine and unpacked-identity risks remain explicit."
+            }
+          ],
+          "tradeoffs": [
+            {
+              "dimension": "security",
+              "direction": "improves",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "The artifact rejects reviewed permission, file, symlink, popup-reference, and dynamic-code drift; runtime transport is unchanged.",
+              "validationPlan": "Reproduce ZIP bytes and inspect members, permissions, hosts, and hashes on two clean checkouts."
+            },
+            {
+              "dimension": "performance",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "Packaging does not change the runtime path.",
+              "validationPlan": "Compare connector startup and invocation latency with the unpacked baseline."
+            },
+            {
+              "dimension": "memory",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "No process or retained runtime object is added.",
+              "validationPlan": "Confirm idle RSS remains within baseline variance."
+            },
+            {
+              "dimension": "reliability",
+              "direction": "improves",
+              "confidence": "medium",
+              "basis": "source-derived",
+              "assessment": "A fixed artifact reduces missing-file and unreviewed-file release mistakes; connector failures are unchanged.",
+              "validationPlan": "Install the generated artifact in a fresh profile and repeat all five lessons."
+            },
+            {
+              "dimension": "operability",
+              "direction": "regresses",
+              "confidence": "medium",
+              "basis": "source-derived",
+              "assessment": "Release review must retain ZIP and hash metadata, but no new service exists.",
+              "validationPlan": "Run one release rehearsal and record operator time and failure points."
+            },
+            {
+              "dimension": "migration",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "The same runtime files are packaged; unpacked loading remains available.",
+              "validationPlan": "Confirm existing pairing and lesson tests against packaged and unpacked copies."
+            }
+          ],
+          "residualRisks": [
+            "The extension is unsigned and the loopback/browser-profile trust boundary remains.",
+            "A reproducible artifact is not publisher identity or store review."
+          ],
+          "implementationReadiness": {
+            "affectedComponents": [
+              "products/extension",
+              "scripts/package-local-guard.mts"
+            ],
+            "workPackages": [
+              "Create deterministic artifact and integrity manifest.",
+              "Repeat fresh-profile acceptance."
+            ],
+            "acceptanceCriteria": [
+              "Identical inputs create identical ZIPs.",
+              "All five lessons pass without retries."
+            ],
+            "migrationNotes": [
+              "Label the artifact developer preview and retain unpacked fallback."
+            ],
+            "rollback": "Withdraw the preview ZIP, revoke sessions, and return testers to the reviewed unpacked directory."
+          }
+        },
+        {
+          "optionId": "signed-native-host",
+          "title": "Signed native-host product",
+          "kind": "structural",
+          "summary": "Use a signed extension and installer with extension-ID-bound native messaging and stdio or OS-owned IPC.",
+          "diagramPaths": {
+            "before": "diagrams/local-guard-authority-before.mmd",
+            "after": "diagrams/local-guard-authority-native-host-after.mmd"
+          },
+          "evidenceCoverage": [
+            {
+              "evidenceId": "E-LG-1",
+              "effect": "addresses",
+              "tacticalFixRequired": true,
+              "rationale": "A signed identity strengthens but does not replace exact manifest authority."
+            },
+            {
+              "evidenceId": "E-LG-2",
+              "effect": "mitigates",
+              "tacticalFixRequired": true,
+              "rationale": "The native channel narrows transport exposure while service-worker policy remains required."
+            },
+            {
+              "evidenceId": "E-DOC-2",
+              "effect": "mitigates",
+              "tacticalFixRequired": true,
+              "rationale": "It narrows local channel and publisher risk but cannot defend a compromised OS/profile."
+            }
+          ],
+          "tradeoffs": [
+            {
+              "dimension": "security",
+              "direction": "improves",
+              "confidence": "medium",
+              "basis": "source-derived",
+              "assessment": "Extension-ID allowlisting and OS-owned IPC remove the browser-accessible bridge port; the native host becomes privileged.",
+              "validationPlan": "Threat-model the native protocol and test unauthorized extension, user, and process access."
+            },
+            {
+              "dimension": "performance",
+              "direction": "unknown",
+              "confidence": "low",
+              "basis": "hypothetical",
+              "assessment": "Native process and IPC add hops whose cost is unmeasured.",
+              "validationPlan": "Measure startup p95 and end-to-end invocation latency against loopback."
+            },
+            {
+              "dimension": "memory",
+              "direction": "regresses",
+              "confidence": "low",
+              "basis": "hypothetical",
+              "assessment": "A native host process may add resident memory.",
+              "validationPlan": "Measure idle and peak RSS during five-lesson runs."
+            },
+            {
+              "dimension": "reliability",
+              "direction": "unknown",
+              "confidence": "low",
+              "basis": "hypothetical",
+              "assessment": "Channel ownership improves, while installer, host crash, and update states add failure modes.",
+              "validationPlan": "Test host crash/restart, lost replies, upgrade, rollback, and uninstall."
+            },
+            {
+              "dimension": "operability",
+              "direction": "regresses",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "Signing, installers, stores, updates, support, and incidents become owned operations.",
+              "validationPlan": "Run release and revocation tabletop exercises on every supported platform."
+            },
+            {
+              "dimension": "migration",
+              "direction": "regresses",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "The browser and local-agent adapters must migrate in parallel across platforms.",
+              "validationPlan": "Maintain protocol parity tests and a reversible preview adapter until native acceptance passes."
+            }
+          ],
+          "residualRisks": [
+            "The native host is a new privileged attack surface.",
+            "OS and browser-profile compromise remains outside the assurance claim."
+          ],
+          "implementationReadiness": {
+            "affectedComponents": [
+              "products/extension",
+              "products/connector",
+              "future native host and installers"
+            ],
+            "workPackages": [
+              "Specify native protocol.",
+              "Build signed installers.",
+              "Migrate browser and MCP channels.",
+              "Validate upgrades and rollback."
+            ],
+            "acceptanceCriteria": [
+              "Unauthorized extensions cannot connect.",
+              "No browser-accessible bridge port remains.",
+              "Five lessons and revocation pass on supported platforms."
+            ],
+            "migrationNotes": [
+              "Keep the preview adapter only until parity and rollback are proven."
+            ],
+            "rollback": "Disable native distribution, unregister the host, revoke sessions, and restore the last reviewed preview adapter."
+          }
+        }
+      ],
+      "recommendedOptionId": "reproducible-local-preview",
+      "recommendation": "Use the reproducible preview under current constraints; require the signed native-host option before an ordinary-user release."
+    },
+    {
+      "opportunityId": "reporting-quarantine-boundary",
+      "title": "Make publication a distinct reviewed state",
+      "summary": "Keep local evidence disconnected while building authenticated quarantine, human review, and minimized feed projection as separate authorities.",
+      "diagnosis": "The data schemas are narrow, but a real service still lacks authenticated reviewers, durable events, abuse controls, retention, and an approved public intake boundary.",
+      "evidence": [
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E-RP-2",
+          "path": "products/connector/issue-draft.ts",
+          "claim": "The draft schema is closed, enumerated, free-text-free, and origin-minimized."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E-RP-4",
+          "path": "products/connector/issue-publication.ts",
+          "claim": "Only published public-web records project, and named hosts require explicit consent plus reproduction-grade evidence."
+        },
+        {
+          "claimType": "inferred",
+          "sourceKind": "document",
+          "evidenceId": "E-DOC-1",
+          "path": "docs/PRODUCT.md",
+          "claim": "Connecting a public endpoint before operations and privacy controls would collapse untrusted intake into an unsupported publication claim."
+        }
+      ],
+      "desiredInvariants": [
+        "Every accepted public-web report starts quarantined.",
+        "Only authenticated authorized humans can advance moderation state.",
+        "Accepted-private and published are separate decisions.",
+        "Synthetic, local, raw, identifying, and instruction-shaped data never enter the feed."
+      ],
+      "proposalPath": "proposals/reporting-quarantine-boundary.md",
+      "options": [
+        {
+          "optionId": "local-only-evidence",
+          "title": "Local-only evidence",
+          "kind": "baseline",
+          "summary": "Retain the private receipt, redacted preview, one-use local save, and zero external routes.",
+          "diagramPaths": {
+            "before": "diagrams/reporting-quarantine-before.mmd",
+            "after": "diagrams/reporting-quarantine-local-only-after.mmd"
+          },
+          "evidenceCoverage": [
+            {
+              "evidenceId": "E-RP-2",
+              "effect": "addresses",
+              "tacticalFixRequired": true,
+              "rationale": "The strict draft remains the only saved data shape."
+            },
+            {
+              "evidenceId": "E-RP-4",
+              "effect": "unaffected",
+              "tacticalFixRequired": true,
+              "rationale": "The feed projector stays disconnected."
+            },
+            {
+              "evidenceId": "E-DOC-1",
+              "effect": "addresses",
+              "tacticalFixRequired": false,
+              "rationale": "No external privacy or publication boundary is created."
+            }
+          ],
+          "tradeoffs": [
+            {
+              "dimension": "security",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "No external attack or publication surface is added.",
+              "validationPlan": "Verify routes remain absent and synthetic/local feed eligibility remains zero."
+            },
+            {
+              "dimension": "performance",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "All work remains local and bounded.",
+              "validationPlan": "Measure local preview and save latency only for regressions."
+            },
+            {
+              "dimension": "memory",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "The existing bounded in-memory list is retained.",
+              "validationPlan": "Verify scope/item caps and release on revoke/stop."
+            },
+            {
+              "dimension": "reliability",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "Offline operation is preserved; review data is intentionally ephemeral.",
+              "validationPlan": "Restart the connector and confirm no durable-report claim is shown."
+            },
+            {
+              "dimension": "operability",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "No external service or review queue exists.",
+              "validationPlan": "Review user copy for a clear local-only boundary."
+            },
+            {
+              "dimension": "migration",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "No data migration is needed.",
+              "validationPlan": "Keep service schemas separately versioned."
+            }
+          ],
+          "residualRisks": [
+            "Users cannot alert a reviewer or contribute a tooling signal.",
+            "Local review state disappears by design."
+          ],
+          "implementationReadiness": {
+            "affectedComponents": [
+              "products/connector/issue-review.ts",
+              "products/connector/issue-dashboard.ts"
+            ],
+            "workPackages": ["Keep local-only copy and exclusions testable."],
+            "acceptanceCriteria": [
+              "No external endpoint exists.",
+              "Synthetic/local feed eligibility is zero."
+            ],
+            "migrationNotes": [],
+            "rollback": "Revert local UI changes; no external data requires migration."
+          }
+        },
+        {
+          "optionId": "quarantined-human-review",
+          "title": "Quarantined reviewed service",
+          "kind": "structural",
+          "summary": "Add authenticated intake, durable moderation events, abuse/retention controls, separate publication, and minimized feed serving.",
+          "diagramPaths": {
+            "before": "diagrams/reporting-quarantine-before.mmd",
+            "after": "diagrams/reporting-quarantine-service-after.mmd"
+          },
+          "evidenceCoverage": [
+            {
+              "evidenceId": "E-RP-2",
+              "effect": "addresses",
+              "tacticalFixRequired": true,
+              "rationale": "The strict draft becomes the only accepted public input."
+            },
+            {
+              "evidenceId": "E-RP-4",
+              "effect": "addresses",
+              "tacticalFixRequired": true,
+              "rationale": "Publication projection remains a separate gated step."
+            },
+            {
+              "evidenceId": "E-DOC-1",
+              "effect": "unknown",
+              "tacticalFixRequired": true,
+              "rationale": "Compliance depends on operational privacy, authentication, retention, abuse, and incident controls not yet selected."
+            }
+          ],
+          "tradeoffs": [
+            {
+              "dimension": "security",
+              "direction": "unknown",
+              "confidence": "medium",
+              "basis": "source-derived",
+              "assessment": "Quarantine and separate publication narrow data flow, but Internet, identity, and durable-data attack surfaces are added.",
+              "validationPlan": "Complete authorization, abuse, privacy, injection, CSRF, SSRF, and incident reviews before external access."
+            },
+            {
+              "dimension": "performance",
+              "direction": "regresses",
+              "confidence": "low",
+              "basis": "hypothetical",
+              "assessment": "Validation, durable writes, moderation queries, and projection add latency.",
+              "validationPlan": "Measure intake and feed p95/p99 under expected burst and sustained load."
+            },
+            {
+              "dimension": "memory",
+              "direction": "regresses",
+              "confidence": "low",
+              "basis": "hypothetical",
+              "assessment": "Indexes, queues, rate-limit state, and caches add resources.",
+              "validationPlan": "Measure working set and storage growth under the retention plan."
+            },
+            {
+              "dimension": "reliability",
+              "direction": "unknown",
+              "confidence": "low",
+              "basis": "hypothetical",
+              "assessment": "Durability improves, while retries, backpressure, outages, and correction workflows become required.",
+              "validationPlan": "Fault-inject duplicate delivery, store outage, reviewer conflict, and feed rollback."
+            },
+            {
+              "dimension": "operability",
+              "direction": "regresses",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "Human review, abuse, privacy, retention, incident, and feed operations become continuous responsibilities.",
+              "validationPlan": "Name owners and run publication/correction incident table-tops."
+            },
+            {
+              "dimension": "migration",
+              "direction": "regresses",
+              "confidence": "medium",
+              "basis": "source-derived",
+              "assessment": "New versioned persistence and disabled-first rollout are required; local synthetic state must remain separate.",
+              "validationPlan": "Test schema upgrades, rollback, and proof that old records cannot become published implicitly."
+            }
+          ],
+          "residualRisks": [
+            "Authorized reviewers can make erroneous publication decisions.",
+            "Durable quarantine creates breach, retention, deletion, and legal obligations.",
+            "Hostname publication can cause reputational harm even after consent and review."
+          ],
+          "implementationReadiness": {
+            "affectedComponents": [
+              "products/connector/issue-moderation.ts",
+              "future intake, reviewer, storage, and feed services"
+            ],
+            "workPackages": [
+              "Finish domain state machine.",
+              "Select identity and durable audit store.",
+              "Implement abuse and retention controls.",
+              "Build reviewer UI.",
+              "Enable feed only after publication acceptance."
+            ],
+            "acceptanceCriteria": [
+              "Every report starts quarantined.",
+              "Only authenticated human actions advance state.",
+              "Only separately published projections reach the feed."
+            ],
+            "migrationNotes": [
+              "Keep local synthetic workbench and production data stores physically and logically separate."
+            ],
+            "rollback": "Disable intake first, preserve quarantine under retention policy, and leave prior published feed versions immutable."
+          }
+        }
+      ],
+      "recommendedOptionId": "quarantined-human-review",
+      "recommendation": "Build the pure quarantine core now, but do not connect public intake or feed serving until the operational and privacy gates are approved."
+    }
+  ],
+  "openQuestions": [
+    "Will Local Guard remain a developer preview or become an ordinary-user product?",
+    "Who owns extension/native-host signing, updates, revocation, and incidents?",
+    "Which identity, retention, deletion, abuse, correction, and feed policies govern reporting?",
+    "What performance, memory, availability, and review-throughput budgets apply?"
+  ]
+}

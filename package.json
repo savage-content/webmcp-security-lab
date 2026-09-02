@@ -12,6 +12,7 @@
     "desktop:alpha:status": "tsx scripts/desktop-alpha-operator.mts status",
     "desktop:alpha:stop": "tsx scripts/desktop-alpha-operator.mts stop",
     "desktop:alpha:foreground": "tsx scripts/desktop-alpha.mts",
+    "local-guard:package": "tsx scripts/package-local-guard.mts",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",

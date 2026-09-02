@@ -1,0 +1,9 @@
+flowchart LR
+  U[High-level public report] --> G[Auth, rate, size, and schema gate]
+  G --> Q[(Quarantine store)]
+  Q --> H[Authenticated human reviewer]
+  H -->|needs evidence, reject, duplicate| Q
+  H -->|accepted private| A[(Private accepted record)]
+  A -->|separate publication decision| P[Minimized publication record]
+  P --> F[JSON and NDJSON feed]
+  Q -. raw reports never enter .-> F
