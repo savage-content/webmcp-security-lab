@@ -42,8 +42,9 @@ gate. The gate verifies exact bytes against an independently supplied trusted
 public key and explicitly records that it is not Chrome publisher or Web Store
 signing. A strict public-web-only quarantine state machine requires `under_review` → `accepted_private` →
 `published` and the existing consent/evidence gate. Synthetic and local records
-remain ineligible. No public intake, reviewer authentication, durable moderation
-store, or feed route was added. The current suite passes 343 tests across 37
+remain ineligible. Fail-closed configuration and constant-time authentication
+now separate invitation, reviewer, and publisher authority. No public intake,
+durable moderation store, or feed route was added. The current suite passes 352 tests across 38
 files; the exact full verification gate is recorded with the release commit.
 
 ## Official Site Tools conformance track
@@ -95,7 +96,7 @@ cross-client evidence.
 | Snapshot                          | Result               | Evidence                                                                                                                                                                                                              |
 | --------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Runtime                           | Pass                 | Node.js 24.19.0                                                                                                                                                                                                       |
-| Current productization candidate  | Pass                 | 343 tests across 37 Vitest files passed; typecheck, lint, production build, deterministic package generation, trusted-key attestation verification, and clean-commit status are release gates.                        |
+| Current productization candidate  | Pass                 | 352 tests across 38 Vitest files passed; typecheck, lint, production build, deterministic package generation, trusted-key attestation verification, reporting-role separation, and clean-commit status are gates.     |
 | Earlier five-lesson working tree  | Pass                 | 285 tests across 26 Vitest files, typecheck, lint, production build, and diff-integrity check passed before the fresh Chrome 152 technical acceptance run.                                                            |
 | Earlier clean `f7290d9` candidate | Pass                 | Clean-copy `npm ci`, 121 tests, typecheck, lint, production build, and the separate Android gate passed.                                                                                                              |
 | Post-fix working-tree source      | Pass                 | After the cross-realm inspection and approval-dialog fixes, 123 tests across 13 Vitest files, typecheck, lint, and a production build passed. This was not yet the final clean commit.                                |

@@ -192,8 +192,11 @@ quarantine under retention policy, and never republishes by replaying events.
 
 The pure state machine and tests are described in
 [the quarantined-core implementation plan](../implementation/quarantined-review-core.md).
-Network intake, storage, reviewer UI, and feed serving remain intentionally
-unimplemented until the named operational gates are approved.
+The selected disabled-first service work is tracked in
+[the quarantined reviewed-service implementation plan](../implementation/quarantined-reviewed-service.md).
+Its configuration and credential-separation package is implemented; network
+intake, storage, reviewer UI, and feed serving remain intentionally disabled
+until their named gates pass.
 
 ## Open Questions
 

@@ -1,0 +1,229 @@
+import { createHash } from 'node:crypto';
+
+import { describe, expect, it } from 'vitest';
+
+import {
+  authenticateReportingActor,
+  authenticateReportingInvitation,
+} from '../products/reporting-service/auth';
+import { loadReportingServiceConfiguration } from '../products/reporting-service/config';
+
+function digest(value: string) {
+  return createHash('sha256').update(value, 'utf8').digest('hex');
+}
+
+const invitationToken = 'invitation-token-with-at-least-32-characters';
+const reviewerToken = 'reviewer-token-with-at-least-32-characters-long';
+const publisherToken = 'publisher-token-with-at-least-32-characters';
+
+function invitedEnvironment(overrides: Readonly<Record<string, string>> = {}) {
+  return {
+    LEFTOUT_REPORTING_MODE: 'invited',
+    LEFTOUT_REPORTING_INTAKE: 'true',
+    LEFTOUT_REPORTING_MODERATION: 'true',
+    LEFTOUT_REPORTING_PUBLICATION: 'true',
+    LEFTOUT_REPORTING_FEED: 'false',
+    LEFTOUT_REPORTING_INTAKE_TOKEN_SHA256: digest(invitationToken),
+    LEFTOUT_REPORTING_ACTORS_JSON: JSON.stringify([
+      {
+        id: 'reviewer-alpha',
+        role: 'reviewer',
+        tokenSha256: digest(reviewerToken),
+      },
+      {
+        id: 'publisher-alpha',
+        role: 'publisher',
+        tokenSha256: digest(publisherToken),
+      },
+    ]),
+    ...overrides,
+  };
+}
+
+function request(token?: string) {
+  return new Request('https://reports.example.test/action', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+}
+
+describe('reporting service configuration', () => {
+  it('is fully disabled when reporting configuration is absent', () => {
+    const configuration = loadReportingServiceConfiguration({});
+    expect(configuration).toEqual({
+      schemaVersion: 'leftout.reporting-service-config/1',
+      mode: 'disabled',
+      gates: {
+        intake: false,
+        moderation: false,
+        publication: false,
+        feed: false,
+      },
+      actors: [],
+    });
+    expect(Object.isFrozen(configuration)).toBe(true);
+    expect(Object.isFrozen(configuration.gates)).toBe(true);
+  });
+
+  it('requires an explicit mode and rejects credentials in disabled mode', () => {
+    expect(() =>
+      loadReportingServiceConfiguration({
+        LEFTOUT_REPORTING_INTAKE: 'true',
+      }),
+    ).toThrow('must be explicitly disabled or invited');
+    expect(() =>
+      loadReportingServiceConfiguration({
+        LEFTOUT_REPORTING_MODE: 'disabled',
+        LEFTOUT_REPORTING_INTAKE: 'false',
+      }),
+    ).toThrow('must not retain gates or credentials');
+  });
+
+  it('loads distinct invitation, reviewer, and publisher authority', () => {
+    const configuration =
+      loadReportingServiceConfiguration(invitedEnvironment());
+    expect(configuration.mode).toBe('invited');
+    expect(configuration.gates).toEqual({
+      intake: true,
+      moderation: true,
+      publication: true,
+      feed: false,
+    });
+    expect(configuration.actors.map(({ id, role }) => ({ id, role }))).toEqual([
+      { id: 'reviewer-alpha', role: 'reviewer' },
+      { id: 'publisher-alpha', role: 'publisher' },
+    ]);
+  });
+
+  it('requires dependency gates and role-specific operators', () => {
+    expect(() =>
+      loadReportingServiceConfiguration(
+        invitedEnvironment({ LEFTOUT_REPORTING_MODERATION: 'false' }),
+      ),
+    ).toThrow('publication requires moderation');
+    expect(() =>
+      loadReportingServiceConfiguration(
+        invitedEnvironment({
+          LEFTOUT_REPORTING_ACTORS_JSON: JSON.stringify([
+            {
+              id: 'reviewer-alpha',
+              role: 'reviewer',
+              tokenSha256: digest(reviewerToken),
+            },
+          ]),
+        }),
+      ),
+    ).toThrow('separate publisher');
+    expect(() =>
+      loadReportingServiceConfiguration(
+        invitedEnvironment({ LEFTOUT_REPORTING_FEED: 'true' }),
+      ),
+    ).toThrow('signed-feed work package');
+  });
+
+  it('rejects unknown actor fields, duplicate identities, and reused credentials', () => {
+    expect(() =>
+      loadReportingServiceConfiguration(
+        invitedEnvironment({
+          LEFTOUT_REPORTING_ACTORS_JSON: JSON.stringify([
+            {
+              id: 'reviewer-alpha',
+              role: 'reviewer',
+              tokenSha256: digest(reviewerToken),
+              displayName: 'A human name',
+            },
+          ]),
+        }),
+      ),
+    ).toThrow('unknown field');
+    expect(() =>
+      loadReportingServiceConfiguration(
+        invitedEnvironment({
+          LEFTOUT_REPORTING_ACTORS_JSON: JSON.stringify([
+            {
+              id: 'reviewer-alpha',
+              role: 'reviewer',
+              tokenSha256: digest(reviewerToken),
+            },
+            {
+              id: 'reviewer-alpha',
+              role: 'publisher',
+              tokenSha256: digest(publisherToken),
+            },
+          ]),
+        }),
+      ),
+    ).toThrow('identifiers must be unique');
+    expect(() =>
+      loadReportingServiceConfiguration(
+        invitedEnvironment({
+          LEFTOUT_REPORTING_INTAKE_TOKEN_SHA256: digest(reviewerToken),
+        }),
+      ),
+    ).toThrow('must be distinct');
+  });
+});
+
+describe('reporting service authentication', () => {
+  const configuration = loadReportingServiceConfiguration(invitedEnvironment());
+
+  it('authenticates only the exact invited-intake bearer', () => {
+    expect(
+      authenticateReportingInvitation(request(invitationToken), configuration),
+    ).toBe(true);
+    expect(
+      authenticateReportingInvitation(request(reviewerToken), configuration),
+    ).toBe(false);
+    expect(authenticateReportingInvitation(request(), configuration)).toBe(
+      false,
+    );
+  });
+
+  it('keeps reviewer and publisher authority separate', () => {
+    expect(
+      authenticateReportingActor(
+        request(reviewerToken),
+        configuration,
+        'reviewer',
+      ),
+    ).toMatchObject({ id: 'reviewer-alpha', role: 'reviewer' });
+    expect(
+      authenticateReportingActor(
+        request(reviewerToken),
+        configuration,
+        'publisher',
+      ),
+    ).toBeNull();
+    expect(
+      authenticateReportingActor(
+        request(publisherToken),
+        configuration,
+        'publisher',
+      ),
+    ).toMatchObject({ id: 'publisher-alpha', role: 'publisher' });
+  });
+
+  it('rejects malformed, short, whitespace-bearing, and unknown credentials', () => {
+    for (const candidate of [
+      request('short'),
+      request(`${reviewerToken} ignored`),
+      request('unknown-token-with-at-least-32-characters'),
+      new Request('https://reports.example.test/action', {
+        headers: { Authorization: `Basic ${reviewerToken}` },
+      }),
+    ]) {
+      expect(
+        authenticateReportingActor(candidate, configuration, 'reviewer'),
+      ).toBeNull();
+    }
+  });
+
+  it('grants nothing when the service is disabled', () => {
+    const disabled = loadReportingServiceConfiguration({});
+    expect(
+      authenticateReportingInvitation(request(invitationToken), disabled),
+    ).toBe(false);
+    expect(
+      authenticateReportingActor(request(reviewerToken), disabled, 'reviewer'),
+    ).toBeNull();
+  });
+});
