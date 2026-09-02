@@ -51,9 +51,13 @@ alongside authenticated reviewer read/transition routes and a separate
 publisher route. Publication requires the exact `accepted_private` revision,
 re-runs the hostname/evidence projection gate, and atomically writes an
 immutable minimized record. All routes are disabled and unconfigured on the
-public deployment. No retention/correction job or signed feed route exists.
-The current suite passes 388 tests across 44 files; the exact full verification
-gate is recorded with the release commit.
+public deployment. An independently authenticated JSON/NDJSON feed now emits
+bounded snapshot pages containing only minimized publication entries and signs
+their exact bytes with externally configured Ed25519 material. Verification
+requires a separately trusted fingerprint; the response fingerprint is not
+self-authenticating. No production key/fingerprint distribution or
+retention/correction job exists. The current suite passes 395 tests across 45
+files; the exact full verification gate is recorded with the release commit.
 
 ## Official Site Tools conformance track
 
@@ -104,7 +108,7 @@ cross-client evidence.
 | Snapshot                          | Result               | Evidence                                                                                                                                                                                                              |
 | --------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Runtime                           | Pass                 | Node.js 24.19.0                                                                                                                                                                                                       |
-| Current productization candidate  | Pass                 | 388 tests across 44 Vitest files passed; typecheck, lint, production build, deterministic package generation, trusted-key attestation verification, reporting-role separation, real D1 migration enforcement, and disabled-first intake/review/publication passed. |
+| Current productization candidate  | Pass                 | 395 tests across 45 Vitest files passed; typecheck, lint, production build, deterministic package generation, trusted-key attestation verification, reporting-role separation, real D1 migration enforcement, and disabled-first intake/review/publication/signed-feed checks passed. |
 | Earlier five-lesson working tree  | Pass                 | 285 tests across 26 Vitest files, typecheck, lint, production build, and diff-integrity check passed before the fresh Chrome 152 technical acceptance run.                                                            |
 | Earlier clean `f7290d9` candidate | Pass                 | Clean-copy `npm ci`, 121 tests, typecheck, lint, production build, and the separate Android gate passed.                                                                                                              |
 | Post-fix working-tree source      | Pass                 | After the cross-realm inspection and approval-dialog fixes, 123 tests across 13 Vitest files, typecheck, lint, and a production build passed. This was not yet the final clean commit.                                |

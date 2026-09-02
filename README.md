@@ -93,9 +93,13 @@ authentication are implemented locally. A versioned D1 store adds hash-chained
 events, idempotent intake, optimistic revisions, append-only database
 enforcement, atomic per-invitation/global quotas, and an immutable minimized
 publication record. Invited intake, authenticated reviewer read/transition,
-and separate publisher handlers exist in source but are disabled and
-unconfigured on the public site. Retention/correction operations, signed feed
-serving, production identity, and operating approval remain absent.
+separate publisher, and independently authenticated signed JSON/NDJSON feed
+handlers exist in source but are disabled and unconfigured on the public site.
+The feed exposes only minimized publication rows and signs exact snapshot-page
+bytes with an externally supplied Ed25519 key; consumers must pin a fingerprint
+obtained separately. Retention/correction operations, production identities,
+signing-key custody, fingerprint distribution, and operating approval remain
+absent.
 
 ## The guided experience
 
@@ -340,8 +344,8 @@ The automated suite covers:
   behavior, revocation, and failure handling.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The current automated suite passes 388/388
-tests across 44 files, typecheck, lint, and a production build on Node.js 24. Live connector
+separate Android conformance script. The current automated suite passes 395/395
+tests across 45 files, typecheck, lint, and a production build on Node.js 24. Live connector
 evidence is recorded separately: the
 September 1 target-client run satisfied the bounded end-to-end checks in
 [docs/GO_NO_GO.md](docs/GO_NO_GO.md).

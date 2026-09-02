@@ -5,8 +5,8 @@
 The reporting service is implemented as a **disabled-by-default, invited
 private pipeline preview**. It is not enabled on the public learning site. The
 public lab continues to work when every reporting setting is absent; in that
-state intake, review, and publication routes return the same `404` response
-as unavailable routes.
+state intake, review, publication, and feed routes return the same `404`
+response as unavailable routes.
 
 The local implementation currently provides:
 
@@ -20,25 +20,32 @@ The local implementation currently provides:
 - per-invitation and global hourly counters committed in the same D1 batch as
   a new report;
 - unconditional `quarantined` entry, server-generated IDs and timestamps,
-  versioned snapshots, hash-chained events, and optimistic revisions; and
+  versioned snapshots, hash-chained events, and optimistic revisions;
 - authenticated reviewer keyset reads and closed-graph transitions that reject
   caller-supplied actor, timestamp, state, and publication authority;
 - a distinct publisher action that accepts only the exact
   `accepted_private` revision, re-runs the hostname/evidence projection gate,
-  and atomically creates an immutable minimized publication record; and
+  and atomically creates an immutable minimized publication record;
+- a separately authenticated, bounded JSON/NDJSON snapshot feed that exposes
+  only public event IDs and minimized publication fields, signs the exact bytes
+  with externally supplied Ed25519 material, and identifies the fingerprint
+  clients must verify through a separate trust channel; and
 - database constraints and triggers that reject state/hash drift, event or
   idempotency mutation, record deletion outside a future retention workflow,
   quota substitution, quota overflow, or publication mutation.
 
-No retention/deletion/correction operation, signed feed, browser submission UI,
-production identity integration, or production operations runbook exists yet.
-Source code for a route is not evidence that the service is enabled.
+No retention/deletion/correction operation, browser submission UI, production
+identity integration, production signing-key custodian, independent
+fingerprint publication, or production operations runbook exists yet. Source
+code for a route is not evidence that the service is enabled.
 
 ## Configuration contract
 
-All reporting settings are secrets or deployment controls and must be supplied
-through the deployment environment. They must never be placed in source,
-browser storage, URLs, screenshots, build artifacts, or client-side code.
+All reporting settings are deployment controls and must be supplied through
+the deployment environment. Bearers and private signing material are secrets;
+they must never be placed in source, browser storage, URLs, screenshots, build
+artifacts, or client-side code. Public signing material is not secret, but its
+fingerprint must also be distributed through a separately trusted channel.
 
 With no `LEFTOUT_REPORTING_*` settings, the service is fully disabled. An
 invited-intake deployment requires all of these explicit values:
@@ -49,12 +56,17 @@ invited-intake deployment requires all of these explicit values:
 | `LEFTOUT_REPORTING_INTAKE`                       | `true`                                                          |
 | `LEFTOUT_REPORTING_MODERATION`                   | `false` until reviewer identity and operations are approved     |
 | `LEFTOUT_REPORTING_PUBLICATION`                  | `false` until publisher identity and operations are approved    |
-| `LEFTOUT_REPORTING_FEED`                         | `false`; current code rejects attempts to enable it              |
+| `LEFTOUT_REPORTING_FEED`                         | `false` until feed identity, key custody, and operations are approved |
 | `LEFTOUT_REPORTING_INVITATION_ID`                | Opaque normalized identifier beginning with `invitation.`        |
 | `LEFTOUT_REPORTING_INTAKE_TOKEN_SHA256`          | Lowercase SHA-256 of a randomly generated 32–512 character token |
 | `LEFTOUT_REPORTING_INVITATION_HOURLY_LIMIT`      | Explicit positive integer, at most 1,000                         |
 | `LEFTOUT_REPORTING_GLOBAL_HOURLY_LIMIT`          | Explicit positive integer, at most 10,000 and not below per-invite |
 | `LEFTOUT_REPORTING_ACTORS_JSON`                  | Omit while moderation is disabled                               |
+| `LEFTOUT_REPORTING_FEED_TOKEN_SHA256`            | Required only when feed is `true`; distinct reader-token digest |
+| `LEFTOUT_REPORTING_FEED_SIGNING_KEY_ID`          | Required only when feed is `true`; normalized `feed.*` ID      |
+| `LEFTOUT_REPORTING_FEED_SIGNING_PRIVATE_KEY_PKCS8_BASE64` | Required only when feed is `true`; Ed25519 PKCS#8 secret |
+| `LEFTOUT_REPORTING_FEED_SIGNING_PUBLIC_KEY_SPKI_BASE64` | Required only when feed is `true`; matching Ed25519 SPKI |
+| `LEFTOUT_REPORTING_FEED_SIGNING_PUBLIC_KEY_SHA256` | Required only when feed is `true`; matching lowercase digest |
 
 The bearer itself is given only to the invited non-browser client. The stored
 configuration and quota rows retain digests, not bearer material. Changing a
@@ -74,6 +86,38 @@ and whether the request was created or was an exact replay. It never echoes the
 reported origin. A reused idempotency key with different canonical content is
 rejected. Exact replay returns the original record and does not consume quota.
 
+## Review and publication requests
+
+An authenticated reviewer can page `GET /api/reports/review`, read one
+`GET /api/reports/review/:reportId`, and submit one closed-graph transition to
+`POST /api/reports/review/:reportId`. Transitions require an exact expected
+revision and lowercase UUID idempotency key. Callers cannot supply actor
+identity, timestamps, publication data, or undeclared fields, and reviewers
+cannot publish.
+
+The separate publisher credential can call only
+`POST /api/reports/publish/:reportId`. It requires the exact
+`accepted_private` revision plus the bounded hostname-consent/evidence gate.
+The D1 batch commits the publisher event, updated private ledger, and separate
+immutable minimized publication row atomically. Exact request retries return
+the existing publication; conflicting reuse is rejected.
+
+## Signed feed request
+
+The independent feed bearer can call
+`GET /api/reports/feed?format=json|ndjson&limit=1..100`. The opaque cursor
+continues a time-bounded snapshot. Feed entries contain only a public event ID,
+publication time, record digest, and the already minimized public record. They
+never contain the private report ID, private origin, reviewer or publisher
+identity, source revision, raw evidence, receipts, or free text.
+
+The response includes `Content-Digest`, Ed25519 signature, key ID, public SPKI,
+and SPKI SHA-256 headers. The signature covers the exact response bytes. A
+consumer must verify the signature against a fingerprint obtained through a
+different trusted channel; the fingerprint returned beside the feed is
+diagnostic metadata, not a trust root. Browser-origin requests and unknown
+query authority are rejected.
+
 ## Required enablement evidence
 
 Do not enable an external cohort until all of the following have named owners
@@ -88,7 +132,9 @@ and retained rehearsal evidence:
 4. production reviewer/publisher identity, authorization, revocation, and
    role-separation rehearsal;
 5. correction and erroneous-publication workflows; and
-6. a separately signed/versioned minimized feed, if a feed is still justified.
+6. feed-key custody, rotation, revocation, independent fingerprint publication,
+   consumer verification, and emergency correction rehearsal, if a feed is
+   still justified.
 
 The first enabled deployment should use a separate service hostname and tiny
 invited cohort. The learning-site reporting UI remains off until that service

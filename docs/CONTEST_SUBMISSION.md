@@ -95,11 +95,14 @@ pretending that a green badge or a reassuring annotation is enforcement.
   intake handler, atomic quotas, hash-chained D1 events, idempotency, and
   optimistic concurrency; authenticated reviewer reads/transitions and a
   distinct publisher action can atomically create an immutable minimized
-  publication record. None is configured or enabled on the public site.
+  publication record. A separately authenticated JSON/NDJSON feed signs exact,
+  bounded snapshot pages with an externally supplied Ed25519 key and requires
+  an independently pinned public-key fingerprint. None is configured or
+  enabled on the public site.
 
 ## Verification
 
-The current working tree passed 388 automated tests across 44 files on Node.js
+The current working tree passed 395 automated tests across 45 files on Node.js
 24, typecheck, lint, production build, deterministic Local Guard packaging, and a
 live non-invoking walkthrough/accessibility regression. Earlier bounded browser
 runs produced passing receipts for all five synthetic lessons through the
@@ -132,8 +135,9 @@ freedom to operate.
   companion.
 - Reporting remains locally implemented and publicly disabled. Invited HTTP
   intake, atomic quotas, reviewer routes, and a separately authorized publisher
-  route exist, but production identity, retention/deletion, operator recovery,
-  correction, signed feed serving, and privacy approval do not.
+  route and signed feed route exist, but production identity/key custody,
+  independently published trust metadata, retention/deletion, operator
+  recovery, correction, and privacy approval do not.
 - Android is a conformance prototype, not a device-validated product.
 - Real first-time-human, screen-reader, and 200% zoom acceptance remain pending.
 

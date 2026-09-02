@@ -1,9 +1,10 @@
-import { createHash } from 'node:crypto';
+import { createHash, generateKeyPairSync } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
 import {
   authenticateReportingActor,
+  authenticateReportingFeed,
   authenticateReportingInvitation,
 } from '../products/reporting-service/auth';
 import { loadReportingServiceConfiguration } from '../products/reporting-service/config';
@@ -15,6 +16,14 @@ function digest(value: string) {
 const invitationToken = 'invitation-token-with-at-least-32-characters';
 const reviewerToken = 'reviewer-token-with-at-least-32-characters-long';
 const publisherToken = 'publisher-token-with-at-least-32-characters';
+const feedToken = 'feed-reader-token-with-at-least-32-characters-long';
+const feedKeyPair = generateKeyPairSync('ed25519');
+const feedPrivateKey = Buffer.from(
+  feedKeyPair.privateKey.export({ format: 'der', type: 'pkcs8' }),
+);
+const feedPublicKey = Buffer.from(
+  feedKeyPair.publicKey.export({ format: 'der', type: 'spki' }),
+);
 
 function invitedEnvironment(overrides: Readonly<Record<string, string>> = {}) {
   return {
@@ -43,6 +52,24 @@ function invitedEnvironment(overrides: Readonly<Record<string, string>> = {}) {
   };
 }
 
+function feedEnvironment(
+  overrides: Readonly<Record<string, string>> = {},
+): Record<string, string> {
+  return invitedEnvironment({
+    LEFTOUT_REPORTING_FEED: 'true',
+    LEFTOUT_REPORTING_FEED_TOKEN_SHA256: digest(feedToken),
+    LEFTOUT_REPORTING_FEED_SIGNING_KEY_ID: 'feed.alpha',
+    LEFTOUT_REPORTING_FEED_SIGNING_PRIVATE_KEY_PKCS8_BASE64:
+      feedPrivateKey.toString('base64'),
+    LEFTOUT_REPORTING_FEED_SIGNING_PUBLIC_KEY_SPKI_BASE64:
+      feedPublicKey.toString('base64'),
+    LEFTOUT_REPORTING_FEED_SIGNING_PUBLIC_KEY_SHA256: createHash('sha256')
+      .update(feedPublicKey)
+      .digest('hex'),
+    ...overrides,
+  });
+}
+
 function request(token?: string) {
   return new Request('https://reports.example.test/action', {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -53,7 +80,7 @@ describe('reporting service configuration', () => {
   it('is fully disabled when reporting configuration is absent', () => {
     const configuration = loadReportingServiceConfiguration({});
     expect(configuration).toEqual({
-      schemaVersion: 'leftout.reporting-service-config/2',
+      schemaVersion: 'leftout.reporting-service-config/3',
       mode: 'disabled',
       gates: {
         intake: false,
@@ -123,9 +150,9 @@ describe('reporting service configuration', () => {
     ).toThrow('separate publisher');
     expect(() =>
       loadReportingServiceConfiguration(
-        invitedEnvironment({ LEFTOUT_REPORTING_FEED: 'true' }),
+        feedEnvironment({ LEFTOUT_REPORTING_PUBLICATION: 'false' }),
       ),
-    ).toThrow('signed-feed work package');
+    ).toThrow('feed requires publication');
   });
 
   it('requires a bounded invitation identity and explicit intake quotas', () => {
@@ -192,6 +219,53 @@ describe('reporting service configuration', () => {
       ),
     ).toThrow('must be distinct');
   });
+
+  it('loads a separately authenticated, externally configured feed signer', () => {
+    const configuration = loadReportingServiceConfiguration(feedEnvironment());
+    expect(configuration.gates.feed).toBe(true);
+    expect(configuration.feedSigning).toMatchObject({
+      keyId: 'feed.alpha',
+      publicKeySpkiBase64: feedPublicKey.toString('base64'),
+    });
+    expect(configuration.feedSigning).not.toHaveProperty('privateKey');
+    expect(
+      authenticateReportingFeed(request(feedToken), configuration),
+    ).toBe(true);
+    expect(
+      authenticateReportingFeed(request(publisherToken), configuration),
+    ).toBe(false);
+  });
+
+  it('fails closed on incomplete, mismatched, disabled, or reused feed authority', () => {
+    expect(() =>
+      loadReportingServiceConfiguration(
+        invitedEnvironment({
+          LEFTOUT_REPORTING_FEED_TOKEN_SHA256: digest(feedToken),
+        }),
+      ),
+    ).toThrow('require the feed gate');
+    expect(() =>
+      loadReportingServiceConfiguration(
+        feedEnvironment({
+          LEFTOUT_REPORTING_FEED_SIGNING_PUBLIC_KEY_SHA256: '0'.repeat(64),
+        }),
+      ),
+    ).toThrow('does not match');
+    expect(() =>
+      loadReportingServiceConfiguration(
+        feedEnvironment({
+          LEFTOUT_REPORTING_FEED_TOKEN_SHA256: digest(reviewerToken),
+        }),
+      ),
+    ).toThrow('must be distinct');
+    const {
+      LEFTOUT_REPORTING_FEED_SIGNING_PRIVATE_KEY_PKCS8_BASE64: _omitted,
+      ...incomplete
+    } = feedEnvironment();
+    expect(() => loadReportingServiceConfiguration(incomplete)).toThrow(
+      'private key',
+    );
+  });
 });
 
 describe('reporting service authentication', () => {
@@ -256,5 +330,8 @@ describe('reporting service authentication', () => {
     expect(
       authenticateReportingActor(request(reviewerToken), disabled, 'reviewer'),
     ).toBeNull();
+    expect(authenticateReportingFeed(request(feedToken), disabled)).toBe(
+      false,
+    );
   });
 });

@@ -249,7 +249,13 @@ A separately authenticated publisher can act only on the exact
 `accepted_private` revision, re-run the hostname/evidence gate, and atomically
 write an immutable minimized publication row. Stored or caller-supplied state
 is not treated as authenticated human review. Retention/correction workflows
-and signed feed serving do not yet exist.
+do not yet exist. An independently authenticated feed handler reads only the
+immutable publication table through a bounded, stable snapshot cursor; its JSON
+and NDJSON forms omit private report IDs, reviewer/publisher identities, source
+revisions, and private origins. Exact response bytes carry an Ed25519 detached
+signature, content digest, key ID, public key, and fingerprint. The signing key
+is supplied outside source, and consumers must pin the public-key fingerprint
+through a separately trusted channel rather than trust the response header.
 
 Indexes match the actual read patterns:
 

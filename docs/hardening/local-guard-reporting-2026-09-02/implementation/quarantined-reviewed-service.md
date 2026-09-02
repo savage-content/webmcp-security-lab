@@ -28,13 +28,15 @@ data shape changes.
 
 ## Implementation Status — 2026-09-02
 
-Work packages 1–5 are implemented and verified in local source: fail-closed
+Work packages 1–6 are implemented and verified in local source: fail-closed
 configuration and role separation; versioned D1 moderation records,
 hash-chained events, idempotency and quota tables; and a strict invited intake
 route with atomic quarantine entry; authenticated reviewer reads and closed
 transitions; and a separate publisher action that atomically creates an
 immutable minimized publication row. The routes are disabled and unconfigured
-on the public deployment. Packages 6–9 remain open: signed feeds,
+on the public deployment. An independently gated JSON/NDJSON feed signs exact
+bounded snapshot pages with externally supplied Ed25519 material and verifies
+against a separately pinned fingerprint. Packages 7–9 remain open:
 retention/correction operations, production telemetry/runbooks, privacy
 approval, and the first-time reporting walkthrough.
 

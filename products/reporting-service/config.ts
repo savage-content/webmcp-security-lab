@@ -1,5 +1,10 @@
+import {
+  parseReportingFeedSigningMaterial,
+  type ReportingFeedSigningMaterial,
+} from './feed-signing';
+
 export const REPORTING_CONFIG_SCHEMA_VERSION =
-  'leftout.reporting-service-config/2' as const;
+  'leftout.reporting-service-config/3' as const;
 
 export const REPORTING_ACTOR_ROLES = ['reviewer', 'publisher'] as const;
 
@@ -24,6 +29,8 @@ export interface ReportingServiceConfiguration {
   intakeTokenSha256?: string;
   intakeHourlyLimit?: number;
   globalHourlyLimit?: number;
+  feedTokenSha256?: string;
+  feedSigning?: Readonly<ReportingFeedSigningMaterial>;
   actors: readonly Readonly<ReportingActorConfiguration>[];
 }
 
@@ -38,6 +45,14 @@ const ENVIRONMENT_FIELDS = Object.freeze({
   intakeHourlyLimit: 'LEFTOUT_REPORTING_INVITATION_HOURLY_LIMIT',
   globalHourlyLimit: 'LEFTOUT_REPORTING_GLOBAL_HOURLY_LIMIT',
   actors: 'LEFTOUT_REPORTING_ACTORS_JSON',
+  feedTokenSha256: 'LEFTOUT_REPORTING_FEED_TOKEN_SHA256',
+  feedSigningKeyId: 'LEFTOUT_REPORTING_FEED_SIGNING_KEY_ID',
+  feedSigningPrivateKey:
+    'LEFTOUT_REPORTING_FEED_SIGNING_PRIVATE_KEY_PKCS8_BASE64',
+  feedSigningPublicKey:
+    'LEFTOUT_REPORTING_FEED_SIGNING_PUBLIC_KEY_SPKI_BASE64',
+  feedSigningPublicKeySha256:
+    'LEFTOUT_REPORTING_FEED_SIGNING_PUBLIC_KEY_SHA256',
 });
 
 const ALL_ENVIRONMENT_FIELDS = Object.freeze(Object.values(ENVIRONMENT_FIELDS));
@@ -227,13 +242,11 @@ export function loadReportingServiceConfiguration(
     publication: exactBoolean(environment, ENVIRONMENT_FIELDS.publication),
     feed: exactBoolean(environment, ENVIRONMENT_FIELDS.feed),
   });
-  if (gates.feed) {
-    throw new Error(
-      'Reporting feed cannot be enabled before the signed-feed work package is installed.',
-    );
-  }
   if (gates.publication && !gates.moderation) {
     throw new Error('Reporting publication requires moderation to be enabled.');
+  }
+  if (gates.feed && !gates.publication) {
+    throw new Error('Reporting feed requires publication to be enabled.');
   }
 
   const intakeTokenValue = definedString(
@@ -316,6 +329,49 @@ export function loadReportingServiceConfiguration(
     );
   }
 
+  const feedTokenValue = definedString(
+    environment,
+    ENVIRONMENT_FIELDS.feedTokenSha256,
+  );
+  const feedSigningValues = {
+    keyId: definedString(environment, ENVIRONMENT_FIELDS.feedSigningKeyId),
+    privateKeyPkcs8Base64: definedString(
+      environment,
+      ENVIRONMENT_FIELDS.feedSigningPrivateKey,
+    ),
+    publicKeySpkiBase64: definedString(
+      environment,
+      ENVIRONMENT_FIELDS.feedSigningPublicKey,
+    ),
+    publicKeySpkiSha256: definedString(
+      environment,
+      ENVIRONMENT_FIELDS.feedSigningPublicKeySha256,
+    ),
+  };
+  const hasFeedSettings =
+    feedTokenValue !== undefined ||
+    Object.values(feedSigningValues).some((value) => value !== undefined);
+  if (!gates.feed && hasFeedSettings) {
+    throw new Error(
+      'Reporting feed credentials and signing material require the feed gate.',
+    );
+  }
+  const feedTokenSha256 = gates.feed
+    ? digest(feedTokenValue, 'Reporting feed token digest')
+    : undefined;
+  const feedSigning = gates.feed
+    ? parseReportingFeedSigningMaterial(feedSigningValues)
+    : undefined;
+  if (
+    feedTokenSha256 &&
+    (feedTokenSha256 === intakeTokenSha256 ||
+      actors.some((actor) => actor.tokenSha256 === feedTokenSha256))
+  ) {
+    throw new Error(
+      'Reporting feed, invitation, and operator credentials must be distinct.',
+    );
+  }
+
   return Object.freeze({
     schemaVersion: REPORTING_CONFIG_SCHEMA_VERSION,
     mode,
@@ -324,6 +380,8 @@ export function loadReportingServiceConfiguration(
     ...(intakeTokenSha256 ? { intakeTokenSha256 } : {}),
     ...(intakeHourlyLimit ? { intakeHourlyLimit } : {}),
     ...(globalHourlyLimit ? { globalHourlyLimit } : {}),
+    ...(feedTokenSha256 ? { feedTokenSha256 } : {}),
+    ...(feedSigning ? { feedSigning } : {}),
     actors,
   });
 }

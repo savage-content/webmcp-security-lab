@@ -48,12 +48,24 @@ export interface ReportingIntakeQuotaPolicy {
 }
 
 export interface ReportingPublicationRecord {
+  publicId: string;
   reportId: string;
   publishedAt: string;
   publisherId: string;
   sourceRevision: number;
   recordSha256: string;
   record: Readonly<PublicIssueFeedRecord>;
+}
+
+export interface ReportingPublicationCursor {
+  publicId: string;
+  publishedAt: string;
+}
+
+export interface ReportingPublicationQuery {
+  cursor?: Readonly<ReportingPublicationCursor>;
+  limit?: number;
+  through: string;
 }
 
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
@@ -419,6 +431,7 @@ function publicationRecord(
   }
   const recordJson = JSON.stringify(projected);
   return Object.freeze({
+    publicId: event.eventId,
     reportId: record.moderation.id,
     publishedAt: event.at,
     publisherId: event.actor.id,
@@ -426,6 +439,66 @@ function publicationRecord(
     recordSha256: sha256(recordJson),
     record: projected,
   });
+}
+
+interface ReportingPublicationRow {
+  publicId: string;
+  reportId: string;
+  schemaVersion: string;
+  publishedAt: string;
+  publisherId: string;
+  sourceRevision: number;
+  recordSha256: string;
+  recordJson: string;
+}
+
+function exactTime(value: unknown, label: string) {
+  if (
+    typeof value !== 'string' ||
+    !Number.isFinite(Date.parse(value)) ||
+    new Date(value).toISOString() !== value
+  ) {
+    throw new ReportingStoreIntegrityError(`${label} is invalid.`);
+  }
+  return value;
+}
+
+function parsePublicationRow(
+  row: Readonly<ReportingPublicationRow>,
+): Readonly<ReportingPublicationRecord> {
+  try {
+    const record = parsePublicIssueFeedRecord(
+      JSON.parse(row.recordJson) as unknown,
+    );
+    if (
+      !UUID_PATTERN.test(row.publicId) ||
+      !UUID_PATTERN.test(row.reportId) ||
+      row.schemaVersion !== record.schemaVersion ||
+      !Number.isSafeInteger(row.sourceRevision) ||
+      row.sourceRevision < 2 ||
+      !SHA256_PATTERN.test(row.recordSha256) ||
+      row.recordSha256 !== sha256(JSON.stringify(record)) ||
+      typeof row.publisherId !== 'string' ||
+      row.publisherId.length < 3 ||
+      exactTime(row.publishedAt, 'Reporting publication time') !==
+        row.publishedAt
+    ) {
+      throw new Error('publication metadata mismatch');
+    }
+    return Object.freeze({
+      publicId: row.publicId,
+      reportId: row.reportId,
+      publishedAt: row.publishedAt,
+      publisherId: row.publisherId,
+      sourceRevision: row.sourceRevision,
+      recordSha256: row.recordSha256,
+      record,
+    });
+  } catch {
+    throw new ReportingStoreIntegrityError(
+      'Stored reporting publication failed integrity validation.',
+    );
+  }
 }
 
 function publicationStatement(
@@ -457,52 +530,114 @@ export async function loadReportingPublication(
   await ensureReportingStoreSchema(database);
   const row = await database
     .prepare(
-      `SELECT schema_version AS schemaVersion, published_at AS publishedAt,
-              publisher_id AS publisherId, source_revision AS sourceRevision,
-              record_sha256 AS recordSha256, record_json AS recordJson
-       FROM leftout_report_publications WHERE report_id = ?`,
+      `SELECT event.event_id AS publicId,
+              publication.report_id AS reportId,
+              publication.schema_version AS schemaVersion,
+              publication.published_at AS publishedAt,
+              publication.publisher_id AS publisherId,
+              publication.source_revision AS sourceRevision,
+              publication.record_sha256 AS recordSha256,
+              publication.record_json AS recordJson
+       FROM leftout_report_publications AS publication
+       JOIN leftout_report_events AS event
+         ON event.report_id = publication.report_id
+        AND event.revision = publication.source_revision
+        AND event.to_state = 'published'
+        AND event.actor_role = 'publisher'
+       WHERE publication.report_id = ?`,
     )
     .bind(reportId)
-    .first<{
-      schemaVersion: string;
-      publishedAt: string;
-      publisherId: string;
-      sourceRevision: number;
-      recordSha256: string;
-      recordJson: string;
-    }>();
+    .first<ReportingPublicationRow>();
   if (!row) return null;
-  try {
-    const record = parsePublicIssueFeedRecord(
-      JSON.parse(row.recordJson) as unknown,
-    );
-    if (
-      row.schemaVersion !== record.schemaVersion ||
-      !Number.isSafeInteger(row.sourceRevision) ||
-      row.sourceRevision < 2 ||
-      !SHA256_PATTERN.test(row.recordSha256) ||
-      row.recordSha256 !== sha256(JSON.stringify(record)) ||
-      typeof row.publisherId !== 'string' ||
-      row.publisherId.length < 3 ||
-      typeof row.publishedAt !== 'string' ||
-      !Number.isFinite(Date.parse(row.publishedAt)) ||
-      new Date(row.publishedAt).toISOString() !== row.publishedAt
-    ) {
-      throw new Error('publication metadata mismatch');
-    }
-    return Object.freeze({
-      reportId,
-      publishedAt: row.publishedAt,
-      publisherId: row.publisherId,
-      sourceRevision: row.sourceRevision,
-      recordSha256: row.recordSha256,
-      record,
-    });
-  } catch {
+  const publication = parsePublicationRow(row);
+  if (publication.reportId !== reportId) {
     throw new ReportingStoreIntegrityError(
-      'Stored reporting publication failed integrity validation.',
+      'Stored reporting publication identifier did not match.',
     );
   }
+  return publication;
+}
+
+export async function listReportingPublications(
+  database: D1Database,
+  query: Readonly<ReportingPublicationQuery>,
+) {
+  await ensureReportingStoreSchema(database);
+  const limit = query.limit ?? 50;
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+    throw new ReportingStoreIntegrityError(
+      'Reporting publication limit must be between 1 and 100.',
+    );
+  }
+  const through = exactTime(query.through, 'Reporting publication boundary');
+  let cursor: Readonly<ReportingPublicationCursor> | undefined;
+  if (query.cursor) {
+    cursor = Object.freeze({
+      publicId: query.cursor.publicId,
+      publishedAt: exactTime(
+        query.cursor.publishedAt,
+        'Reporting publication cursor time',
+      ),
+    });
+    if (
+      !UUID_PATTERN.test(cursor.publicId) ||
+      Date.parse(cursor.publishedAt) > Date.parse(through)
+    ) {
+      throw new ReportingStoreIntegrityError(
+        'Reporting publication cursor is invalid.',
+      );
+    }
+  }
+  const rows = await database
+    .prepare(
+      `SELECT event.event_id AS publicId,
+              publication.report_id AS reportId,
+              publication.schema_version AS schemaVersion,
+              publication.published_at AS publishedAt,
+              publication.publisher_id AS publisherId,
+              publication.source_revision AS sourceRevision,
+              publication.record_sha256 AS recordSha256,
+              publication.record_json AS recordJson
+       FROM leftout_report_publications AS publication
+       JOIN leftout_report_events AS event
+         ON event.report_id = publication.report_id
+        AND event.revision = publication.source_revision
+        AND event.to_state = 'published'
+        AND event.actor_role = 'publisher'
+       WHERE publication.published_at <= ?
+         AND (
+           ? IS NULL
+           OR publication.published_at > ?
+           OR (
+             publication.published_at = ?
+             AND event.event_id > ?
+           )
+         )
+       ORDER BY publication.published_at ASC, event.event_id ASC
+       LIMIT ?`,
+    )
+    .bind(
+      through,
+      cursor?.publishedAt ?? null,
+      cursor?.publishedAt ?? '',
+      cursor?.publishedAt ?? '',
+      cursor?.publicId ?? '',
+      limit + 1,
+    )
+    .all<ReportingPublicationRow>();
+  const selected = rows.results.slice(0, limit);
+  const publications = Object.freeze(selected.map(parsePublicationRow));
+  const last = selected.at(-1);
+  return Object.freeze({
+    publications,
+    nextCursor:
+      rows.results.length > limit && last
+        ? Object.freeze({
+            publicId: last.publicId,
+            publishedAt: last.publishedAt,
+          })
+        : null,
+  });
 }
 
 async function findIntake(

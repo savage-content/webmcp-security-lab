@@ -84,3 +84,18 @@ export function authenticateReportingActor(
   }
   return matched;
 }
+
+export function authenticateReportingFeed(
+  request: Request,
+  configuration: Readonly<ReportingServiceConfiguration>,
+) {
+  if (
+    configuration.mode !== 'invited' ||
+    !configuration.gates.feed ||
+    !configuration.feedTokenSha256
+  ) {
+    return false;
+  }
+  const token = bearerToken(request);
+  return token ? tokenMatches(token, configuration.feedTokenSha256) : false;
+}

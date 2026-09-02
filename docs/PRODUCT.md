@@ -128,10 +128,14 @@ code. Strict quota-bound invited intake, authenticated reviewer
 read/transition, and separately authorized publisher handlers also exist. The
 publisher accepts only the exact `accepted_private` revision and writes a
 separate immutable minimized publication record. Their public configuration is
-absent. Retention/correction operations and signed feed serving do not exist;
-all external reporting remains disabled until a dedicated privacy and security
-review approves the destination, production identity boundary, retention,
-abuse controls, publication standard, and incident process.
+absent. A separately authenticated feed can render bounded JSON or NDJSON
+snapshot pages from only those immutable publication records and sign the exact
+bytes with an externally supplied Ed25519 key. Its trust depends on a
+fingerprint distributed through another trusted channel. Retention/correction
+operations do not exist; all external reporting remains disabled until a
+dedicated privacy and security review approves the destination, production
+identity boundary, key custody, trust-metadata distribution, retention, abuse
+controls, publication standard, and incident process.
 
 ## Agent behavior
 
