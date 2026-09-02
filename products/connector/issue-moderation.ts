@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  ISSUE_DRAFT_ASSURANCE_LIMITATION,
+  ISSUE_DRAFT_SCHEMA_VERSION,
   createPrivacySafeIssueDraft,
   type PrivacySafeIssueDraft,
 } from './issue-draft';
@@ -48,6 +50,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function rejectUnknownFields(
+  value: Record<string, unknown>,
+  allowed: ReadonlySet<string>,
+  label: string,
+) {
+  for (const key of Reflect.ownKeys(value)) {
+    if (typeof key !== 'string' || !allowed.has(key)) {
+      throw new Error(`${label} contains an unknown field: ${String(key)}.`);
+    }
+  }
+}
+
 function exactIsoTime(value: unknown, label: string) {
   if (
     typeof value !== 'string' ||
@@ -79,6 +93,55 @@ function moderationState(value: unknown) {
     throw new Error('The requested moderation state is unsupported.');
   }
   return value as IssueModerationState;
+}
+
+function parseStoredDraft(value: unknown) {
+  if (!isRecord(value)) {
+    throw new Error('Stored issue draft must be an object.');
+  }
+  rejectUnknownFields(
+    value,
+    new Set([
+      'assuranceLimitation',
+      'category',
+      'context',
+      'schemaVersion',
+      'severity',
+      'siteOrigin',
+      'stage',
+      'submission',
+    ]),
+    'Stored issue draft',
+  );
+  if (
+    value.schemaVersion !== ISSUE_DRAFT_SCHEMA_VERSION ||
+    value.assuranceLimitation !== ISSUE_DRAFT_ASSURANCE_LIMITATION ||
+    !isRecord(value.submission)
+  ) {
+    throw new Error('Stored issue draft contract is invalid.');
+  }
+  rejectUnknownFields(
+    value.submission,
+    new Set(['disposition', 'submittable']),
+    'Stored issue submission',
+  );
+
+  const canonical = createPrivacySafeIssueDraft({
+    context: value.context,
+    category: value.category,
+    severity: value.severity,
+    stage: value.stage,
+    ...(Object.hasOwn(value, 'siteOrigin')
+      ? { siteOrigin: value.siteOrigin }
+      : {}),
+  });
+  if (
+    value.submission.submittable !== canonical.submission.submittable ||
+    value.submission.disposition !== canonical.submission.disposition
+  ) {
+    throw new Error('Stored issue submission disposition is invalid.');
+  }
+  return canonical;
 }
 
 function freezeRecord(record: IssueModerationRecord) {
@@ -184,4 +247,110 @@ export function projectModeratedIssueFeed(
       ...(record.publication ? { publication: record.publication } : {}),
     })),
   );
+}
+
+export function parseIssueModerationRecord(
+  value: unknown,
+): Readonly<IssueModerationRecord> {
+  if (!isRecord(value)) {
+    throw new Error('Stored moderation record must be an object.');
+  }
+  rejectUnknownFields(
+    value,
+    new Set([
+      'schemaVersion',
+      'id',
+      'receivedAt',
+      'updatedAt',
+      'state',
+      'draft',
+      'history',
+      'publication',
+    ]),
+    'Stored moderation record',
+  );
+  if (value.schemaVersion !== ISSUE_MODERATION_RECORD_SCHEMA_VERSION) {
+    throw new Error('Stored moderation record schema is unsupported.');
+  }
+  const id = issueId(value.id);
+  const receivedAt = exactIsoTime(
+    value.receivedAt,
+    'Stored moderation received time',
+  );
+  const updatedAt = exactIsoTime(
+    value.updatedAt,
+    'Stored moderation update time',
+  );
+  const state = moderationState(value.state);
+  const draft = parseStoredDraft(value.draft);
+  if (!Array.isArray(value.history) || value.history.length < 1) {
+    throw new Error('Stored moderation history is required.');
+  }
+  if (value.history.length > ISSUE_MODERATION_STATES.length) {
+    throw new Error('Stored moderation history exceeds the transition bound.');
+  }
+
+  const history = value.history.map((entry, index) => {
+    if (!isRecord(entry)) {
+      throw new Error(`Stored moderation event ${index} must be an object.`);
+    }
+    rejectUnknownFields(
+      entry,
+      new Set(['at', 'from', 'to']),
+      `Stored moderation event ${index}`,
+    );
+    const from =
+      entry.from === 'received' ? 'received' : moderationState(entry.from);
+    return Object.freeze({
+      at: exactIsoTime(entry.at, `Stored moderation event ${index} time`),
+      from,
+      to: moderationState(entry.to),
+    });
+  });
+
+  let replayed = createQuarantinedIssueRecord(
+    {
+      context: draft.context,
+      category: draft.category,
+      severity: draft.severity,
+      stage: draft.stage,
+      ...(draft.siteOrigin ? { siteOrigin: draft.siteOrigin } : {}),
+    },
+    {
+      id: () => id,
+      now: () => Date.parse(receivedAt),
+    },
+  );
+  const first = history[0];
+  if (
+    !first ||
+    first.from !== 'received' ||
+    first.to !== 'quarantined' ||
+    first.at !== receivedAt
+  ) {
+    throw new Error('Stored moderation intake event is invalid.');
+  }
+  for (const [index, event] of history.slice(1).entries()) {
+    if (event.from !== replayed.state) {
+      throw new Error(
+        `Stored moderation event ${index + 1} has a broken state chain.`,
+      );
+    }
+    replayed = transitionIssueModeration(replayed, {
+      at: event.at,
+      to: event.to,
+      ...(event.to === 'published' && Object.hasOwn(value, 'publication')
+        ? { publication: value.publication }
+        : {}),
+    });
+  }
+  if (
+    replayed.state !== state ||
+    replayed.updatedAt !== updatedAt ||
+    replayed.history.length !== history.length ||
+    (state === 'published') !== Object.hasOwn(value, 'publication')
+  ) {
+    throw new Error('Stored moderation snapshot does not match its history.');
+  }
+  return replayed;
 }

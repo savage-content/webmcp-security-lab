@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createQuarantinedIssueRecord,
+  parseIssueModerationRecord,
   projectModeratedIssueFeed,
   transitionIssueModeration,
 } from '../products/connector/issue-moderation';
@@ -119,5 +120,47 @@ describe('quarantined issue moderation', () => {
         },
       }),
     ).toThrow('explicit hostname-publication consent');
+  });
+
+  it('rehydrates only a canonical moderation snapshot by replaying history', () => {
+    const reviewing = transitionIssueModeration(createRecord(), {
+      at: '2026-09-02T12:01:00.000Z',
+      to: 'under_review',
+    });
+    expect(
+      parseIssueModerationRecord(JSON.parse(JSON.stringify(reviewing))),
+    ).toEqual(reviewing);
+  });
+
+  it('rejects snapshot, history, and stored-draft substitution', () => {
+    const record = createRecord();
+    expect(() =>
+      parseIssueModerationRecord({ ...record, state: 'accepted_private' }),
+    ).toThrow('does not match its history');
+    expect(() =>
+      parseIssueModerationRecord({
+        ...record,
+        history: [
+          ...record.history,
+          {
+            at: '2026-09-02T12:01:00.000Z',
+            from: 'under_review',
+            to: 'accepted_private',
+          },
+        ],
+      }),
+    ).toThrow('broken state chain');
+    expect(() =>
+      parseIssueModerationRecord({
+        ...record,
+        draft: {
+          ...record.draft,
+          submission: {
+            submittable: true,
+            disposition: 'human-review-required',
+          },
+        },
+      }),
+    ).toThrow('submission disposition is invalid');
   });
 });

@@ -92,13 +92,14 @@ pretending that a green badge or a reassuring annotation is enforcement.
 - A deterministic, allowlisted Manifest V3 Local Guard preview package and a
   release-attestation verifier that explicitly does not claim Chrome signing.
 - A disconnected, privacy-minimized reporting and moderation core with
-  fail-closed invitation and role configuration; no public intake or feed
-  endpoint is enabled.
+  fail-closed invitation and role configuration, hash-chained D1 events,
+  idempotency, and optimistic concurrency; no public intake or feed endpoint is
+  enabled.
 
 ## Verification
 
-The current candidate passed a clean Node.js 24 install, 352 automated tests,
-typecheck, lint, production build, deterministic Local Guard packaging, and a
+The current working tree passed 368 automated tests across 41 files on Node.js
+24, typecheck, lint, production build, deterministic Local Guard packaging, and a
 live non-invoking walkthrough/accessibility regression. Earlier bounded browser
 runs produced passing receipts for all five synthetic lessons through the
 local extension/connector path.
@@ -128,8 +129,9 @@ freedom to operate.
   their absence into a security pass.
 - The Local Guard remains an unsigned developer preview with a loopback
   companion.
-- Reporting remains local/disconnected until authentication, privacy,
-  retention, abuse, review, correction, and publication controls exist.
+- Reporting remains local/disconnected. Authentication and durable moderation
+  primitives exist, but invited HTTP intake, rate limits, retention/deletion,
+  operator recovery, correction, signed publication, and privacy approval do not.
 - Android is a conformance prototype, not a device-validated product.
 - Real first-time-human, screen-reader, and 200% zoom acceptance remain pending.
 

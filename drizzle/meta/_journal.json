@@ -15,6 +15,13 @@
       "when": 1788176541918,
       "tag": "0001_good_true_believers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788386141566,
+      "tag": "0002_furry_miss_america",
+      "breakpoints": true
     }
   ]
 }

@@ -122,10 +122,11 @@ Every automated result and related report must state exactly:
 
 > This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
 
-A strict quarantine transition core and minimized feed projection now exist as
-local code. Public submission, authenticated moderation, durable review storage,
-and feed serving remain disabled until a dedicated privacy and security review
-approves the destination, identity boundary, retention, abuse controls,
+A strict quarantine transition core, role-separated authentication helpers,
+durable hash-chained D1 store, and minimized feed projection now exist as local
+code. Public submission, reviewer endpoints, retention operations, and feed
+serving remain disabled until a dedicated privacy and security review approves
+the destination, production identity boundary, retention, abuse controls,
 publication standard, and incident process.
 
 ## Agent behavior

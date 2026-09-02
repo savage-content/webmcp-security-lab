@@ -77,7 +77,7 @@ There are intentionally no credentials, real identities, production accounts, or
 | Loopback or browser profile compromise                       | Local attacker captures development tokens or tampers with the prototype                    | Explicit local-development boundary; no production authentication claim; restart invalidates connector state                                                                                             |
 | Android conformance mislabeled integration                   | JVM tests are represented as device/AppFunction support                                     | No generated metadata or device discovery claim; Android remains isolated and conformance-only                                                                                                           |
 | Release package widens extension authority                   | A preview artifact contains unreviewed code or permissions                                  | Deterministic runtime allowlist; exact MV3 permission/host checks; symlink, remote-reference, and dynamic-code rejection; per-file and archive SHA-256 metadata                                          |
-| Caller asserts that a report was human-reviewed              | Untrusted intake reaches a public feed without real review                                  | Closed quarantine transition graph and separate publication gate in local code; no public intake, reviewer, durable store, or feed route exists until authentication and operational review are approved |
+| Caller asserts that a report was human-reviewed              | Untrusted intake reaches a public feed without real review                                  | Closed transition graph, role-separated credentials, and a durable hash-chained D1 ledger exist locally; no public intake/reviewer route, retention operation, or feed route exists until privacy and operations approval |
 
 ## Deliberate vulnerabilities versus platform vulnerabilities
 
@@ -113,9 +113,11 @@ The fixture mismatches are intentional application-design failures. The lab does
 - The deterministic ZIP proves repeatable reviewed bytes, not publisher
   identity, installation safety, Chrome Web Store approval, or a protected
   native browser-to-host channel.
-- The moderation state machine constrains in-process transitions but does not
-  authenticate a reviewer or provide durable audit, retention, deletion,
-  abuse, correction, or incident controls. Network routes remain disabled.
+- The reporting modules provide role-separated credential checks and a durable,
+  hash-chained moderation ledger, but those controls are not wired to a deployed
+  service. Production identity, rate limits, retention/deletion, backup and
+  recovery, correction, incident response, and signed feed operations remain
+  absent. Network routes remain disabled.
 - Two earlier 2026-09-01 page invocations produced local `PASS` receipts but
   failed before connector commitment. An in-flight Chrome 152 registration
   abort remains the leading hypothesis for the later failure, not proven

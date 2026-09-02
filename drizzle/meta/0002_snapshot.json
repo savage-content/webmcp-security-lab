@@ -1,0 +1,452 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "3c531893-4406-4823-898d-bc90f529fb5e",
+  "prevId": "0d14bf3d-51b9-4f79-a5bc-3b55ab5e82b5",
+  "tables": {
+    "evidence_runs": {
+      "name": "evidence_runs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "scenario_id": {
+          "name": "scenario_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "scenario_version": {
+          "name": "scenario_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "origin": {
+          "name": "origin",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "invocation_channel": {
+          "name": "invocation_channel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "verdict": {
+          "name": "verdict",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "receipt_json": {
+          "name": "receipt_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_evidence_runs_timestamp": {
+          "name": "idx_evidence_runs_timestamp",
+          "columns": [
+            "timestamp"
+          ],
+          "isUnique": false
+        },
+        "idx_evidence_runs_session_timestamp": {
+          "name": "idx_evidence_runs_session_timestamp",
+          "columns": [
+            "session_id",
+            "timestamp"
+          ],
+          "isUnique": false
+        },
+        "idx_evidence_runs_scenario_timestamp": {
+          "name": "idx_evidence_runs_scenario_timestamp",
+          "columns": [
+            "scenario_id",
+            "timestamp"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "leftout_report_events": {
+      "name": "leftout_report_events",
+      "columns": {
+        "event_id": {
+          "name": "event_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "report_id": {
+          "name": "report_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "at": {
+          "name": "at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_id": {
+          "name": "actor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_role": {
+          "name": "actor_role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "request_id": {
+          "name": "request_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "from_state": {
+          "name": "from_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "to_state": {
+          "name": "to_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "payload_sha256": {
+          "name": "payload_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "previous_event_sha256": {
+          "name": "previous_event_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "event_sha256": {
+          "name": "event_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "event_json": {
+          "name": "event_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_leftout_report_events_report_sequence": {
+          "name": "idx_leftout_report_events_report_sequence",
+          "columns": [
+            "report_id",
+            "sequence"
+          ],
+          "isUnique": true
+        },
+        "idx_leftout_report_events_report_request": {
+          "name": "idx_leftout_report_events_report_request",
+          "columns": [
+            "report_id",
+            "request_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "leftout_report_events_report_id_leftout_report_records_id_fk": {
+          "name": "leftout_report_events_report_id_leftout_report_records_id_fk",
+          "tableFrom": "leftout_report_events",
+          "tableTo": "leftout_report_records",
+          "columnsFrom": [
+            "report_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "chk_leftout_report_events_sequence": {
+          "name": "chk_leftout_report_events_sequence",
+          "value": "\"leftout_report_events\".\"sequence\" >= 1"
+        },
+        "chk_leftout_report_events_revision": {
+          "name": "chk_leftout_report_events_revision",
+          "value": "\"leftout_report_events\".\"revision\" = \"leftout_report_events\".\"sequence\""
+        },
+        "chk_leftout_report_events_actor_role": {
+          "name": "chk_leftout_report_events_actor_role",
+          "value": "\"leftout_report_events\".\"actor_role\" IN ('intake','reviewer','publisher','system')"
+        },
+        "chk_leftout_report_events_from_state": {
+          "name": "chk_leftout_report_events_from_state",
+          "value": "\"leftout_report_events\".\"from_state\" IN ('received','quarantined','under_review','needs_evidence','accepted_private','duplicate','rejected','published')"
+        },
+        "chk_leftout_report_events_to_state": {
+          "name": "chk_leftout_report_events_to_state",
+          "value": "\"leftout_report_events\".\"to_state\" IN ('quarantined','under_review','needs_evidence','accepted_private','duplicate','rejected','published')"
+        },
+        "chk_leftout_report_events_payload_sha256": {
+          "name": "chk_leftout_report_events_payload_sha256",
+          "value": "length(\"leftout_report_events\".\"payload_sha256\") = 64"
+        },
+        "chk_leftout_report_events_previous_event_sha256": {
+          "name": "chk_leftout_report_events_previous_event_sha256",
+          "value": "\"leftout_report_events\".\"previous_event_sha256\" IS NULL OR length(\"leftout_report_events\".\"previous_event_sha256\") = 64"
+        },
+        "chk_leftout_report_events_event_sha256": {
+          "name": "chk_leftout_report_events_event_sha256",
+          "value": "length(\"leftout_report_events\".\"event_sha256\") = 64"
+        }
+      }
+    },
+    "leftout_report_intake_idempotency": {
+      "name": "leftout_report_intake_idempotency",
+      "columns": {
+        "invitation_id": {
+          "name": "invitation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "key_sha256": {
+          "name": "key_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "request_sha256": {
+          "name": "request_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "report_id": {
+          "name": "report_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_leftout_report_intake_idempotency_key": {
+          "name": "idx_leftout_report_intake_idempotency_key",
+          "columns": [
+            "invitation_id",
+            "key_sha256"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "leftout_report_intake_idempotency_report_id_leftout_report_records_id_fk": {
+          "name": "leftout_report_intake_idempotency_report_id_leftout_report_records_id_fk",
+          "tableFrom": "leftout_report_intake_idempotency",
+          "tableTo": "leftout_report_records",
+          "columnsFrom": [
+            "report_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "chk_leftout_report_intake_key_sha256": {
+          "name": "chk_leftout_report_intake_key_sha256",
+          "value": "length(\"leftout_report_intake_idempotency\".\"key_sha256\") = 64"
+        },
+        "chk_leftout_report_intake_request_sha256": {
+          "name": "chk_leftout_report_intake_request_sha256",
+          "value": "length(\"leftout_report_intake_idempotency\".\"request_sha256\") = 64"
+        }
+      }
+    },
+    "leftout_report_records": {
+      "name": "leftout_report_records",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "schema_version": {
+          "name": "schema_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "received_at": {
+          "name": "received_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_event_sha256": {
+          "name": "last_event_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "record_json": {
+          "name": "record_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_leftout_report_records_state_updated": {
+          "name": "idx_leftout_report_records_state_updated",
+          "columns": [
+            "state",
+            "updated_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "chk_leftout_report_records_revision": {
+          "name": "chk_leftout_report_records_revision",
+          "value": "\"leftout_report_records\".\"revision\" >= 1"
+        },
+        "chk_leftout_report_records_state": {
+          "name": "chk_leftout_report_records_state",
+          "value": "\"leftout_report_records\".\"state\" IN ('quarantined','under_review','needs_evidence','accepted_private','duplicate','rejected','published')"
+        },
+        "chk_leftout_report_records_last_event_sha256": {
+          "name": "chk_leftout_report_records_last_event_sha256",
+          "value": "length(\"leftout_report_records\".\"last_event_sha256\") = 64"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

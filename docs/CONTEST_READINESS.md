@@ -13,10 +13,10 @@ a completed submission.
 | ----------------------------------- | ------------------------------------------------------------------------------------- |
 | Public application                  | <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>                           |
 | Deployed application source         | commit `8568a5f`, Sites version 11                                                    |
-| Latest local documentation          | commit `bef9011` before this readiness update                                         |
+| Latest local baseline               | commit `4a63f01` before the durable-store update; later work is not yet public         |
 | Public GitHub repository            | <https://github.com/savage-content/webmcp-security-lab>                               |
 | Last locally recorded `origin/main` | `93b4c78`; remote synchronization is unproven                                         |
-| Automated release gate              | Node.js 24; 352/352 tests across 38 files; typecheck, lint, and production build pass |
+| Automated release gate              | Node.js 24; 368/368 tests across 41 files; typecheck, lint, and production build pass |
 | Demo video                          | Not recorded                                                                          |
 
 ## Blocking submission gates
@@ -34,10 +34,10 @@ a completed submission.
 | ----------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Public novice Site Tools experience | PASS                  | Version 11 is live with setup gate, six-step walkthrough, five lessons, exact approval, receipt teaching, and reduced-motion support.                                                       |
 | Current OpenAI Site Tools model     | PASS WITH LIMITS      | Top-level imperative registration and explicit model/workspace/session limits align with current OpenAI documentation; this does not prove contest eligibility.                             |
-| Automated verification              | PASS                  | Clean Node.js 24 install and 352 tests across 38 files plus typecheck, lint, build, and deterministic Local Guard packaging.                                                                |
+| Automated verification              | PASS                  | Node.js 24 ran 368 tests across 41 files plus typecheck, lint, build, deterministic Local Guard packaging, and the real D1 migration gate. A fresh `npm ci` remains part of final freeze.     |
 | Live technical accessibility        | PASS WITH HUMAN GATES | Structure, names, keyboard dialog behavior, focus restoration, and reduced motion passed; real novice, screen-reader, 200% zoom, and 360 px popup acceptance remain pending.                |
 | Local Guard                         | DEVELOPMENT PREVIEW   | Deterministic MV3 package and an Ed25519 release-attestation/verification gate exist; no production key, Chrome-signed distribution, or production companion security exists.               |
-| Reporting                           | DISCONNECTED CORE     | Privacy-minimized drafts, quarantine transitions, feed projection, and fail-closed invited/reviewer/publisher auth exist; no public route, durable moderation store, or served feed exists. |
+| Reporting                           | DURABLE, DISCONNECTED | Privacy-minimized drafts, role-separated auth, a hash-chained D1 moderation store, and migration checks exist; no public intake/reviewer route, retention job, signed feed, or operations approval exists. |
 | Android                             | CONFORMANCE ONLY      | No supported-device discovery, permission, invocation, or receipt evidence.                                                                                                                 |
 | Novelty or legal clearance          | NO CLAIM              | The prior-art review does not support novelty, patentability, clean-room, or freedom-to-operate claims.                                                                                     |
 

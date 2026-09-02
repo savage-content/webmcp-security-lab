@@ -236,9 +236,12 @@ permits, conversations, and reporter identifiers are not feed fields.
 The local productization candidate adds a pure moderation state machine. A
 strict public-web draft begins in `quarantined`, can reach `published` only
 through `under_review` and `accepted_private`, and must then pass the separate
-hostname-consent and evidence-basis projection gate. The module adds no network
-route or durable store; caller-supplied state is not treated as authenticated
-human review.
+hostname-consent and evidence-basis projection gate. A separate D1 boundary
+persists versioned snapshots plus immutable, hash-chained events; idempotency
+and optimistic revisions reject replay and stale writers. The checked-in
+migration enforces the same state, digest, append-only, and retention gates as
+the runtime bootstrap. No network route is enabled, and stored or caller-supplied
+state is not treated as authenticated human review.
 
 Indexes match the actual read patterns:
 

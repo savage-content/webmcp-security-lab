@@ -89,9 +89,10 @@ document, registration, discovery, and invocation separately. A fresh Chrome
 path. A live Sol/Terra built-in-client conformance run remains outstanding. A
 A strict quarantine/moderation state machine, minimized feed projection, and
 fail-closed invited-intake/reviewer/publisher configuration and authentication
-are implemented locally, but public intake, durable
-moderation storage, and feed serving remain intentionally disabled pending a
-dedicated privacy and security review.
+are implemented locally. A versioned D1 store now adds hash-chained events,
+idempotent intake, optimistic revisions, and append-only database enforcement.
+Public intake, reviewer routes, retention operations, and feed serving remain
+intentionally disabled pending their dedicated privacy and security gates.
 
 ## The guided experience
 
@@ -335,8 +336,8 @@ The automated suite covers:
   behavior, revocation, and failure handling.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The current automated suite passes 352/352
-tests across 38 files, typecheck, lint, and a production build on Node.js 24. Live connector
+separate Android conformance script. The current automated suite passes 368/368
+tests across 41 files, typecheck, lint, and a production build on Node.js 24. Live connector
 evidence is recorded separately: the
 September 1 target-client run satisfied the bounded end-to-end checks in
 [docs/GO_NO_GO.md](docs/GO_NO_GO.md).

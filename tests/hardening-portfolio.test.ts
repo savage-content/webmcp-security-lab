@@ -29,9 +29,17 @@ const evidencePaths = [
   'products/connector/issue-review.ts',
   'products/connector/issue-publication.ts',
   'products/connector/issue-moderation.ts',
+  'products/reporting-service/config.ts',
+  'products/reporting-service/auth.ts',
+  'products/reporting-service/ledger.ts',
+  'products/reporting-service/store.ts',
   'scripts/package-local-guard.mts',
+  'scripts/attest-local-guard-release.mts',
+  'db/schema.ts',
+  'drizzle/0002_furry_miss_america.sql',
   'docs/PRODUCT.md',
   'docs/THREAT_MODEL.md',
+  'docs/LOCAL_GUARD_RELEASE.md',
 ];
 
 describe('Local Guard and reporting hardening portfolio', () => {
