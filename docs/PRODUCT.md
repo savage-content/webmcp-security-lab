@@ -124,7 +124,8 @@ Every automated result and related report must state exactly:
 
 A strict quarantine transition core, role-separated authentication helpers,
 durable hash-chained D1 store, and minimized feed projection now exist as local
-code. Public submission, reviewer endpoints, retention operations, and feed
+code. A strict, quota-bound invited intake handler also exists, but its public
+configuration is absent. Reviewer endpoints, retention operations, and feed
 serving remain disabled until a dedicated privacy and security review approves
 the destination, production identity boundary, retention, abuse controls,
 publication standard, and incident process.

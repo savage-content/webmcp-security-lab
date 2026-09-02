@@ -33,13 +33,17 @@ const evidencePaths = [
   'products/reporting-service/auth.ts',
   'products/reporting-service/ledger.ts',
   'products/reporting-service/store.ts',
+  'products/reporting-service/intake.ts',
+  'app/api/reports/intake/route.ts',
   'scripts/package-local-guard.mts',
   'scripts/attest-local-guard-release.mts',
   'db/schema.ts',
   'drizzle/0002_furry_miss_america.sql',
+  'drizzle/0003_mixed_nightmare.sql',
   'docs/PRODUCT.md',
   'docs/THREAT_MODEL.md',
   'docs/LOCAL_GUARD_RELEASE.md',
+  'docs/REPORTING_SERVICE.md',
 ];
 
 describe('Local Guard and reporting hardening portfolio', () => {

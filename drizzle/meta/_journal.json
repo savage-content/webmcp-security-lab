@@ -22,6 +22,13 @@
       "when": 1788386141566,
       "tag": "0002_furry_miss_america",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1788387551389,
+      "tag": "0003_mixed_nightmare",
+      "breakpoints": true
     }
   ]
 }

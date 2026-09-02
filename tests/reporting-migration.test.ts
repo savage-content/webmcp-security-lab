@@ -4,17 +4,20 @@ import { randomUUID } from 'node:crypto';
 import { convertV4MiniflareOptions, Miniflare } from 'miniflare';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-const migrationUrl = new URL(
-  '../drizzle/0002_furry_miss_america.sql',
-  import.meta.url,
-);
+const migrationUrls = [
+  new URL('../drizzle/0002_furry_miss_america.sql', import.meta.url),
+  new URL('../drizzle/0003_mixed_nightmare.sql', import.meta.url),
+];
 
 async function applyReportingMigration(database: D1Database) {
-  const sql = await readFile(migrationUrl, 'utf8');
-  const statements = sql
-    .split('--> statement-breakpoint')
-    .map((statement) => statement.trim())
-    .filter(Boolean);
+  const statements = (
+    await Promise.all(migrationUrls.map((url) => readFile(url, 'utf8')))
+  ).flatMap((sql) =>
+    sql
+      .split('--> statement-breakpoint')
+      .map((statement) => statement.trim())
+      .filter(Boolean),
+  );
   await database.batch(
     statements.map((statement) => database.prepare(statement)),
   );
@@ -57,6 +60,14 @@ describe('reporting database migration', () => {
       { name: 'trg_leftout_report_events_no_update', type: 'trigger' },
       { name: 'trg_leftout_report_idempotency_no_delete', type: 'trigger' },
       { name: 'trg_leftout_report_idempotency_no_update', type: 'trigger' },
+      {
+        name: 'trg_leftout_report_intake_quota_exhausted',
+        type: 'trigger',
+      },
+      {
+        name: 'trg_leftout_report_intake_quota_integrity',
+        type: 'trigger',
+      },
       { name: 'trg_leftout_report_records_no_delete', type: 'trigger' },
     ]);
 
@@ -142,5 +153,31 @@ describe('reporting database migration', () => {
         .bind(reportId)
         .run(),
     ).rejects.toThrow('require_retention_workflow');
+
+    await database
+      .prepare(
+        `INSERT INTO leftout_report_intake_quotas (
+          bucket_key, scope_type, scope_id_sha256, window_started_at,
+          expires_at, count, max_count
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        'd'.repeat(64),
+        'invitation',
+        'e'.repeat(64),
+        '2026-09-02T19:00:00.000Z',
+        '2026-09-02T20:00:00.000Z',
+        1,
+        1,
+      )
+      .run();
+    await expect(
+      database
+        .prepare(
+          'UPDATE leftout_report_intake_quotas SET count = count + 1 WHERE bucket_key = ?',
+        )
+        .bind('d'.repeat(64))
+        .run(),
+    ).rejects.toThrow('quota_exhausted');
   }, 15_000);
 });

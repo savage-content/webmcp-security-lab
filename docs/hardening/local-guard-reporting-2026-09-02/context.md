@@ -6,7 +6,7 @@ accessibility, and moderation-core changes made while preparing this review.
 The target tree was clean at `5ba6e97`; the added files are implementation
 prerequisites, not evidence that a signed extension or hosted intake exists.
 
-Collection digest: `sha256:86005e8d35bb6900c5c166a40a40ecdacb451c956030a25a41b1958c5cea7157`
+Collection digest: `sha256:da46487619d70b374a4aa694cc1266fbb60cedff6814dfb336b0ace3a97f76cf`
 
 The digest is SHA-256 over newline-terminated, repository-relative
 `path<TAB>sha256` records in the order below.
@@ -22,17 +22,21 @@ The digest is SHA-256 over newline-terminated, repository-relative
 | `E-RP-3`  | Session-scoped local review list           | `products/connector/issue-review.ts`      | `c8d818d0adfc94638f2edae42e07fe08fec8c524a68e8b2f78c0e055a7cba82e` |
 | `E-RP-4`  | Human-gated feed projection                | `products/connector/issue-publication.ts` | `288b3cd49e4b652f9b1ceba27e9dd1dced07d4c0566e896da2a3b7a40b246df4` |
 | `E-RP-5`  | Quarantined moderation state machine       | `products/connector/issue-moderation.ts`  | `409620d565fde32d285a8eea833f87a555193c67a46da1708a670490a43bf310` |
-| `E-RP-6`  | Fail-closed service configuration          | `products/reporting-service/config.ts`    | `66ee5db7d8e4d2722b8dad5c2576b0c4e011b8243e00b87403ee288c8b8b174b` |
+| `E-RP-6`  | Fail-closed service configuration          | `products/reporting-service/config.ts`    | `28f16d9f5aa5cfc28458321b4597f36659ac87e1f14c8e54c8a6df18587fa18c` |
 | `E-RP-7`  | Role-separated service authentication      | `products/reporting-service/auth.ts`      | `00c2f4ab564b523b2fd82690a314a560f949dd32759d3f68fb69178db57377bf` |
 | `E-RP-8`  | Revisioned hash-chained moderation ledger  | `products/reporting-service/ledger.ts`    | `5e990417cae2b4970f135a7cb4b69eaa1e94397a01cfc1e92a83aea32735eeb8` |
-| `E-RP-9`  | Durable optimistic D1 store                | `products/reporting-service/store.ts`     | `04f6ae232083679c7b534b984a6cf2e2fb656715f587615135e454c2123a7a8f` |
+| `E-RP-9`  | Durable optimistic D1 store                | `products/reporting-service/store.ts`     | `c32ec102bbb77c139ee3fe1a2aae0500c4c1fbf14f3ce63ac16a75621b40a69b` |
+| `E-RP-12` | Strict invited intake handler              | `products/reporting-service/intake.ts`    | `a272f0734b280f7e17de34aa05e0935cea8de0eb7bef681479cfd0359869120a` |
+| `E-RP-13` | Disabled-first intake route                | `app/api/reports/intake/route.ts`         | `afe68b9d32220c837bbab3cddec3ed744322f0cdcf350aa4a2d2ebdcc3a82acb` |
 | `E-LG-5`  | Reproducible package gate                  | `scripts/package-local-guard.mts`         | `49fd9f1eb6614d92bfc3327b48f07fcd8ac21ae96b46cfc1236eb30c4cf123a0` |
 | `E-LG-6`  | Detached release attestation gate          | `scripts/attest-local-guard-release.mts`  | `cd791821cd7ea10e5fde05ff9042f9d5df518990a389477c82a89c4d050987c8` |
-| `E-RP-10` | Durable reporting schema                   | `db/schema.ts`                            | `8a6004ffebd69b3ecdf1bc5cf2614697ea9cb0fce360f7a5634ed2cfa4e2fcd6` |
+| `E-RP-10` | Durable reporting schema                   | `db/schema.ts`                            | `f479c087491f6b99a3554e420fa4d45661cdcfe29ba79d4869f8df25f87af5e9` |
 | `E-RP-11` | Fail-closed reporting migration            | `drizzle/0002_furry_miss_america.sql`     | `4aeb9dc74a5a2d55670c1a3849cc30586f59e6e212c9070178386fdb286ca0e4` |
-| `E-DOC-1` | Product acceptance and privacy boundary    | `docs/PRODUCT.md`                         | `56c4e06959e84c23b8b9ab39cf7555ffced7a6f04250a583aac5a13eb194afa7` |
-| `E-DOC-2` | Current threat model                       | `docs/THREAT_MODEL.md`                    | `08ebd4a37d6951d4e3fd72831472a5900ab4a241fe7173bf825e336fbb55d04d` |
+| `E-RP-14` | Quota enforcement migration                | `drizzle/0003_mixed_nightmare.sql`        | `e3b272c7f2397a04b8305ee692bf56ef1b270f69e15335aadb7c0e408efafebe` |
+| `E-DOC-1` | Product acceptance and privacy boundary    | `docs/PRODUCT.md`                         | `20b68984589a617478a75f94bae8ffc1ff459a46f31a713f05e0ad466bc9da68` |
+| `E-DOC-2` | Current threat model                       | `docs/THREAT_MODEL.md`                    | `49463eaf00d3c87b3184fb69172ad75e94648a27e65b029d806540cab30f1334` |
 | `E-DOC-3` | Local Guard release boundary               | `docs/LOCAL_GUARD_RELEASE.md`             | `a63a1734bbbf11aa710e5d6d17f7159225e43ff35e24ac0a9bbcd30dbce7a0e5` |
+| `E-DOC-4` | Reporting service release boundary         | `docs/REPORTING_SERVICE.md`               | `556f2f613e8bfab9fcd4df9f9a3dab4075cdfd0881e4170b47db8a085e01056d` |
 
 Evidence limitations: no signed extension identity, native-messaging host,
 production identity provider, external moderation service, production data,

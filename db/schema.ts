@@ -150,3 +150,39 @@ export const reportIntakeIdempotency = sqliteTable(
     ),
   ],
 );
+
+export const reportIntakeQuotas = sqliteTable(
+  'leftout_report_intake_quotas',
+  {
+    bucketKey: text('bucket_key').primaryKey(),
+    scopeType: text('scope_type').notNull(),
+    scopeIdSha256: text('scope_id_sha256').notNull(),
+    windowStartedAt: text('window_started_at').notNull(),
+    expiresAt: text('expires_at').notNull(),
+    count: integer('count').notNull(),
+    maxCount: integer('max_count').notNull(),
+  },
+  (table) => [
+    check(
+      'chk_leftout_report_intake_quotas_bucket_key',
+      sql`length(${table.bucketKey}) = 64`,
+    ),
+    check(
+      'chk_leftout_report_intake_quotas_scope_type',
+      sql`${table.scopeType} IN ('global','invitation')`,
+    ),
+    check(
+      'chk_leftout_report_intake_quotas_scope_id_sha256',
+      sql`length(${table.scopeIdSha256}) = 64`,
+    ),
+    check(
+      'chk_leftout_report_intake_quotas_count',
+      sql`${table.count} >= 1 AND ${table.count} <= ${table.maxCount}`,
+    ),
+    check(
+      'chk_leftout_report_intake_quotas_max_count',
+      sql`${table.maxCount} >= 1`,
+    ),
+    index('idx_leftout_report_intake_quotas_expiry').on(table.expiresAt),
+  ],
+);

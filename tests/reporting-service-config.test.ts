@@ -23,7 +23,10 @@ function invitedEnvironment(overrides: Readonly<Record<string, string>> = {}) {
     LEFTOUT_REPORTING_MODERATION: 'true',
     LEFTOUT_REPORTING_PUBLICATION: 'true',
     LEFTOUT_REPORTING_FEED: 'false',
+    LEFTOUT_REPORTING_INVITATION_ID: 'invitation.cohort-alpha',
     LEFTOUT_REPORTING_INTAKE_TOKEN_SHA256: digest(invitationToken),
+    LEFTOUT_REPORTING_INVITATION_HOURLY_LIMIT: '20',
+    LEFTOUT_REPORTING_GLOBAL_HOURLY_LIMIT: '100',
     LEFTOUT_REPORTING_ACTORS_JSON: JSON.stringify([
       {
         id: 'reviewer-alpha',
@@ -50,7 +53,7 @@ describe('reporting service configuration', () => {
   it('is fully disabled when reporting configuration is absent', () => {
     const configuration = loadReportingServiceConfiguration({});
     expect(configuration).toEqual({
-      schemaVersion: 'leftout.reporting-service-config/1',
+      schemaVersion: 'leftout.reporting-service-config/2',
       mode: 'disabled',
       gates: {
         intake: false,
@@ -88,6 +91,11 @@ describe('reporting service configuration', () => {
       publication: true,
       feed: false,
     });
+    expect(configuration.intakeInvitationId).toBe(
+      'invitation.cohort-alpha',
+    );
+    expect(configuration.intakeHourlyLimit).toBe(20);
+    expect(configuration.globalHourlyLimit).toBe(100);
     expect(configuration.actors.map(({ id, role }) => ({ id, role }))).toEqual([
       { id: 'reviewer-alpha', role: 'reviewer' },
       { id: 'publisher-alpha', role: 'publisher' },
@@ -118,6 +126,29 @@ describe('reporting service configuration', () => {
         invitedEnvironment({ LEFTOUT_REPORTING_FEED: 'true' }),
       ),
     ).toThrow('signed-feed work package');
+  });
+
+  it('requires a bounded invitation identity and explicit intake quotas', () => {
+    expect(() =>
+      loadReportingServiceConfiguration(
+        invitedEnvironment({ LEFTOUT_REPORTING_INVITATION_ID: 'reviewer-alpha' }),
+      ),
+    ).toThrow('invitation.* identifier');
+    expect(() =>
+      loadReportingServiceConfiguration(
+        invitedEnvironment({
+          LEFTOUT_REPORTING_INVITATION_HOURLY_LIMIT: '0',
+        }),
+      ),
+    ).toThrow('positive integer');
+    expect(() =>
+      loadReportingServiceConfiguration(
+        invitedEnvironment({
+          LEFTOUT_REPORTING_INVITATION_HOURLY_LIMIT: '101',
+          LEFTOUT_REPORTING_GLOBAL_HOURLY_LIMIT: '100',
+        }),
+      ),
+    ).toThrow('cannot exceed');
   });
 
   it('rejects unknown actor fields, duplicate identities, and reused credentials', () => {

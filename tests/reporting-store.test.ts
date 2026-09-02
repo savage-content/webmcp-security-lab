@@ -12,6 +12,7 @@ import {
   loadReportingLedger,
   ReportingStoreConflictError,
   ReportingStoreIntegrityError,
+  ReportingStoreQuotaError,
   saveReportingIntake,
   saveReportingTransition,
 } from '../products/reporting-service/store';
@@ -102,6 +103,43 @@ describe('durable reporting store', () => {
     await expect(
       saveReportingIntake(database, intake(), idempotency('changed-request')),
     ).rejects.toBeInstanceOf(ReportingStoreConflictError);
+  });
+
+  it('counts new intake atomically and does not charge an idempotent replay', async () => {
+    const created = intake();
+    const key = idempotency();
+    const quota = {
+      invitationId: key.invitationId,
+      invitationLimit: 1,
+      globalLimit: 1,
+      now: Date.parse('2026-09-02T19:00:00.000Z'),
+    };
+    await saveReportingIntake(database, created, key, quota);
+    const replay = await saveReportingIntake(database, intake(), key, quota);
+    expect(replay.disposition).toBe('existing');
+
+    idempotencySeed = randomUUID();
+    await expect(
+      saveReportingIntake(database, intake(), idempotency(), quota),
+    ).rejects.toBeInstanceOf(ReportingStoreQuotaError);
+    idempotencySeed = randomUUID();
+    await expect(
+      saveReportingIntake(database, intake(), idempotency(), {
+        ...quota,
+        invitationLimit: 2,
+        globalLimit: 2,
+      }),
+    ).rejects.toBeInstanceOf(ReportingStoreQuotaError);
+    const rows = await database
+      .prepare(
+        `SELECT scope_type AS scopeType, count
+         FROM leftout_report_intake_quotas ORDER BY scope_type`,
+      )
+      .all<{ scopeType: string; count: number }>();
+    expect(rows.results.slice(-2)).toEqual([
+      { count: 1, scopeType: 'global' },
+      { count: 1, scopeType: 'invitation' },
+    ]);
   });
 
   it('commits one optimistic transition and rejects a stale competitor', async () => {

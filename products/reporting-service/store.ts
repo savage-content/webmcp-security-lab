@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import {
   parseReportingLedgerBundle,
   parseReportingLedgerEvent,
@@ -6,7 +8,7 @@ import {
   type ReportingLedgerRecord,
 } from './ledger';
 
-export const REPORTING_STORE_SCHEMA_VERSION = 1 as const;
+export const REPORTING_STORE_SCHEMA_VERSION = 2 as const;
 
 export class ReportingStoreConflictError extends Error {
   override readonly name = 'ReportingStoreConflictError';
@@ -14,6 +16,10 @@ export class ReportingStoreConflictError extends Error {
 
 export class ReportingStoreIntegrityError extends Error {
   override readonly name = 'ReportingStoreIntegrityError';
+}
+
+export class ReportingStoreQuotaError extends Error {
+  override readonly name = 'ReportingStoreQuotaError';
 }
 
 export interface ReportingLedgerBundle {
@@ -25,6 +31,13 @@ export interface ReportingIntakeIdempotency {
   invitationId: string;
   keySha256: string;
   requestSha256: string;
+}
+
+export interface ReportingIntakeQuotaPolicy {
+  invitationId: string;
+  invitationLimit: number;
+  globalLimit: number;
+  now: number;
 }
 
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
@@ -67,10 +80,20 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     created_at TEXT NOT NULL,
     FOREIGN KEY (report_id) REFERENCES leftout_report_records(id)
   )`,
+  `CREATE TABLE IF NOT EXISTS leftout_report_intake_quotas (
+    bucket_key TEXT PRIMARY KEY NOT NULL CHECK (length(bucket_key) = 64),
+    scope_type TEXT NOT NULL CHECK (scope_type IN ('global','invitation')),
+    scope_id_sha256 TEXT NOT NULL CHECK (length(scope_id_sha256) = 64),
+    window_started_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    count INTEGER NOT NULL CHECK (count >= 1 AND count <= max_count),
+    max_count INTEGER NOT NULL CHECK (max_count >= 1)
+  )`,
   'CREATE INDEX IF NOT EXISTS idx_leftout_report_records_state_updated ON leftout_report_records(state, updated_at)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_events_report_sequence ON leftout_report_events(report_id, sequence)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_events_report_request ON leftout_report_events(report_id, request_id)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_intake_idempotency_key ON leftout_report_intake_idempotency(invitation_id, key_sha256)',
+  'CREATE INDEX IF NOT EXISTS idx_leftout_report_intake_quotas_expiry ON leftout_report_intake_quotas(expires_at)',
   `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_event_snapshot
     BEFORE INSERT ON leftout_report_events
     WHEN NOT EXISTS (
@@ -119,6 +142,24 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     BEGIN
       SELECT RAISE(ABORT, 'leftout_report_records_require_retention_workflow');
     END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_intake_quota_integrity
+    BEFORE UPDATE ON leftout_report_intake_quotas
+    WHEN NEW.bucket_key != OLD.bucket_key
+      OR NEW.scope_type != OLD.scope_type
+      OR NEW.scope_id_sha256 != OLD.scope_id_sha256
+      OR NEW.window_started_at != OLD.window_started_at
+      OR NEW.expires_at != OLD.expires_at
+      OR NEW.max_count > OLD.max_count
+      OR NEW.count != OLD.count + 1
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_reporting_quota_integrity');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_intake_quota_exhausted
+    BEFORE UPDATE ON leftout_report_intake_quotas
+    WHEN NEW.count > NEW.max_count
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_reporting_quota_exhausted');
+    END`,
 ]);
 
 const schemaReady = new WeakMap<D1Database, Promise<void>>();
@@ -130,6 +171,10 @@ function digest(value: unknown, label: string) {
     );
   }
   return value;
+}
+
+function sha256(value: string) {
+  return createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
 function intakeIdempotency(
@@ -147,6 +192,80 @@ function intakeIdempotency(
     invitationId: value.invitationId,
     keySha256: digest(value.keySha256, 'Reporting idempotency key digest'),
     requestSha256: digest(value.requestSha256, 'Reporting request digest'),
+  });
+}
+
+function quotaPolicy(
+  value: Readonly<ReportingIntakeQuotaPolicy>,
+): Readonly<ReportingIntakeQuotaPolicy> {
+  if (
+    typeof value.invitationId !== 'string' ||
+    !INVITATION_ID_PATTERN.test(value.invitationId) ||
+    !Number.isSafeInteger(value.invitationLimit) ||
+    value.invitationLimit < 1 ||
+    value.invitationLimit > 1_000 ||
+    !Number.isSafeInteger(value.globalLimit) ||
+    value.globalLimit < value.invitationLimit ||
+    value.globalLimit > 10_000 ||
+    !Number.isSafeInteger(value.now) ||
+    value.now < 0
+  ) {
+    throw new ReportingStoreIntegrityError(
+      'Reporting intake quota policy is invalid.',
+    );
+  }
+  return Object.freeze({ ...value });
+}
+
+function quotaStatements(
+  database: D1Database,
+  value: Readonly<ReportingIntakeQuotaPolicy>,
+) {
+  const policy = quotaPolicy(value);
+  const hour = 60 * 60 * 1_000;
+  const windowStartedAt = new Date(
+    Math.floor(policy.now / hour) * hour,
+  ).toISOString();
+  const expiresAt = new Date(Date.parse(windowStartedAt) + hour).toISOString();
+  const scopes = [
+    {
+      scopeType: 'global',
+      scopeIdSha256: sha256('leftout.reporting-intake.global'),
+      maxCount: policy.globalLimit,
+    },
+    {
+      scopeType: 'invitation',
+      scopeIdSha256: sha256(policy.invitationId),
+      maxCount: policy.invitationLimit,
+    },
+  ] as const;
+
+  return scopes.map((scope) => {
+    const bucketKey = sha256(
+      JSON.stringify({
+        scopeType: scope.scopeType,
+        scopeIdSha256: scope.scopeIdSha256,
+        windowStartedAt,
+      }),
+    );
+    return database
+      .prepare(
+        `INSERT INTO leftout_report_intake_quotas (
+          bucket_key, scope_type, scope_id_sha256, window_started_at,
+          expires_at, count, max_count
+        ) VALUES (?, ?, ?, ?, ?, 1, ?)
+        ON CONFLICT(bucket_key) DO UPDATE SET
+          count = count + 1,
+          max_count = min(max_count, excluded.max_count)`,
+      )
+      .bind(
+        bucketKey,
+        scope.scopeType,
+        scope.scopeIdSha256,
+        windowStartedAt,
+        expiresAt,
+        scope.maxCount,
+      );
   });
 }
 
@@ -324,6 +443,7 @@ export async function saveReportingIntake(
     event: Readonly<ReportingLedgerEvent>;
   }>,
   idempotencyValue: Readonly<ReportingIntakeIdempotency>,
+  intakeQuotaPolicy?: Readonly<ReportingIntakeQuotaPolicy>,
 ) {
   const idempotency = intakeIdempotency(idempotencyValue);
   if (
@@ -343,6 +463,9 @@ export async function saveReportingIntake(
 
   try {
     await database.batch([
+      ...(intakeQuotaPolicy
+        ? quotaStatements(database, intakeQuotaPolicy)
+        : []),
       recordStatement(database, bundle.record),
       eventStatement(database, bundle.event),
       database
@@ -359,9 +482,14 @@ export async function saveReportingIntake(
           bundle.record.moderation.receivedAt,
         ),
     ]);
-  } catch {
+  } catch (error) {
     const raced = await resolveExistingIntake(database, idempotency);
     if (raced) return raced;
+    if (String(error).includes('leftout_reporting_quota_exhausted')) {
+      throw new ReportingStoreQuotaError(
+        'Reporting intake quota is exhausted.',
+      );
+    }
     throw new ReportingStoreConflictError(
       'Reporting intake could not be committed.',
     );

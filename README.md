@@ -90,9 +90,11 @@ path. A live Sol/Terra built-in-client conformance run remains outstanding. A
 A strict quarantine/moderation state machine, minimized feed projection, and
 fail-closed invited-intake/reviewer/publisher configuration and authentication
 are implemented locally. A versioned D1 store now adds hash-chained events,
-idempotent intake, optimistic revisions, and append-only database enforcement.
-Public intake, reviewer routes, retention operations, and feed serving remain
-intentionally disabled pending their dedicated privacy and security gates.
+idempotent intake, optimistic revisions, append-only database enforcement, and
+atomic per-invitation/global quotas. An invited HTTP intake handler exists but
+is disabled and unconfigured on the public site. Reviewer routes, retention
+operations, and feed serving remain absent pending their privacy and security
+gates.
 
 ## The guided experience
 
@@ -233,8 +235,9 @@ See [docs/PRODUCT.md](docs/PRODUCT.md),
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and
 [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 The productization choices and rollout gates are in the
-[Local Guard and reporting hardening review](docs/hardening/local-guard-reporting-2026-09-02/hardening.md)
-and the [Local Guard release channel](docs/LOCAL_GUARD_RELEASE.md).
+[Local Guard and reporting hardening review](docs/hardening/local-guard-reporting-2026-09-02/hardening.md),
+the [Local Guard release channel](docs/LOCAL_GUARD_RELEASE.md), and the
+[reporting service release boundary](docs/REPORTING_SERVICE.md).
 
 ## Local development
 
@@ -336,8 +339,8 @@ The automated suite covers:
   behavior, revocation, and failure handling.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The current automated suite passes 368/368
-tests across 41 files, typecheck, lint, and a production build on Node.js 24. Live connector
+separate Android conformance script. The current automated suite passes 376/376
+tests across 42 files, typecheck, lint, and a production build on Node.js 24. Live connector
 evidence is recorded separately: the
 September 1 target-client run satisfied the bounded end-to-end checks in
 [docs/GO_NO_GO.md](docs/GO_NO_GO.md).

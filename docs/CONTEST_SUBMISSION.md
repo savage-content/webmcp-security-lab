@@ -91,14 +91,13 @@ pretending that a green badge or a reassuring annotation is enforcement.
 - Cloudflare D1 persistence for public lab receipts.
 - A deterministic, allowlisted Manifest V3 Local Guard preview package and a
   release-attestation verifier that explicitly does not claim Chrome signing.
-- A disconnected, privacy-minimized reporting and moderation core with
-  fail-closed invitation and role configuration, hash-chained D1 events,
-  idempotency, and optimistic concurrency; no public intake or feed endpoint is
-  enabled.
+- A disabled-by-default, privacy-minimized reporting core with a strict invited
+  intake handler, atomic quotas, hash-chained D1 events, idempotency, and
+  optimistic concurrency; it is not configured or enabled on the public site.
 
 ## Verification
 
-The current working tree passed 368 automated tests across 41 files on Node.js
+The current working tree passed 376 automated tests across 42 files on Node.js
 24, typecheck, lint, production build, deterministic Local Guard packaging, and a
 live non-invoking walkthrough/accessibility regression. Earlier bounded browser
 runs produced passing receipts for all five synthetic lessons through the
@@ -129,9 +128,10 @@ freedom to operate.
   their absence into a security pass.
 - The Local Guard remains an unsigned developer preview with a loopback
   companion.
-- Reporting remains local/disconnected. Authentication and durable moderation
-  primitives exist, but invited HTTP intake, rate limits, retention/deletion,
-  operator recovery, correction, signed publication, and privacy approval do not.
+- Reporting remains locally implemented and publicly disabled. Invited HTTP
+  intake and atomic quotas exist, but reviewer/publisher routes,
+  retention/deletion, operator recovery, correction, signed publication, and
+  privacy approval do not.
 - Android is a conformance prototype, not a device-validated product.
 - Real first-time-human, screen-reader, and 200% zoom acceptance remain pending.
 

@@ -1,5 +1,5 @@
 export const REPORTING_CONFIG_SCHEMA_VERSION =
-  'leftout.reporting-service-config/1' as const;
+  'leftout.reporting-service-config/2' as const;
 
 export const REPORTING_ACTOR_ROLES = ['reviewer', 'publisher'] as const;
 
@@ -20,7 +20,10 @@ export interface ReportingServiceConfiguration {
     publication: boolean;
     feed: boolean;
   }>;
+  intakeInvitationId?: string;
   intakeTokenSha256?: string;
+  intakeHourlyLimit?: number;
+  globalHourlyLimit?: number;
   actors: readonly Readonly<ReportingActorConfiguration>[];
 }
 
@@ -30,7 +33,10 @@ const ENVIRONMENT_FIELDS = Object.freeze({
   moderation: 'LEFTOUT_REPORTING_MODERATION',
   publication: 'LEFTOUT_REPORTING_PUBLICATION',
   feed: 'LEFTOUT_REPORTING_FEED',
+  intakeInvitationId: 'LEFTOUT_REPORTING_INVITATION_ID',
   intakeTokenSha256: 'LEFTOUT_REPORTING_INTAKE_TOKEN_SHA256',
+  intakeHourlyLimit: 'LEFTOUT_REPORTING_INVITATION_HOURLY_LIMIT',
+  globalHourlyLimit: 'LEFTOUT_REPORTING_GLOBAL_HOURLY_LIMIT',
   actors: 'LEFTOUT_REPORTING_ACTORS_JSON',
 });
 
@@ -60,6 +66,37 @@ function exactBoolean(
 function digest(value: unknown, label: string) {
   if (typeof value !== 'string' || !SHA256_PATTERN.test(value)) {
     throw new Error(`${label} must be a lowercase SHA-256 digest.`);
+  }
+  return value;
+}
+
+function boundedInteger(
+  environment: Readonly<Record<string, unknown>>,
+  key: string,
+  maximum: number,
+) {
+  const value = definedString(environment, key);
+  if (!value || !/^[1-9][0-9]{0,5}$/u.test(value)) {
+    throw new Error(`${key} must be an explicit positive integer.`);
+  }
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed > maximum) {
+    throw new Error(`${key} exceeds the supported maximum of ${maximum}.`);
+  }
+  return parsed;
+}
+
+function invitationId(value: string | undefined) {
+  if (
+    !value ||
+    value.length < 3 ||
+    value.length > 64 ||
+    !ACTOR_ID_PATTERN.test(value) ||
+    !value.startsWith('invitation.')
+  ) {
+    throw new Error(
+      'Reporting invitation ID must be a normalized opaque invitation.* identifier.',
+    );
   }
   return value;
 }
@@ -203,12 +240,50 @@ export function loadReportingServiceConfiguration(
     environment,
     ENVIRONMENT_FIELDS.intakeTokenSha256,
   );
+  const invitationIdValue = definedString(
+    environment,
+    ENVIRONMENT_FIELDS.intakeInvitationId,
+  );
+  const intakeHourlyLimitValue = definedString(
+    environment,
+    ENVIRONMENT_FIELDS.intakeHourlyLimit,
+  );
+  const globalHourlyLimitValue = definedString(
+    environment,
+    ENVIRONMENT_FIELDS.globalHourlyLimit,
+  );
+  const intakeInvitationId = gates.intake
+    ? invitationId(invitationIdValue)
+    : undefined;
   const intakeTokenSha256 = gates.intake
     ? digest(intakeTokenValue, 'Reporting invitation token digest')
     : undefined;
-  if (!gates.intake && intakeTokenValue !== undefined) {
+  const intakeHourlyLimit = gates.intake
+    ? boundedInteger(environment, ENVIRONMENT_FIELDS.intakeHourlyLimit, 1_000)
+    : undefined;
+  const globalHourlyLimit = gates.intake
+    ? boundedInteger(environment, ENVIRONMENT_FIELDS.globalHourlyLimit, 10_000)
+    : undefined;
+  if (
+    intakeHourlyLimit !== undefined &&
+    globalHourlyLimit !== undefined &&
+    intakeHourlyLimit > globalHourlyLimit
+  ) {
     throw new Error(
-      'Reporting invitation credentials require the intake gate to be enabled.',
+      'Reporting invitation quota cannot exceed the global quota.',
+    );
+  }
+  if (
+    !gates.intake &&
+    [
+      intakeTokenValue,
+      invitationIdValue,
+      intakeHourlyLimitValue,
+      globalHourlyLimitValue,
+    ].some((value) => value !== undefined)
+  ) {
+    throw new Error(
+      'Reporting invitation settings require the intake gate to be enabled.',
     );
   }
 
@@ -245,7 +320,10 @@ export function loadReportingServiceConfiguration(
     schemaVersion: REPORTING_CONFIG_SCHEMA_VERSION,
     mode,
     gates,
+    ...(intakeInvitationId ? { intakeInvitationId } : {}),
     ...(intakeTokenSha256 ? { intakeTokenSha256 } : {}),
+    ...(intakeHourlyLimit ? { intakeHourlyLimit } : {}),
+    ...(globalHourlyLimit ? { globalHourlyLimit } : {}),
     actors,
   });
 }
