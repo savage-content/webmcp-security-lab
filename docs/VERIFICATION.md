@@ -37,11 +37,13 @@ zoom, and human 360 px popup acceptance remain pending and are not inferred
 from automation. See [NOVICE_ACCEPTANCE.md](NOVICE_ACCEPTANCE.md).
 
 The local productization candidate adds a deterministic, allowlisted Local
-Guard ZIP and SHA-256 release manifest plus a strict public-web-only quarantine
-state machine. Publication requires `under_review` → `accepted_private` →
+Guard ZIP, SHA-256 release manifest, and detached Ed25519 release-attestation
+gate. The gate verifies exact bytes against an independently supplied trusted
+public key and explicitly records that it is not Chrome publisher or Web Store
+signing. A strict public-web-only quarantine state machine requires `under_review` → `accepted_private` →
 `published` and the existing consent/evidence gate. Synthetic and local records
 remain ineligible. No public intake, reviewer authentication, durable moderation
-store, or feed route was added. The current suite passes 339 tests across 36
+store, or feed route was added. The current suite passes 343 tests across 37
 files; the exact full verification gate is recorded with the release commit.
 
 ## Official Site Tools conformance track
@@ -93,7 +95,7 @@ cross-client evidence.
 | Snapshot                          | Result               | Evidence                                                                                                                                                                                                              |
 | --------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Runtime                           | Pass                 | Node.js 24.19.0                                                                                                                                                                                                       |
-| Current productization candidate  | Pass                 | 339 tests across 36 Vitest files passed; typecheck, lint, production build, deterministic package generation, and clean-commit status are release gates.                                                              |
+| Current productization candidate  | Pass                 | 343 tests across 37 Vitest files passed; typecheck, lint, production build, deterministic package generation, trusted-key attestation verification, and clean-commit status are release gates.                        |
 | Earlier five-lesson working tree  | Pass                 | 285 tests across 26 Vitest files, typecheck, lint, production build, and diff-integrity check passed before the fresh Chrome 152 technical acceptance run.                                                            |
 | Earlier clean `f7290d9` candidate | Pass                 | Clean-copy `npm ci`, 121 tests, typecheck, lint, production build, and the separate Android gate passed.                                                                                                              |
 | Post-fix working-tree source      | Pass                 | After the cross-realm inspection and approval-dialog fixes, 123 tests across 13 Vitest files, typecheck, lint, and a production build passed. This was not yet the final clean commit.                                |
@@ -135,7 +137,7 @@ still running from `f7290d9`; it was not a live test of a future final commit.
 | Public novice URL                                   | Published baseline          | Commit `5ba6e97`, Sites version 10, contains the required setup gate, first-visit walkthrough, and five-lesson page; it does not host Local Guard or reporting services.                                                             |
 | Scenario 1 page invocation                          | **Pass, local only**        | The latest fresh call produced receipt `d421aaaf-262d-4fbe-81ab-e93acb5efce9` with byte-identical state and zero effects; earlier page-only receipts remain bounded to their failed transport attempts.                              |
 | Connector receipt transport                         | **Pass, one local session** | Session `a5512afe-c096-4909-97b9-b2b5af1194eb` returned, validated, appended, and displayed the exact receipt under ledger entry `abc6b79c-c4fc-44b4-b2ce-5da7e525b5fa`. This does not convert the two earlier failures into passes. |
-| Extension                                           | Limited                     | Manifest V3 `0.3.0` completed one five-lesson unpacked run. A deterministic preview package now exists locally; no signed or store-distributed package was tested.                                                                   |
+| Extension                                           | Limited                     | Manifest V3 `0.3.0` completed one five-lesson unpacked run. A deterministic preview package and release-attestation gate now exist locally; no production key, Chrome-signed, or store-distributed package was tested.               |
 | Android                                             | Conformance only            | JVM behavior and the API-36 boundary do not establish generated AppFunction metadata or on-device discovery and invocation.                                                                                                          |
 | Public deployment of local products                 | Not performed               | Local Guard, connector, report viewer, moderation core, feed projection, and Android are not hosted or distributed by the public lab.                                                                                                |
 | Novelty, patentability, or freedom-to-operate claim | **No-go**                   | The technical prior-art review permits no such claim and supplies no legal infringement conclusion or clearance.                                                                                                                     |

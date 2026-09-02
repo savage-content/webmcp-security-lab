@@ -9,37 +9,37 @@ a completed submission.
 
 ## Candidate identity
 
-| Item | Current evidence |
-| --- | --- |
-| Public application | <https://left-out-webmcp-security-lab.taitfor.chatgpt.site> |
-| Deployed application source | commit `8568a5f`, Sites version 11 |
-| Latest local documentation | commit `bef9011` before this readiness update |
-| Public GitHub repository | <https://github.com/savage-content/webmcp-security-lab> |
-| Last locally recorded `origin/main` | `93b4c78`; remote synchronization is unproven |
-| Automated release gate | Node.js 24; 339/339 tests; typecheck, lint, and production build pass |
-| Demo video | Not recorded |
+| Item                                | Current evidence                                                                      |
+| ----------------------------------- | ------------------------------------------------------------------------------------- |
+| Public application                  | <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>                           |
+| Deployed application source         | commit `8568a5f`, Sites version 11                                                    |
+| Latest local documentation          | commit `bef9011` before this readiness update                                         |
+| Public GitHub repository            | <https://github.com/savage-content/webmcp-security-lab>                               |
+| Last locally recorded `origin/main` | `93b4c78`; remote synchronization is unproven                                         |
+| Automated release gate              | Node.js 24; 343/343 tests across 37 files; typecheck, lint, and production build pass |
+| Demo video                          | Not recorded                                                                          |
 
 ## Blocking submission gates
 
-| Gate | Status | Evidence required to pass |
-| --- | --- | --- |
+| Gate                                | Status      | Evidence required to pass                                                                                                                                                                                                                                                                                        |
+| ----------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Exact contest rules and eligibility | **BLOCKED** | Open the actual contest rules and submission form; record deadline/time zone, entrant eligibility, build-period rules, team/ownership limits, required fields, judging criteria, licenses, media rules, and prohibited content. Official OpenAI Site Tools documentation does not establish these contest terms. |
-| Public-source provenance | **BLOCKED** | Push the intended final commit to public GitHub, fetch the remote branch, and prove its SHA contains the deployed application source and current submission materials. |
-| Final demo video | **BLOCKED** | Record the current public flow using [DEMO_SCRIPT.md](DEMO_SCRIPT.md), publish it at an allowed public URL, verify duration and anonymous playback, and add the exact URL to [CONTEST_SUBMISSION.md](CONTEST_SUBMISSION.md). |
-| Submission-form rehearsal | **BLOCKED** | Enter every required field without submitting, verify character/media limits and link accessibility, save the final copy, and obtain human approval for the irreversible submission. |
+| Public-source provenance            | **BLOCKED** | Push the intended final commit to public GitHub, fetch the remote branch, and prove its SHA contains the deployed application source and current submission materials.                                                                                                                                           |
+| Final demo video                    | **BLOCKED** | Record the current public flow using [DEMO_SCRIPT.md](DEMO_SCRIPT.md), publish it at an allowed public URL, verify duration and anonymous playback, and add the exact URL to [CONTEST_SUBMISSION.md](CONTEST_SUBMISSION.md).                                                                                     |
+| Submission-form rehearsal           | **BLOCKED** | Enter every required field without submitting, verify character/media limits and link accessibility, save the final copy, and obtain human approval for the irreversible submission.                                                                                                                             |
 
 ## Technical and product evidence
 
-| Check | Status | Boundary |
-| --- | --- | --- |
-| Public novice Site Tools experience | PASS | Version 11 is live with setup gate, six-step walkthrough, five lessons, exact approval, receipt teaching, and reduced-motion support. |
-| Current OpenAI Site Tools model | PASS WITH LIMITS | Top-level imperative registration and explicit model/workspace/session limits align with current OpenAI documentation; this does not prove contest eligibility. |
-| Automated verification | PASS | Clean Node.js 24 install and 339 tests plus typecheck, lint, build, and deterministic Local Guard packaging. |
-| Live technical accessibility | PASS WITH HUMAN GATES | Structure, names, keyboard dialog behavior, focus restoration, and reduced motion passed; real novice, screen-reader, 200% zoom, and 360 px popup acceptance remain pending. |
-| Local Guard | DEVELOPMENT PREVIEW | Deterministic unsigned MV3 package and loopback lifecycle exist; signed distribution and production companion security do not. |
-| Reporting | DISCONNECTED CORE | Privacy-minimized drafts, local review, quarantine transitions, and feed projection exist; no public intake, authenticated reviewer service, durable moderation store, or served feed exists. |
-| Android | CONFORMANCE ONLY | No supported-device discovery, permission, invocation, or receipt evidence. |
-| Novelty or legal clearance | NO CLAIM | The prior-art review does not support novelty, patentability, clean-room, or freedom-to-operate claims. |
+| Check                               | Status                | Boundary                                                                                                                                                                                      |
+| ----------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public novice Site Tools experience | PASS                  | Version 11 is live with setup gate, six-step walkthrough, five lessons, exact approval, receipt teaching, and reduced-motion support.                                                         |
+| Current OpenAI Site Tools model     | PASS WITH LIMITS      | Top-level imperative registration and explicit model/workspace/session limits align with current OpenAI documentation; this does not prove contest eligibility.                               |
+| Automated verification              | PASS                  | Clean Node.js 24 install and 343 tests across 37 files plus typecheck, lint, build, and deterministic Local Guard packaging.                                                                  |
+| Live technical accessibility        | PASS WITH HUMAN GATES | Structure, names, keyboard dialog behavior, focus restoration, and reduced motion passed; real novice, screen-reader, 200% zoom, and 360 px popup acceptance remain pending.                  |
+| Local Guard                         | DEVELOPMENT PREVIEW   | Deterministic MV3 package and an Ed25519 release-attestation/verification gate exist; no production key, Chrome-signed distribution, or production companion security exists.                 |
+| Reporting                           | DISCONNECTED CORE     | Privacy-minimized drafts, local review, quarantine transitions, and feed projection exist; no public intake, authenticated reviewer service, durable moderation store, or served feed exists. |
+| Android                             | CONFORMANCE ONLY      | No supported-device discovery, permission, invocation, or receipt evidence.                                                                                                                   |
+| Novelty or legal clearance          | NO CLAIM              | The prior-art review does not support novelty, patentability, clean-room, or freedom-to-operate claims.                                                                                       |
 
 ## Product-release gates outside contest submission
 

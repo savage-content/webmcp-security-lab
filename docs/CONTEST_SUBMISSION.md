@@ -89,13 +89,14 @@ pretending that a green badge or a reassuring annotation is enforcement.
 - Exact, zero-input, one-use generated capabilities for the controlled path.
 - Zod validation, before/after comparison, and append-only evidence receipts.
 - Cloudflare D1 persistence for public lab receipts.
-- A deterministic, allowlisted Manifest V3 Local Guard preview package.
+- A deterministic, allowlisted Manifest V3 Local Guard preview package and a
+  release-attestation verifier that explicitly does not claim Chrome signing.
 - A disconnected, privacy-minimized reporting and moderation core; no public
   intake or feed endpoint is enabled.
 
 ## Verification
 
-The current candidate passed a clean Node.js 24 install, 339 automated tests,
+The current candidate passed a clean Node.js 24 install, 343 automated tests,
 typecheck, lint, production build, deterministic Local Guard packaging, and a
 live non-invoking walkthrough/accessibility regression. Earlier bounded browser
 runs produced passing receipts for all five synthetic lessons through the

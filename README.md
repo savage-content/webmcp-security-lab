@@ -43,15 +43,15 @@ run used the then-current page, extension, and restarted connector in a fresh
 Chrome 152 profile. Neither run proves a future commit, signed package, direct
 Site Tools support, or another client.
 
-| Current component                                    | Status                                                                                                      |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Public learning range                                | Commit `8568a5f`, Sites version 11, is live with the setup gate, first-visit walkthrough, and five lessons  |
-| Five guided page capabilities                        | `PASS` in one fresh Chrome 152 sequence; one exact call per lesson and no retries                           |
-| Connector receipt path                               | `PASS` for five validated receipts, the hash chain, local redacted draft, and zero feed-eligible records    |
-| Browser extension                                    | Manifest V3 development preview; deterministic package and integrity manifest now available, still unsigned |
-| Android                                              | JVM/API conformance prototype; not device-invokable                                                         |
-| Deployment split                                     | Public learning site only; Local Guard, connector, moderation core, and reporting workbench are not hosted  |
-| Novelty, patentability, or freedom-to-operate claims | NO-GO under the technical prior-art review; no legal infringement conclusion                                |
+| Current component                                    | Status                                                                                                                                                    |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public learning range                                | Commit `8568a5f`, Sites version 11, is live with the setup gate, first-visit walkthrough, and five lessons                                                |
+| Five guided page capabilities                        | `PASS` in one fresh Chrome 152 sequence; one exact call per lesson and no retries                                                                         |
+| Connector receipt path                               | `PASS` for five validated receipts, the hash chain, local redacted draft, and zero feed-eligible records                                                  |
+| Browser extension                                    | Manifest V3 development preview; deterministic package, integrity manifest, and detached release-attestation gate now available; still unsigned by Chrome |
+| Android                                              | JVM/API conformance prototype; not device-invokable                                                                                                       |
+| Deployment split                                     | Public learning site only; Local Guard, connector, moderation core, and reporting workbench are not hosted                                                |
+| Novelty, patentability, or freedom-to-operate claims | NO-GO under the technical prior-art review; no legal infringement conclusion                                                                              |
 
 ## Why this lab exists
 
@@ -231,7 +231,8 @@ See [docs/PRODUCT.md](docs/PRODUCT.md),
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and
 [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 The productization choices and rollout gates are in the
-[Local Guard and reporting hardening review](docs/hardening/local-guard-reporting-2026-09-02/hardening.md).
+[Local Guard and reporting hardening review](docs/hardening/local-guard-reporting-2026-09-02/hardening.md)
+and the [Local Guard release channel](docs/LOCAL_GUARD_RELEASE.md).
 
 ## Local development
 
@@ -258,7 +259,10 @@ archive SHA-256 metadata with:
 npm run local-guard:package
 ```
 
-This package is a reviewable developer preview, not a signed Chrome Web Store
+The separate `local-guard:attest` command can bind those exact bytes to an
+operator-supplied Ed25519 release key and verify them against an independently
+trusted public key. See [the release-channel instructions](docs/LOCAL_GUARD_RELEASE.md).
+This package is still a reviewable developer preview, not a signed Chrome Web Store
 release. Packaging fails if the MV3 permissions, exact loopback hosts, runtime
 file allowlist, local popup references, symlink boundary, or dynamic-code rule
 changes.
@@ -330,8 +334,8 @@ The automated suite covers:
   behavior, revocation, and failure handling.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The current automated suite passes 339/339
-tests, typecheck, lint, and a production build on Node.js 24. Live connector
+separate Android conformance script. The current automated suite passes 343/343
+tests across 37 files, typecheck, lint, and a production build on Node.js 24. Live connector
 evidence is recorded separately: the
 September 1 target-client run satisfied the bounded end-to-end checks in
 [docs/GO_NO_GO.md](docs/GO_NO_GO.md).
