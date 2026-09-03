@@ -1,8 +1,9 @@
 # Contest submission copy
 
 > **CURRENT CANDIDATE — NOT YET SUBMITTED.** The public application is live,
-> but submission remains blocked until the public GitHub branch, final video,
-> and contest-form rules pass [CONTEST_READINESS.md](CONTEST_READINESS.md).
+> but submission remains blocked until entrant attestations, the public GitHub
+> branch, final public YouTube video, and authenticated form rehearsal pass
+> [CONTEST_READINESS.md](CONTEST_READINESS.md).
 > This copy makes no novelty, patentability, universal-compatibility, or
 > production-security claim.
 
@@ -104,15 +105,40 @@ pretending that a green badge or a reassuring annotation is enforcement.
 
 ## Verification
 
-The current working tree passed 425 automated tests across 51 files on Node.js
-24, typecheck, lint, production build, deterministic Local Guard packaging, and a
-live non-invoking walkthrough/accessibility regression. Earlier bounded browser
+The current local candidate passed 431 automated tests across 52 files on
+Node.js 24, typecheck, the Local Guard release-readiness assessment, lint,
+production build, deterministic Local Guard packaging, and a live non-invoking
+walkthrough/accessibility regression. Earlier bounded browser
 runs produced passing receipts for all five synthetic lessons through the
 local extension/connector path.
 
 The automated checks do not replace a first-time human study, screen-reader
-operator, contest-rules audit, or final recorded demo. Those gates remain
+operator, entrant attestation, authenticated form rehearsal, or final recorded
+demo. Those gates remain
 explicit in [CONTEST_READINESS.md](CONTEST_READINESS.md).
+
+## Testing instructions
+
+No account or application credential is required.
+
+1. Open the live application in ChatGPT's in-app browser. If Site Tools are not
+   available in that exact client, use Chrome 149 or later with
+   `chrome://flags/#enable-webmcp-testing` enabled and restarted.
+2. Keep one application tab open, complete the setup check and first-visit
+   walkthrough, and stop at Lesson 1.
+3. Ask the agent to inspect the visible task and declared Site Tool without
+   invoking it.
+4. Lock the synthetic `TRAINING-1042` read intent, freeze the exact generated
+   zero-input capability, and approve it. Approval must not invoke it.
+5. Ask the same agent to run the one approved practice action once with no
+   retry and no other Site Tool.
+6. Confirm the receipt shows the eligibility result, identical before/after
+   state, zero side effects, one consumed use, closed authority, and a receipt
+   ID.
+
+All records and effects in the lab are synthetic. A missing Site Tools surface
+is an environment result, not a security pass; use the visible no-invocation
+lesson rather than representing ordinary browser automation as WebMCP.
 
 ## Safety and claim boundary
 

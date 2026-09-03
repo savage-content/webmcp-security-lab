@@ -192,11 +192,20 @@ self-reported evidence without a server-issued or signature-bound envelope.
 
 ## Three-minute demo path
 
-1. Arrive on Scenario 01 and let the heads-up identify `WMC-001` before invocation.
-2. Ask the browser agent to inspect the registered tool without calling it.
-3. Approve the harmless synthetic call. The account flips from `reviewed: false` to `reviewed: true` despite `readOnlyHint: true`.
-4. Show the Effective receipt, then run the secure builder retest and get `PASS`.
-5. Download the learning-only awareness artifact or briefly switch to Scenario 03 to show untrusted result content.
+1. Let the setup gate select only a WebMCP path the current client actually
+   supports, then finish the short first-visit tour at Lesson 1.
+2. Ask the browser agent to inspect the broad eligibility action without
+   invoking it; lock the human intent to one read of synthetic
+   `TRAINING-1042`.
+3. Review and approve the uniquely named, zero-input, expiring, one-use
+   capability. Approval withdraws the broad source but does not run the new
+   action.
+4. Ask the agent to invoke that exact action once with no retry. Show the
+   receipt's required result, byte-identical state, zero side effects, closed
+   authority, and receipt ID.
+5. Briefly show the four supporting security lessons and the explicit
+   separation between built-in Site Tools, the Local Guard preview, and
+   human-reviewed reporting.
 
 The complete narration is in [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
 
@@ -349,8 +358,9 @@ The automated suite covers:
   behavior, revocation, and failure handling.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The current automated suite passes 425/425
-tests across 51 files, typecheck, lint, and a production build on Node.js 24.
+separate Android conformance script. The current automated suite passes 431/431
+tests across 52 files, typecheck, the Local Guard release-readiness assessment,
+lint, and a production build on Node.js 24.
 Live connector evidence is recorded separately: the
 September 1 target-client run satisfied the bounded end-to-end checks in
 [docs/GO_NO_GO.md](docs/GO_NO_GO.md).
@@ -414,6 +424,7 @@ Read [SECURITY.md](SECURITY.md) before extending a fixture.
 ## Contest materials
 
 - [Submission readiness gate](docs/CONTEST_READINESS.md)
+- [Dated official-rules audit](docs/CONTEST_RULES_AUDIT_2026-09-02.md)
 - [Current contest submission candidate](docs/CONTEST_SUBMISSION.md)
 - [Current three-minute video script](docs/DEMO_SCRIPT.md)
 - [Contest-period work log](docs/CONTEST_PERIOD_WORK.md)

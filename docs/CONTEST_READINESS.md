@@ -1,6 +1,8 @@
 # Contest submission readiness
 
-**Decision:** **NO-GO until the four blocking rows below pass.**
+**Decision:** **NO-GO until the four non-pass submission rows below are
+resolved. One of those rows—entrant eligibility and ownership—can be resolved
+only by the entrant.**
 
 This ledger is the single submission gate for the current public WebMCP
 Security Lab. It separates technical alignment from contest eligibility and
@@ -9,24 +11,25 @@ a completed submission.
 
 ## Candidate identity
 
-| Item                                | Current evidence                                                                                     |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Public application                  | <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>                                          |
-| Deployed application source         | commit `8568a5f`, Sites version 11                                                                   |
-| Latest local candidate              | Current branch adds disabled controlled deletion plus immutable public corrections; it is not public |
-| Public GitHub repository            | <https://github.com/savage-content/webmcp-security-lab>                                              |
-| Last locally recorded `origin/main` | `93b4c78`; remote synchronization is unproven                                                        |
-| Automated release gate              | Node.js 24; 425/425 tests across 51 files; typecheck, lint, and production build pass                |
-| Demo video                          | Not recorded                                                                                         |
+| Item                                      | Current evidence                                                                                                        |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Public application                        | <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>                                                             |
+| Last recorded deployed source             | commit `8568a5f`, Sites version 11; fresh final verification remains required                                           |
+| Latest verified implementation checkpoint | commit `46bb68e`; Local Guard privacy/release work is not deployed or public                                            |
+| Public GitHub repository                  | <https://github.com/savage-content/webmcp-security-lab>                                                                 |
+| Public `origin/main`, queried September 2 | `93b4c7801c5b5a10e721f4305e79800fd00fdf44`; it contains neither deployed commit `8568a5f` nor the later submission work |
+| Automated release gate                    | Node.js 24; 431/431 tests across 52 files; typecheck, readiness assessment, lint, and production build pass             |
+| Demo video                                | Not recorded                                                                                                            |
 
 ## Blocking submission gates
 
-| Gate                                | Status      | Evidence required to pass                                                                                                                                                                                                                                                                                        |
-| ----------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Exact contest rules and eligibility | **BLOCKED** | Open the actual contest rules and submission form; record deadline/time zone, entrant eligibility, build-period rules, team/ownership limits, required fields, judging criteria, licenses, media rules, and prohibited content. Official OpenAI Site Tools documentation does not establish these contest terms. |
-| Public-source provenance            | **BLOCKED** | Push the intended final commit to public GitHub, fetch the remote branch, and prove its SHA contains the deployed application source and current submission materials.                                                                                                                                           |
-| Final demo video                    | **BLOCKED** | Record the current public flow using [DEMO_SCRIPT.md](DEMO_SCRIPT.md), publish it at an allowed public URL, verify duration and anonymous playback, and add the exact URL to [CONTEST_SUBMISSION.md](CONTEST_SUBMISSION.md).                                                                                     |
-| Submission-form rehearsal           | **BLOCKED** | Enter every required field without submitting, verify character/media limits and link accessibility, save the final copy, and obtain human approval for the irreversible submission.                                                                                                                             |
+| Gate                              | Status             | Evidence required to pass                                                                                                                                                                                                                                                                                             |
+| --------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Official contest rules audit      | **PASS**           | The September 2 audit records the controlling rules, September 3 1:00 PM PDT deadline, build period, required materials, judging criteria, testing period, media/IP limits, and freeze rule in [CONTEST_RULES_AUDIT_2026-09-02.md](CONTEST_RULES_AUDIT_2026-09-02.md). Recheck for amendments during final rehearsal. |
+| Entrant eligibility and ownership | **HUMAN REQUIRED** | The entrant must attest age, jurisdiction, conflicts, representative authority, ownership, third-party rights, support restrictions, and acceptance of the governing terms. Repository evidence cannot prove these facts.                                                                                             |
+| Public-source provenance          | **BLOCKED**        | Push the intended final commit to public GitHub, fetch the remote branch, and prove its SHA contains the deployed application source and current submission materials.                                                                                                                                                |
+| Final demo video                  | **BLOCKED**        | Record the current public flow using [DEMO_SCRIPT.md](DEMO_SCRIPT.md), publish it at an allowed public URL, verify duration and anonymous playback, and add the exact URL to [CONTEST_SUBMISSION.md](CONTEST_SUBMISSION.md).                                                                                          |
+| Submission-form rehearsal         | **BLOCKED**        | Join the challenge, open the authenticated form, enter every required field without submitting, verify character/media limits and link accessibility, save the final copy, and obtain human approval for the irreversible submission.                                                                                 |
 
 ## Technical and product evidence
 
@@ -34,7 +37,7 @@ a completed submission.
 | ----------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Public novice Site Tools experience | PASS                  | Version 11 is live with setup gate, six-step walkthrough, five lessons, exact approval, receipt teaching, and reduced-motion support.                                                                                                                                                                                                                                                                                                                                           |
 | Current OpenAI Site Tools model     | PASS WITH LIMITS      | Top-level imperative registration and explicit model/workspace/session limits align with current OpenAI documentation; this does not prove contest eligibility.                                                                                                                                                                                                                                                                                                                 |
-| Automated verification              | PASS                  | Node.js 24 ran 425 tests across 51 files plus typecheck, lint, build, deterministic Local Guard packaging, and real D1 migration/intake/review/publication/correction/signed-feed/retention/legal-hold/deletion gates. A fresh `npm ci` remains part of final freeze.                                                                                                                                                                                                           |
+| Automated verification              | PASS                  | Node.js 24 ran 431 tests across 52 files plus typecheck, Local Guard release assessment, lint, build, deterministic Local Guard packaging, and real D1 migration/intake/review/publication/correction/signed-feed/retention/legal-hold/deletion gates. A fresh `npm ci` remains part of final freeze.                                                                                                                                                                           |
 | Live technical accessibility        | PASS WITH HUMAN GATES | Structure, names, keyboard dialog behavior, focus restoration, and reduced motion passed; real novice, screen-reader, 200% zoom, and 360 px popup acceptance remain pending.                                                                                                                                                                                                                                                                                                    |
 | Local Guard                         | DEVELOPMENT PREVIEW   | Deterministic MV3 package and an Ed25519 release-attestation/verification gate exist; no production key, Chrome-signed distribution, or production companion security exists.                                                                                                                                                                                                                                                                                                   |
 | Reporting                           | PRIVATE PIPELINE OFF  | Strict intake/reviewer/publisher handlers, immutable minimized publication and correction timeline, signed JSON/NDJSON feed, atomic retention assignment, custodian-only legal hold, controlled private deletion, and digest-bound public withdrawal exist locally; all remain disabled/unconfigured publicly. Production identity/key custody, separately published trust fingerprint, provider-backup lifecycle, correction rehearsal, and operations approval remain absent. |
@@ -58,7 +61,7 @@ actual rules say so:
 
 ## Final freeze procedure
 
-1. Resolve all four blocking submission gates.
+1. Reopen the Official Rules and resolve all four non-pass submission rows.
 2. Freeze the exact public source commit and build only that commit.
 3. Run `npm ci` followed by `npm test`, typecheck, lint, and production build on
    Node.js 24.
@@ -67,7 +70,10 @@ actual rules say so:
 6. Verify the demo and every submitted link without authentication.
 7. Review claims against [PRIOR_ART.md](../PRIOR_ART.md),
    [VERIFICATION.md](VERIFICATION.md), and current OpenAI Site Tools limits.
-8. Obtain human approval, submit once, and preserve the submitted text,
+8. Obtain human approval, submit once before **September 3 at 1:00 PM PDT / 3:00
+   PM CDT**, and preserve the submitted text,
    timestamp, URLs, final SHA, and confirmation receipt.
+9. Do not change the submitted Devpost entry, repository, video, or live site
+   during judging; move continued product work to a separate fork.
 
 This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
