@@ -10,7 +10,7 @@ const token = 'invitation-token-with-more-than-thirty-two-characters';
 const idempotencyKey = '123e4567-e89b-42d3-a456-426614174000';
 const reportId = '923e4567-e89b-42d3-a456-426614174000';
 const assuranceLimitation =
-  'This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.';
+  'This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.';
 
 function environment(overrides: Record<string, string> = {}) {
   return {
