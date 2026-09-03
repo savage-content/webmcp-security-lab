@@ -172,7 +172,9 @@ export function LessonPicker({
         </div>
         <p className="max-w-lg text-xs leading-5 text-muted-foreground">
           Each lesson gives the human and agent one question, one rule, one
-          controlled practice action, and one receipt.
+          controlled practice action, and one receipt. Moving to another live
+          lesson refreshes this page so the previous Site Tool is fully retired;
+          your progress remains saved.
         </p>
       </div>
       <div className="mt-4 grid gap-2 md:grid-cols-5">

@@ -190,6 +190,22 @@ describe('beginner WebMCP lesson path', () => {
     );
   });
 
+  it('starts each live lesson in a fresh browser document', () => {
+    const normalizedApp = labAppSource.replace(/\s+/gu, ' ');
+    expect(normalizedApp).toContain(
+      "experienceMode === 'site-tools' && siteToolsSupport === 'available'",
+    );
+    expect(normalizedApp).toContain(
+      'sourceRegistrationControllerRef.current?.abort();',
+    );
+    expect(normalizedApp).toContain('window.location.reload();');
+    expect(normalizedApp.indexOf('JSON.stringify(checkpoint)')).toBeLessThan(
+      normalizedApp.indexOf('window.location.reload();'),
+    );
+    expect(guidedLessonSource).toContain('the previous Site Tool is fully');
+    expect(guidedLessonSource).toContain('your progress remains saved');
+  });
+
   it('persists only the novice checkpoint and gates lessons on a viable setup', () => {
     expect(labAppSource).toContain('NOVICE_JOURNEY_STORAGE_KEY');
     expect(labAppSource).toContain('createNoviceJourneyCheckpoint');

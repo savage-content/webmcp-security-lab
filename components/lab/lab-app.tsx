@@ -1102,6 +1102,42 @@ export function LabApp() {
           ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         return;
       }
+      if (
+        nextId !== selectedId &&
+        experienceMode === 'site-tools' &&
+        siteToolsSupport === 'available'
+      ) {
+        const checkpoint = createNoviceJourneyCheckpoint({
+          mode: experienceMode,
+          setupConfirmed,
+          selectedLessonId: nextId,
+          completedLessonIds: scenarios
+            .filter((item) => completedLessonIds.has(item.id))
+            .map((item) => item.id),
+          lastReceiptId,
+        });
+        try {
+          window.localStorage.setItem(
+            NOVICE_JOURNEY_STORAGE_KEY,
+            JSON.stringify(checkpoint),
+          );
+
+          // Chrome 152 currently retains enough configuration churn after
+          // standards-based AbortSignal unregistration to reject the eleventh
+          // dynamic tool registration in one document. A document transition
+          // invokes the browser's own unloading cleanup and gives the next
+          // lesson a fresh tool map without restoring any approval.
+          sourceEnabledRef.current = false;
+          sourceRegistrationGenerationRef.current = crypto.randomUUID();
+          sourceRegistrationControllerRef.current?.abort();
+          sourceRegistrationControllerRef.current = undefined;
+          window.location.reload();
+          return;
+        } catch {
+          // Storage-restricted browsers keep the in-page fallback rather than
+          // reloading into the wrong lesson.
+        }
+      }
       if (nextId !== selectedId) restoreSourceTool();
       setSelectedId(nextId);
       setPersistence(receiptMap[nextId] ? 'saved' : 'idle');
@@ -1115,10 +1151,14 @@ export function LabApp() {
     },
     [
       receiptMap,
+      completedLessonIds,
+      experienceMode,
+      lastReceiptId,
       restoreSourceTool,
       secureReceiptMap,
       selectedId,
       setupConfirmed,
+      siteToolsSupport,
     ],
   );
 
