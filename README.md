@@ -43,15 +43,15 @@ run used the then-current page, extension, and restarted connector in a fresh
 Chrome 152 profile. Neither run proves a future commit, signed package, direct
 Site Tools support, or another client.
 
-| Current component                                    | Status                                                                                                                                                    |
-| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public learning range                                | Commit `8568a5f`, Sites version 11, is live with the setup gate, first-visit walkthrough, and five lessons                                                |
-| Five guided page capabilities                        | `PASS` in one fresh Chrome 152 sequence; one exact call per lesson and no retries                                                                         |
+| Current component                                    | Status                                                                                                                                                              |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public learning range                                | Commit `8568a5f`, Sites version 11, is live with the setup gate, first-visit walkthrough, and five lessons                                                          |
+| Five guided page capabilities                        | `PASS` in one fresh Chrome 152 sequence; one exact call per lesson and no retries                                                                                   |
 | Connector receipt and report path                    | `PASS` for five validated receipts, the hash chain, local redacted draft, zero feed-eligible synthetic records, and a source-tested default-off public-report relay |
-| Browser extension                                    | Manifest V3 development preview; deterministic package, integrity manifest, and detached release-attestation gate now available; still unsigned by Chrome |
-| Android                                              | JVM/API conformance prototype; not device-invokable                                                                                                       |
-| Deployment split                                     | Public learning site only; Local Guard, connector, moderation core, and reporting workbench are not hosted                                                |
-| Novelty, patentability, or freedom-to-operate claims | NO-GO under the technical prior-art review; no legal infringement conclusion                                                                              |
+| Browser extension                                    | Manifest V3 development preview; deterministic package, integrity manifest, and detached release-attestation gate now available; still unsigned by Chrome           |
+| Android                                              | JVM/API conformance prototype; not device-invokable                                                                                                                 |
+| Deployment split                                     | Public learning site only; Local Guard, connector, moderation core, and reporting workbench are not hosted                                                          |
+| Novelty, patentability, or freedom-to-operate claims | NO-GO under the technical prior-art review; no legal infringement conclusion                                                                                        |
 
 ## Why this lab exists
 
@@ -358,10 +358,11 @@ The automated suite covers:
   behavior, revocation, and failure handling.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The current automated suite passes 507/507
+separate Android conformance script. The current automated suite passes 513/513
 tests across 70 files, typecheck, the Local Guard release-readiness assessment,
-lint, and a production build on Node.js 24. Source-ready native transport,
-authenticated replay-resistant named-pipe IPC with a native-only connector mode,
+lint, and a production build on Node.js 24. Source-ready native transport, a
+separately packaged no-host-permission extension candidate, authenticated
+replay-resistant named-pipe IPC with a native-only connector mode,
 lifecycle, platform-matrix, incident-response, default-off external-report
 relay, and loopback-only human reviewer checkpoints are included in
 those tests but are not installed, signed, rehearsed, or wired into the

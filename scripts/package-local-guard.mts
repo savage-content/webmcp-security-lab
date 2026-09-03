@@ -13,6 +13,7 @@ export const LOCAL_GUARD_RUNTIME_FILES = Object.freeze([
   'icons/icon-128.png',
   'lesson-policy.js',
   'manifest.json',
+  'native-transport.js',
   'policy-validation.js',
   'popup.css',
   'popup.html',
@@ -20,13 +21,20 @@ export const LOCAL_GUARD_RUNTIME_FILES = Object.freeze([
   'validation.js',
 ]);
 
-const EXPECTED_PERMISSIONS = ['activeTab', 'scripting', 'storage'];
-const EXPECTED_HOST_PERMISSIONS = [
+const DEVELOPER_PREVIEW_PERMISSIONS = ['activeTab', 'scripting', 'storage'];
+const DEVELOPER_PREVIEW_HOST_PERMISSIONS = [
   'http://127.0.0.1:8788/*',
   'http://localhost:8788/*',
   'http://127.0.0.1:48788/*',
   'http://localhost:48788/*',
 ];
+const NATIVE_CANDIDATE_PERMISSIONS = [
+  'activeTab',
+  'scripting',
+  'storage',
+  'nativeMessaging',
+];
+const NATIVE_CANDIDATE_HOST_PERMISSIONS: string[] = [];
 const EXPECTED_ICONS = Object.freeze({
   '16': 'icons/icon-16.png',
   '32': 'icons/icon-32.png',
@@ -79,7 +87,21 @@ function sameStrings(left: unknown, right: readonly string[]) {
   );
 }
 
-function validateManifest(value: unknown) {
+export type LocalGuardPackageProfile = 'developer-preview' | 'native-candidate';
+
+function profilePolicy(profile: LocalGuardPackageProfile) {
+  return profile === 'native-candidate'
+    ? {
+        permissions: NATIVE_CANDIDATE_PERMISSIONS,
+        hostPermissions: NATIVE_CANDIDATE_HOST_PERMISSIONS,
+      }
+    : {
+        permissions: DEVELOPER_PREVIEW_PERMISSIONS,
+        hostPermissions: DEVELOPER_PREVIEW_HOST_PERMISSIONS,
+      };
+}
+
+function validateManifest(value: unknown, profile: LocalGuardPackageProfile) {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new Error('Local Guard manifest must be an object.');
   }
@@ -87,12 +109,13 @@ function validateManifest(value: unknown) {
   if (manifest.manifest_version !== 3) {
     throw new Error('Local Guard packaging requires Manifest V3.');
   }
-  if (!sameStrings(manifest.permissions, EXPECTED_PERMISSIONS)) {
+  const policy = profilePolicy(profile);
+  if (!sameStrings(manifest.permissions, policy.permissions)) {
     throw new Error(
       'Local Guard permissions differ from the release allowlist.',
     );
   }
-  if (!sameStrings(manifest.host_permissions, EXPECTED_HOST_PERMISSIONS)) {
+  if (!sameStrings(manifest.host_permissions, policy.hostPermissions)) {
     throw new Error(
       'Local Guard host permissions differ from the exact loopback allowlist.',
     );
@@ -215,17 +238,25 @@ export async function createLocalGuardPackage(
   options: {
     extensionDirectory?: string;
     outputDirectory?: string;
+    profile?: LocalGuardPackageProfile;
   } = {},
 ) {
+  const profile = options.profile ?? 'developer-preview';
   const extensionDirectory = resolve(
     options.extensionDirectory ?? 'products/extension',
   );
   const outputDirectory = resolve(
-    options.outputDirectory ?? 'outputs/local-guard',
+    options.outputDirectory ??
+      (profile === 'native-candidate'
+        ? 'outputs/local-guard-native-candidate'
+        : 'outputs/local-guard'),
   );
   const files = await Promise.all(
     LOCAL_GUARD_RUNTIME_FILES.map(async (path) => {
-      const sourcePath = join(extensionDirectory, path);
+      const sourcePath =
+        path === 'manifest.json' && profile === 'native-candidate'
+          ? join(extensionDirectory, 'manifest.native-candidate.json')
+          : join(extensionDirectory, path);
       const details = await lstat(sourcePath);
       if (!details.isFile() || details.isSymbolicLink()) {
         throw new Error(
@@ -246,6 +277,7 @@ export async function createLocalGuardPackage(
   }
   const identity = validateManifest(
     JSON.parse(Buffer.from(manifestFile.bytes).toString('utf8')) as unknown,
+    profile,
   );
   validateLocalPopupReferences(Buffer.from(popupFile.bytes).toString('utf8'));
   for (const file of files.filter((item) => item.path.endsWith('.js'))) {
@@ -261,8 +293,13 @@ export async function createLocalGuardPackage(
   }
 
   const archive = deterministicZip(files);
-  const archiveName = `leftout-local-guard-${identity.version}.zip`;
-  const releaseName = `leftout-local-guard-${identity.version}.release.json`;
+  const packageStem =
+    profile === 'native-candidate'
+      ? `leftout-local-guard-native-candidate-${identity.version}`
+      : `leftout-local-guard-${identity.version}`;
+  const archiveName = `${packageStem}.zip`;
+  const releaseName = `${packageStem}.release.json`;
+  const policy = profilePolicy(profile);
   const release: LocalGuardReleaseManifest = Object.freeze({
     schemaVersion: 'leftout.local-guard-release/1',
     name: identity.name,
@@ -283,8 +320,8 @@ export async function createLocalGuardPackage(
     ),
     security: Object.freeze({
       manifestVersion: 3 as const,
-      permissions: Object.freeze([...EXPECTED_PERMISSIONS]),
-      hostPermissions: Object.freeze([...EXPECTED_HOST_PERMISSIONS]),
+      permissions: Object.freeze([...policy.permissions]),
+      hostPermissions: Object.freeze([...policy.hostPermissions]),
       remoteCode: false as const,
     }),
   });
@@ -310,7 +347,10 @@ const isDirectRun =
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
 
 if (isDirectRun) {
-  const result = await createLocalGuardPackage();
+  const profile = process.argv.includes('--native-candidate')
+    ? 'native-candidate'
+    : 'developer-preview';
+  const result = await createLocalGuardPackage({ profile });
   console.log(`Local Guard package: ${result.archivePath}`);
   console.log(`Release manifest: ${result.releasePath}`);
   console.log(`SHA-256: ${result.release.archive.sha256}`);

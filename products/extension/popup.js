@@ -6,6 +6,8 @@ import { pageIdentityFromUrl, safeErrorMessage } from './validation.js';
 const form = document.querySelector('#pair-form');
 const dataConsent = document.querySelector('#data-consent');
 const connector = document.querySelector('#connector');
+const connectorOptions = document.querySelector('#connector-options');
+const pairHelper = document.querySelector('#pair-helper');
 const pairButton = document.querySelector('#pair-button');
 const pageOrigin = document.querySelector('#page-origin');
 const status = document.querySelector('#status');
@@ -40,6 +42,16 @@ let pairPending = false;
 
 const CONSENT_STORAGE_KEY = 'local_guard_data_handling_consent';
 const CONSENT_VERSION = 'leftout.local-guard-data-handling/1';
+const nativeTransport =
+  chrome.runtime.getManifest?.().permissions?.includes('nativeMessaging') ===
+  true;
+
+if (nativeTransport) {
+  connectorOptions.hidden = true;
+  connector.disabled = true;
+  pairHelper.textContent =
+    "Connecting uses Chrome's identity-bound Local Guard helper on this computer. It does not approve or run an action.";
+}
 
 const HUD_COPY = Object.freeze({
   checking: Object.freeze({
@@ -375,7 +387,7 @@ form.addEventListener('submit', async (event) => {
       await send({
         type: 'pair-active-tab',
         tabId: selectedTab.id,
-        connectorBase: connector.value,
+        ...(nativeTransport ? {} : { connectorBase: connector.value }),
       }),
     );
   } catch (error) {

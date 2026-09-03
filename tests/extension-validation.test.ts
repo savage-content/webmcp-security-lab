@@ -20,6 +20,8 @@ import {
   sanitizeBridgeCommand,
   sanitizeInspectionPayload,
   sanitizeInvocationPayload,
+  sanitizeNativePairResponse,
+  sanitizeNativeReportLaunchResponse,
   sanitizePairResponse,
   sanitizePairChallengeResponse,
   sanitizePendingCompletion,
@@ -34,6 +36,63 @@ const PAGE_URL = 'https://lab.example/scenario';
 const EXECUTION_URL = `${PAGE_URL}?private=yes#state`;
 
 describe('extension authority validation', () => {
+  it('strictly validates native pairing and fixed loopback report tickets', () => {
+    const sessionId = '5af587fe-f44c-4ab0-8243-7b63d348f612';
+    expect(
+      sanitizeNativePairResponse(
+        {
+          session_id: sessionId,
+          origin: 'https://lab.example',
+          page_url: 'https://lab.example/lesson',
+          paired_at: '2026-09-01T12:00:00.000Z',
+        },
+        'https://lab.example',
+        'https://lab.example/lesson',
+      ),
+    ).toEqual({
+      sessionId,
+      origin: 'https://lab.example',
+      pageUrl: 'https://lab.example/lesson',
+      pairedAt: '2026-09-01T12:00:00.000Z',
+    });
+    expect(() =>
+      sanitizeNativePairResponse(
+        {
+          session_id: sessionId,
+          origin: 'https://lab.example',
+          page_url: 'https://lab.example/lesson',
+          paired_at: '2026-09-01T12:00:00.000Z',
+          bridge_token: 'must-not-enter-browser',
+        },
+        'https://lab.example',
+        'https://lab.example/lesson',
+      ),
+    ).toThrow('invalid pairing identity');
+
+    const reportUrl = `http://127.0.0.1:8787/reports/open?ticket=${'a'.repeat(43)}`;
+    expect(
+      sanitizeNativeReportLaunchResponse(
+        {
+          report_url: reportUrl,
+          expires_at: '2026-09-01T12:00:30.000Z',
+        },
+        Date.parse('2026-09-01T12:00:00.000Z'),
+      ),
+    ).toEqual({
+      reportUrl,
+      expiresAt: '2026-09-01T12:00:30.000Z',
+    });
+    expect(() =>
+      sanitizeNativeReportLaunchResponse(
+        {
+          report_url: `http://localhost:8787/reports/open?ticket=${'a'.repeat(43)}`,
+          expires_at: '2026-09-01T12:00:30.000Z',
+        },
+        Date.parse('2026-09-01T12:00:00.000Z'),
+      ),
+    ).toThrow('unsafe report launch URL');
+  });
+
   it('accepts only a short-lived report ticket on the matching loopback host', () => {
     const now = Date.parse('2026-09-01T12:00:00.000Z');
     const reportUrl = `http://127.0.0.1:8787/reports/open?ticket=${'a'.repeat(43)}`;

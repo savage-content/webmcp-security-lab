@@ -38,7 +38,11 @@
         "products/native-host/ipc-client.ts",
         "products/native-host/install-plan.ts",
         "products/native-host/manifest.template.json",
+        "products/extension/manifest.native-candidate.json",
+        "products/extension/background.js",
         "products/extension/native-transport.js",
+        "products/extension/popup.js",
+        "scripts/package-local-guard.mts",
         "products/connector/ipc-server.ts",
         "products/connector/native-adapter.ts",
         "products/native-host/README.md",
@@ -48,7 +52,10 @@
         "tests/native-ipc-transport.test.ts",
         "tests/native-adapter.test.ts",
         "tests/connector-native-ipc.test.ts",
-        "tests/native-host-install-plan.test.ts"
+        "tests/native-host-install-plan.test.ts",
+        "tests/extension-background.test.ts",
+        "tests/extension-manifest.test.ts",
+        "tests/local-guard-package.test.ts"
       ]
     },
     {
@@ -61,11 +68,17 @@
         "products/native-host/ipc-client.ts",
         "products/connector/ipc-server.ts",
         "products/connector/native-adapter.ts",
+        "products/extension/manifest.native-candidate.json",
+        "products/extension/background.js",
         "products/extension/native-transport.js",
+        "scripts/package-local-guard.mts",
         "products/native-host/README.md",
         "tests/native-ipc-protocol.test.ts",
         "tests/native-ipc-transport.test.ts",
-        "tests/connector-native-ipc.test.ts"
+        "tests/connector-native-ipc.test.ts",
+        "tests/extension-background.test.ts",
+        "tests/extension-validation.test.ts",
+        "tests/local-guard-package.test.ts"
       ]
     },
     {

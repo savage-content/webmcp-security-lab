@@ -47,4 +47,31 @@ describe('Local Guard release packaging', () => {
       `${first.release.archive.sha256}  leftout-local-guard-${first.release.version}.zip\n`,
     );
   });
+
+  it('builds a separate native candidate with no loopback host authority', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'leftout-guard-native-'));
+    const candidate = await createLocalGuardPackage({
+      outputDirectory: directory,
+      profile: 'native-candidate',
+    });
+    expect(candidate.release).toMatchObject({
+      name: 'LeftOut WebMCP Safety',
+      version: '0.4.0',
+      security: {
+        manifestVersion: 3,
+        permissions: ['activeTab', 'scripting', 'storage', 'nativeMessaging'],
+        hostPermissions: [],
+        remoteCode: false,
+      },
+    });
+    expect(candidate.release.archive.file).toBe(
+      'leftout-local-guard-native-candidate-0.4.0.zip',
+    );
+    expect(candidate.release.files.map((file) => file.path)).toContain(
+      'native-transport.js',
+    );
+    expect(candidate.release.files.map((file) => file.path)).not.toContain(
+      'manifest.native-candidate.json',
+    );
+  });
 });

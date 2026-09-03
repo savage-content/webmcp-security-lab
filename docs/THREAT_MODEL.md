@@ -123,10 +123,12 @@ The fixture mismatches are intentional application-design failures. The lab does
   plan. Its lifecycle planner verifies expected registration, digest, and
   signing-certificate identity before staging; retains exactly one rollback
   release; unregisters before removal; and excludes the separate receipt tree.
-  No privileged executor, crash journal, signed executable, protected installed
-  IPC secret, verified pipe ACL, native service-worker candidate, or installed
-  manifest exists, so this source-ready path does not mitigate the shipping
-  preview's loopback runtime risk.
+  A separately packaged service-worker candidate selects native messaging and
+  removes browser host permissions. No privileged executor, crash journal,
+  signed executable, protected installed IPC secret, verified pipe ACL, exact
+  store identity, or installed manifest exists, so this source-ready path does
+  not mitigate the shipping preview's loopback runtime risk or establish local
+  process identity on an end-user device.
 - The reporting modules provide role-separated credential checks, atomic
   intake quotas, a durable hash-chained moderation ledger, authenticated
   reviewer transitions, and a separately authorized immutable publication

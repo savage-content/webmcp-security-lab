@@ -17,11 +17,13 @@ An additional source checkpoint now implements exact extension-origin binding,
 strict native-message schemas and framing, a no-retry browser client, an
 authenticated replay-resistant named-pipe channel, a connector adapter that
 keeps bridge credentials server-side, a connector mode with no browser HTTP
-bridge, and a non-mutating Windows installation plan. It is not connected to
-the shipping service worker, has no signed executable or protected installed
-secret, and performs no host or registry installation. Accordingly, the native
+bridge, and a non-mutating Windows installation plan. A separate deterministic
+`0.4.0` source candidate now wires the service worker and popup to native
+messaging and has no browser host permissions. It still has no signed
+executable, installed host manifest, protected install secret, or verified pipe
+ACL, and performs no host or registry installation. Accordingly, the native
 identity and secure-transport gates are `source_ready`, not `verified`; the
-shipping preview still uses loopback HTTP.
+shipping `0.3.0` preview still uses loopback HTTP.
 
 The loopback connector also contains a scriptless four-field public-report
 review flow and a disabled-by-default invited server-to-server relay. It keeps
@@ -43,11 +45,11 @@ request.
 The connector-side source boundary now uses an HMAC-authenticated,
 timestamped, nonce-bound, replay-limited Windows named-pipe protocol. Its
 native-only mode will not listen on the browser HTTP bridge. Product integration
-still requires a separately packaged extension with `nativeMessaging` and no
-browser bridge host permissions, a signed native binary, protected
-install-scoped secret and verified pipe ACL, exact store ID, privileged
-installer/updater/uninstaller, crash and rollback handling, and signed-candidate
-acceptance. See
+now has a separately packaged source candidate with `nativeMessaging` and no
+browser bridge host permissions. Product release still requires a signed native
+binary, protected install-scoped secret and verified pipe ACL, exact store ID,
+privileged installer/updater/uninstaller, crash and rollback handling, and
+signed-candidate acceptance. See
 `products/native-host/README.md`.
 
 ## Package the reviewed bytes
@@ -58,11 +60,20 @@ Use Node.js 24 from a clean checkout:
 npm ci
 npm test
 npm run local-guard:package
+npm run local-guard:native-candidate
 ```
 
 The packaging command allowlists every runtime file and exact Manifest V3
 permission, rejects symlinks and dynamic code, and produces the ZIP, release
 manifest, and SHA-256 file under `outputs/local-guard/`.
+
+The native-candidate command substitutes
+`products/extension/manifest.native-candidate.json` as the packaged
+`manifest.json`, requires `nativeMessaging`, rejects every browser host
+permission, and writes a deterministic source-review ZIP and release manifest
+under `outputs/local-guard-native-candidate/`. That output is deliberately
+unsigned and is not an installable product release without the exact signed
+host, store identity, installer, and external acceptance evidence.
 
 ## Create a release-integrity attestation
 

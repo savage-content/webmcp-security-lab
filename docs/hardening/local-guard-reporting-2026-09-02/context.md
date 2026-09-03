@@ -7,8 +7,8 @@ preparing this review. The target tree was clean at `5ba6e97`; the added files
 are implementation evidence, not evidence that a signed extension or hosted
 intake exists.
 
-Current collection: 102 artifacts at
-`sha256:b5036c70200d568c70d12bb3b7d8c3764f52388d4fa0e1c4c47aac48a74a8ea7`.
+Current collection: 108 artifacts at
+`sha256:b27ab13f748592716c3afe26d1a858fa7cc83c956ebfc28356df979809647408`.
 
 The digest is SHA-256 over newline-terminated, repository-relative
 `path<TAB>sha256` records in the exact order enforced by
@@ -16,12 +16,12 @@ The digest is SHA-256 over newline-terminated, repository-relative
 decoded as UTF-8 and normalized to LF before its per-file hash is computed, so
 an equivalent Windows checkout does not create false source drift. The table
 below preserves the original review's core evidence snapshot; the executable
-102-artifact list and `hardening.json` are the current collection authority.
+108-artifact list and `hardening.json` are the current collection authority.
 
 The current collection additionally binds the lifecycle, store-asset,
 platform/incident, explicit external-report relay, private reviewer workbench,
-and authenticated native IPC implementation and tests added during the same
-hardening run.
+authenticated native IPC implementation, and separately packaged native-only
+extension candidate and tests added during the same hardening run.
 
 | Evidence  | Reader-facing title                         | Path                                                   | SHA-256                                                            |
 | --------- | ------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------ |
@@ -88,10 +88,11 @@ hardening run.
 | `E-DOC-4` | Reporting service release boundary          | `docs/REPORTING_SERVICE.md`                            | `ec868d21a90e781fc7453530ba51844c9f7699c705657bd697369e2df6b2b681` |
 | `E-DOC-5` | Local Guard privacy and store review        | `docs/LOCAL_GUARD_PRIVACY_REVIEW.md`                   | `9c1281eaed86215c71145f0367b2bf76cb06c0219c253a10460e2a4ab8b7897a` |
 
-Evidence limitations: no store graphic assets, signed extension identity,
-installed or signed native-messaging host, integrated secure production local transport, deployed public
-privacy/support capture, installation lifecycle evidence, production identity
-provider, enabled external reporting service, production data, production feed
+Evidence limitations: no signed extension identity, Chrome Web Store review,
+installed or signed native-messaging host, integrated secure production local
+transport, deployed public privacy/support capture, installation lifecycle
+evidence, production identity provider, enabled external reporting service,
+production data, production feed
 key or separately published trust fingerprint, provider-backup purge,
 correction operations rehearsal, latency benchmark, independent accessibility
 participant, or retained screen-reader transcript was available. Controlled

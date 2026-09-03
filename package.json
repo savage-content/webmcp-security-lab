@@ -15,6 +15,7 @@
     "local-guard:assets": "tsx scripts/render-local-guard-store-assets.mts",
     "local-guard:store-capture": "tsx scripts/serve-local-guard-store-capture.mts",
     "local-guard:package": "tsx scripts/package-local-guard.mts",
+    "local-guard:native-candidate": "tsx scripts/package-local-guard.mts --native-candidate",
     "local-guard:attest": "tsx scripts/attest-local-guard-release.mts",
     "local-guard:readiness": "tsx scripts/assess-local-guard-release.mts",
     "local-guard:release-gate": "tsx scripts/assess-local-guard-release.mts --require-product-release",

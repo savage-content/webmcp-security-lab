@@ -32,7 +32,11 @@ before publisher and installer authority exists:
 - an integrated native-only connector mode that refuses to disable the HTTP
   browser bridge unless authenticated IPC is configured;
 - a browser-side `sendNativeMessage()` client that rejects unknown fields,
-  mismatched request IDs, host errors, oversized responses, and retries; and
+  mismatched request IDs, host errors, and oversized responses, and never
+  retries;
+- a separately packaged `0.4.0` native candidate whose service worker and
+  popup use that client only when `nativeMessaging` is declared, with no
+  loopback browser host permissions;
 - a non-mutating Windows installation plan that produces one exact host
   manifest and HKCU registry binding for a signed `.exe` and store extension
   ID; and
@@ -61,23 +65,21 @@ Current Chrome contract:
 
 - <https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging>
 
-## What remains before integration
+## What remains before signed integration
 
 This checkpoint does **not** yet satisfy the ordinary-user release gate. The
 following work remains:
 
-1. Wire the service worker to `native-transport.js` only in a separately
-   packaged native candidate with no loopback host permissions.
-2. Build and sign the native executable; publish and pin the exact store
+1. Build and sign the native executable; publish and pin the exact store
    extension ID; generate the host manifest from those identities.
-3. Provision the install-scoped IPC secret outside browser state and apply and
+2. Provision the install-scoped IPC secret outside browser state and apply and
    verify an exact current-user named-pipe ACL in the signed host and connector
    processes. The source HMAC boundary does not itself prove operating-system
    peer identity or secret protection.
-4. Implement the privileged Windows executor for the source-ready lifecycle
+3. Implement the privileged Windows executor for the source-ready lifecycle
    plan, including crash-safe journaling, repair, and action-time human
    authorization, without deleting retained receipts.
-5. Verify the exact signed candidate in supported Chrome/Windows versions,
+4. Verify the exact signed candidate in supported Chrome/Windows versions,
    including hostile local requests, navigation, expiry, declaration drift,
    host loss, and no-retry delivery.
 
@@ -92,7 +94,12 @@ Run on Node.js 24:
 ```powershell
 npm test -- tests/native-messaging.test.ts tests/native-transport.test.ts tests/native-host-install-plan.test.ts tests/native-host-lifecycle-plan.test.ts
 npm test -- tests/native-ipc-protocol.test.ts tests/native-ipc-transport.test.ts tests/native-adapter.test.ts tests/connector-native-ipc.test.ts
+npm run local-guard:native-candidate
 ```
+
+The last command builds deterministic source-review artifacts under
+`outputs/local-guard-native-candidate/`. It does not install, sign, attest, or
+approve the candidate for ordinary-user distribution.
 
 The Windows install-plan function returns data only. A future privileged
 installer must require action-time authorization before writing files or the

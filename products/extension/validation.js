@@ -126,6 +126,33 @@ export function sanitizePairResponse(value, expectedOrigin) {
   return Object.freeze({ sessionId, bridgeToken, origin, pairedAt });
 }
 
+export function sanitizeNativePairResponse(
+  value,
+  expectedOrigin,
+  expectedPageUrl,
+) {
+  if (
+    !isPlainRecord(value) ||
+    !hasOnlyKeys(value, ['session_id', 'origin', 'page_url', 'paired_at']) ||
+    Object.keys(value).length !== 4 ||
+    !isBridgeCommandId(value.session_id) ||
+    value.origin !== expectedOrigin ||
+    value.page_url !== expectedPageUrl ||
+    typeof value.paired_at !== 'string' ||
+    !Number.isFinite(Date.parse(value.paired_at))
+  ) {
+    throw new Error(
+      'The native connector returned an invalid pairing identity.',
+    );
+  }
+  return Object.freeze({
+    sessionId: value.session_id,
+    origin: value.origin,
+    pageUrl: value.page_url,
+    pairedAt: value.paired_at,
+  });
+}
+
 export function sanitizePairChallengeResponse(value, nowMs = Date.now()) {
   if (
     !isPlainRecord(value) ||
@@ -185,6 +212,46 @@ export function sanitizeReportLaunchResponse(
     [...report.searchParams.keys()].length !== 1
   ) {
     throw new Error('The connector returned an unsafe report launch URL.');
+  }
+  return Object.freeze({
+    reportUrl: report.toString(),
+    expiresAt: value.expires_at,
+  });
+}
+
+export function sanitizeNativeReportLaunchResponse(value, nowMs = Date.now()) {
+  if (
+    !isPlainRecord(value) ||
+    !hasOnlyKeys(value, ['expires_at', 'report_url']) ||
+    Object.keys(value).length !== 2 ||
+    typeof value.report_url !== 'string' ||
+    typeof value.expires_at !== 'string'
+  ) {
+    throw new Error(
+      'The native connector returned an invalid report launch response.',
+    );
+  }
+  const expiresAtMs = Date.parse(value.expires_at);
+  const report = new URL(value.report_url);
+  const tickets = report.searchParams.getAll('ticket');
+  if (
+    !Number.isFinite(expiresAtMs) ||
+    expiresAtMs <= nowMs ||
+    expiresAtMs - nowMs > 5 * 60_000 ||
+    report.protocol !== 'http:' ||
+    report.hostname !== '127.0.0.1' ||
+    report.port !== '8787' ||
+    report.pathname !== '/reports/open' ||
+    report.username ||
+    report.password ||
+    report.hash ||
+    tickets.length !== 1 ||
+    !REPORT_TICKET_PATTERN.test(tickets[0]) ||
+    [...report.searchParams.keys()].length !== 1
+  ) {
+    throw new Error(
+      'The native connector returned an unsafe report launch URL.',
+    );
   }
   return Object.freeze({
     reportUrl: report.toString(),

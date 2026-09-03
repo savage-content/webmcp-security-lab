@@ -14,11 +14,17 @@ import {
   sanitizeBridgeCommand,
   sanitizeInspectionPayload,
   sanitizeInvocationPayload,
+  sanitizeNativePairResponse,
+  sanitizeNativeReportLaunchResponse,
   sanitizePairChallengeResponse,
   sanitizePairResponse,
   sanitizePendingCompletion,
   sanitizeReportLaunchResponse,
 } from './validation.js';
+import {
+  createNativeBridgeClient,
+  nativeTransportDeclared,
+} from './native-transport.js';
 import {
   CAPABILITY_PERMIT_CONSUMED_STORAGE_KEY,
   CAPABILITY_PERMIT_STORAGE_KEY,
@@ -36,12 +42,31 @@ const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const PERMIT_DOCUMENT_BINDING_SCHEMA =
   'leftout.extension-capability-permit-document-binding/1';
 const CLIENT_LABEL = 'LeftOut Chrome capability bridge';
+const NATIVE_TRANSPORT = 'native-messaging';
+const LOOPBACK_TRANSPORT = 'developer-loopback-http';
 const FETCH_TIMEOUT_MS = 10_000;
 const OBSERVATION_INTERVAL_MS = 3_000;
 const pollLocks = new Set();
 const connectionMutationQueues = new Map();
 const closedTabs = new Set();
 let capabilityPermitMutation = Promise.resolve();
+let nativeBridgeClient;
+
+function usesNativeTransport() {
+  return nativeTransportDeclared(chrome.runtime);
+}
+
+function getNativeBridgeClient() {
+  if (!usesNativeTransport()) {
+    throw new Error('The identity-bound Local Guard host is not enabled.');
+  }
+  nativeBridgeClient ??= createNativeBridgeClient({ runtime: chrome.runtime });
+  return nativeBridgeClient;
+}
+
+async function nativeBridgeRequest(action, payload) {
+  return getNativeBridgeClient().request(action, payload);
+}
 
 function hasExactKeys(value, expected) {
   if (!isPlainRecord(value)) return false;
@@ -435,6 +460,7 @@ function sameConnectionIdentity(connection, expectedConnection) {
     connection.sessionId === expectedConnection.sessionId &&
     connection.bridgeToken === expectedConnection.bridgeToken &&
     connection.connectorBase === expectedConnection.connectorBase &&
+    connection.transport === expectedConnection.transport &&
     connection.origin === expectedConnection.origin &&
     connection.pageUrl === expectedConnection.pageUrl &&
     connection.documentId === expectedConnection.documentId &&
@@ -1053,45 +1079,67 @@ async function pairActiveTab(message) {
   const tab = await activeTab(message.tabId);
   closedTabs.delete(tab.id);
   const page = await captureActiveDocument(tab);
-  const connectorBase = normalizeConnectorBase(message.connectorBase);
   const pairIdentity = {
     origin: page.origin,
     page_url: page.pageUrl,
     client_label: CLIENT_LABEL,
   };
-  let credential;
-  if (typeof message.pairCode === 'string' && message.pairCode.trim()) {
-    credential = { pair_code: normalizePairCode(message.pairCode) };
+  let paired;
+  let connectorBase = null;
+  let bridgeToken = null;
+  let transport;
+  if (usesNativeTransport()) {
+    const response = await nativeBridgeRequest('pair', pairIdentity);
+    if (response.status !== 200) {
+      throw new Error(
+        'The native connector returned an invalid pairing status.',
+      );
+    }
+    paired = sanitizeNativePairResponse(
+      response.body,
+      page.origin,
+      page.pageUrl,
+    );
+    transport = NATIVE_TRANSPORT;
   } else {
-    const challengeResponse = await fetchWithTimeout(
-      `${connectorBase}/bridge/challenge`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(pairIdentity),
-      },
+    connectorBase = normalizeConnectorBase(message.connectorBase);
+    let credential;
+    if (typeof message.pairCode === 'string' && message.pairCode.trim()) {
+      credential = { pair_code: normalizePairCode(message.pairCode) };
+    } else {
+      const challengeResponse = await fetchWithTimeout(
+        `${connectorBase}/bridge/challenge`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(pairIdentity),
+        },
+      );
+      const challenge = sanitizePairChallengeResponse(
+        await parseJsonResponse(challengeResponse, 'Pairing challenge'),
+      );
+      credential = { challenge_token: challenge.challengeToken };
+    }
+    const response = await fetchWithTimeout(`${connectorBase}/bridge/pair`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ...credential,
+        ...pairIdentity,
+      }),
+    });
+    paired = sanitizePairResponse(
+      await parseJsonResponse(response, 'Pairing'),
+      page.origin,
     );
-    const challenge = sanitizePairChallengeResponse(
-      await parseJsonResponse(challengeResponse, 'Pairing challenge'),
-    );
-    credential = { challenge_token: challenge.challengeToken };
+    bridgeToken = paired.bridgeToken;
+    transport = LOOPBACK_TRANSPORT;
   }
-  const response = await fetchWithTimeout(`${connectorBase}/bridge/pair`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      ...credential,
-      ...pairIdentity,
-    }),
-  });
-  const paired = sanitizePairResponse(
-    await parseJsonResponse(response, 'Pairing'),
-    page.origin,
-  );
   const connection = {
+    transport,
     connectorBase,
     sessionId: paired.sessionId,
-    bridgeToken: paired.bridgeToken,
+    bridgeToken,
     origin: paired.origin,
     pageUrl: page.pageUrl,
     documentId: page.documentId,
@@ -1167,6 +1215,20 @@ function bridgeHeaders(connection, includeJson = false) {
 }
 
 async function revokeConnection(connection) {
+  if (connection.transport === NATIVE_TRANSPORT) {
+    const response = await nativeBridgeRequest('revoke', {
+      session_id: connection.sessionId,
+    });
+    if (
+      response.status !== 200 ||
+      !isPlainRecord(response.body) ||
+      response.body.revoked !== true ||
+      Object.keys(response.body).length !== 1
+    ) {
+      throw new Error('Native disconnect returned an invalid acknowledgement.');
+    }
+    return;
+  }
   const url = new URL('/bridge/revoke', connection.connectorBase);
   url.searchParams.set('session_id', connection.sessionId);
   const response = await fetchWithTimeout(url.toString(), {
@@ -1187,16 +1249,29 @@ async function openActiveReports(message) {
   const tab = await activeTab(message.tabId);
   const connection = await getConnection(tab.id);
   if (!connection) throw new Error('Pair this tab before opening reports.');
-  const url = new URL('/bridge/report-link', connection.connectorBase);
-  url.searchParams.set('session_id', connection.sessionId);
-  const response = await fetchWithTimeout(url.toString(), {
-    method: 'GET',
-    headers: bridgeHeaders(connection),
-  });
-  const launch = sanitizeReportLaunchResponse(
-    await parseJsonResponse(response, 'Report link'),
-    connection.connectorBase,
-  );
+  let launch;
+  if (connection.transport === NATIVE_TRANSPORT) {
+    const response = await nativeBridgeRequest('report-link', {
+      session_id: connection.sessionId,
+    });
+    if (response.status !== 200) {
+      throw new Error(
+        'The native connector returned an invalid report status.',
+      );
+    }
+    launch = sanitizeNativeReportLaunchResponse(response.body);
+  } else {
+    const url = new URL('/bridge/report-link', connection.connectorBase);
+    url.searchParams.set('session_id', connection.sessionId);
+    const response = await fetchWithTimeout(url.toString(), {
+      method: 'GET',
+      headers: bridgeHeaders(connection),
+    });
+    launch = sanitizeReportLaunchResponse(
+      await parseJsonResponse(response, 'Report link'),
+      connection.connectorBase,
+    );
+  }
   await chrome.tabs.create({ url: launch.reportUrl, active: true });
   return { opened: true };
 }
@@ -1370,6 +1445,23 @@ async function executePageCommand(
 }
 
 async function postCommandResult(connection, result) {
+  if (connection.transport === NATIVE_TRANSPORT) {
+    const response = await nativeBridgeRequest('result', {
+      session_id: connection.sessionId,
+      result,
+    });
+    if (
+      response.status !== 202 ||
+      !isPlainRecord(response.body) ||
+      response.body.accepted !== true ||
+      Object.keys(response.body).length !== 1
+    ) {
+      throw new Error(
+        'Native result delivery returned an invalid acknowledgement.',
+      );
+    }
+    return;
+  }
   const url = new URL('/bridge/result', connection.connectorBase);
   url.searchParams.set('session_id', connection.sessionId);
   const response = await fetchWithTimeout(url.toString(), {
@@ -1440,13 +1532,36 @@ async function pollConnector(tabId, senderDocument) {
 
     if (await deliverPendingCompletion(tabId, connection)) return;
 
-    const pollUrl = new URL('/bridge/poll', connection.connectorBase);
-    pollUrl.searchParams.set('session_id', connection.sessionId);
-    const response = await fetchWithTimeout(pollUrl.toString(), {
-      method: 'GET',
-      headers: bridgeHeaders(connection),
-    });
-    if (response.status === 204) {
+    let pollStatus;
+    let rawCommand;
+    if (connection.transport === NATIVE_TRANSPORT) {
+      const response = await nativeBridgeRequest('poll', {
+        session_id: connection.sessionId,
+      });
+      pollStatus = response.status;
+      rawCommand = response.body;
+    } else {
+      const pollUrl = new URL('/bridge/poll', connection.connectorBase);
+      pollUrl.searchParams.set('session_id', connection.sessionId);
+      const response = await fetchWithTimeout(pollUrl.toString(), {
+        method: 'GET',
+        headers: bridgeHeaders(connection),
+      });
+      pollStatus = response.status;
+      try {
+        rawCommand = await parseJsonResponse(response, 'Connector poll');
+      } catch (error) {
+        await updateConnectionStatus(
+          tabId,
+          {
+            lastError: safeErrorMessage(error),
+          },
+          connection,
+        );
+        return;
+      }
+    }
+    if (pollStatus === 204) {
       await updateConnectionStatus(
         tabId,
         {
@@ -1456,15 +1571,11 @@ async function pollConnector(tabId, senderDocument) {
       );
       return;
     }
-
-    let rawCommand;
-    try {
-      rawCommand = await parseJsonResponse(response, 'Connector poll');
-    } catch (error) {
+    if (pollStatus !== 200) {
       await updateConnectionStatus(
         tabId,
         {
-          lastError: safeErrorMessage(error),
+          lastError: 'The connector returned an invalid poll status.',
         },
         connection,
       );

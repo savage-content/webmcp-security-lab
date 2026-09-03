@@ -125,4 +125,23 @@ describe('desktop extension package', () => {
       expect(lessonPolicy).toContain(prefix);
     }
   });
+
+  it('keeps the native candidate separate and removes loopback host authority', async () => {
+    const manifest = JSON.parse(
+      await readFile(
+        new URL('manifest.native-candidate.json', extensionRoot),
+        'utf8',
+      ),
+    );
+    expect(manifest).toMatchObject({
+      manifest_version: 3,
+      name: 'LeftOut WebMCP Safety',
+      version: '0.4.0',
+      permissions: ['activeTab', 'scripting', 'storage', 'nativeMessaging'],
+      host_permissions: [],
+      background: { service_worker: 'background.js', type: 'module' },
+    });
+    expect(JSON.stringify(manifest)).not.toContain('127.0.0.1');
+    expect(JSON.stringify(manifest)).not.toContain('localhost');
+  });
 });

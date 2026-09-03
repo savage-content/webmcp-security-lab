@@ -21,7 +21,9 @@ const portfolio = JSON.parse(readFileSync(portfolioPath, 'utf8')) as {
 const root = dirname(portfolioPath);
 const evidencePaths = [
   'products/extension/manifest.json',
+  'products/extension/manifest.native-candidate.json',
   'products/extension/background.js',
+  'products/extension/validation.js',
   'products/extension/native-transport.js',
   'products/native-host/native-messaging.ts',
   'products/native-host/runtime.ts',
@@ -39,6 +41,10 @@ const evidencePaths = [
   'tests/connector-native-ipc.test.ts',
   'tests/native-host-install-plan.test.ts',
   'tests/native-host-lifecycle-plan.test.ts',
+  'tests/extension-background.test.ts',
+  'tests/extension-validation.test.ts',
+  'tests/extension-manifest.test.ts',
+  'tests/local-guard-package.test.ts',
   'products/extension/popup.html',
   'products/extension/popup.css',
   'products/extension/popup.js',

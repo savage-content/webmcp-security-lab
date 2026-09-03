@@ -290,6 +290,8 @@ async function extensionHarness({
   storageGetImplementation,
   storageSetImplementation,
   capabilityPermit,
+  nativeMessaging = false,
+  nativeMessageImplementation,
 }: {
   activeUrl?: string;
   connection?: ReturnType<typeof baseConnection> & {
@@ -307,6 +309,8 @@ async function extensionHarness({
   ) => Promise<Record<string, unknown>>;
   storageSetImplementation?: (value: Record<string, unknown>) => Promise<void>;
   capabilityPermit?: Record<string, unknown> | null;
+  nativeMessaging?: boolean;
+  nativeMessageImplementation?: (request: Record<string, unknown>) => unknown;
 } = {}) {
   vi.resetModules();
   let listener: MessageListener | undefined;
@@ -357,6 +361,13 @@ async function extensionHarness({
   });
   const setBadgeText = vi.fn(async () => undefined);
   const createTab = vi.fn(async () => undefined);
+  const sendNativeMessage = vi.fn(
+    (
+      _host: string,
+      request: Record<string, unknown>,
+      callback: (response: unknown) => void,
+    ) => callback(nativeMessageImplementation?.(request)),
+  );
   const chromeMock = {
     action: {
       setBadgeBackgroundColor: vi.fn(async () => undefined),
@@ -364,6 +375,11 @@ async function extensionHarness({
     },
     runtime: {
       id: POPUP_SENDER.id,
+      lastError: undefined,
+      getManifest: () => ({
+        permissions: nativeMessaging ? ['nativeMessaging'] : [],
+      }),
+      sendNativeMessage,
       getURL(path: string) {
         return `chrome-extension://${POPUP_SENDER.id}/${path}`;
       },
@@ -461,6 +477,7 @@ async function extensionHarness({
     storageSetCalls,
     setBadgeText,
     createTab,
+    sendNativeMessage,
     removeTab(tabId: number) {
       if (!removedListener) throw new Error('No tab removal listener.');
       removedListener(tabId);
@@ -2084,5 +2101,146 @@ describe('extension bridge delivery state', () => {
     await expect(
       harness.dispatch({ type: 'get-active-status', tabId: TAB_ID }),
     ).resolves.not.toMatchObject({ result: { reportUrl } });
+  });
+
+  it('uses the identity-bound native lifecycle without a browser HTTP request', async () => {
+    const sessionId = '1420ef15-7b3f-4ed0-9e06-094245ca9bf2';
+    const ticket = 'n'.repeat(43);
+    const reportUrl = `http://127.0.0.1:8787/reports/open?ticket=${ticket}`;
+    const actions: string[] = [];
+    const harness = await extensionHarness({
+      initialConnections: {},
+      capabilityPermit: null,
+      nativeMessaging: true,
+      nativeMessageImplementation: (request) => {
+        const action = String(request.action);
+        actions.push(action);
+        const body =
+          action === 'pair'
+            ? {
+                session_id: sessionId,
+                origin: ORIGIN,
+                page_url: PAGE_URL,
+                paired_at: new Date().toISOString(),
+              }
+            : action === 'report-link'
+              ? {
+                  report_url: reportUrl,
+                  expires_at: new Date(Date.now() + 30_000).toISOString(),
+                }
+              : { revoked: true };
+        return {
+          schemaVersion: 'leftout.local-guard-native-message/1',
+          requestId: request.requestId,
+          ok: true,
+          status: 200,
+          body,
+        };
+      },
+    });
+
+    await expect(
+      harness.dispatch(
+        { type: 'pair-active-tab', tabId: TAB_ID },
+        POPUP_SENDER,
+      ),
+    ).resolves.toMatchObject({
+      ok: true,
+      result: { paired: true, sessionId },
+    });
+    expect(harness.fetchMock).not.toHaveBeenCalled();
+    expect(harness.getConnections()[String(TAB_ID)]).toMatchObject({
+      transport: 'native-messaging',
+      connectorBase: null,
+      bridgeToken: null,
+      sessionId,
+    });
+
+    await expect(
+      harness.dispatch(
+        { type: 'open-active-reports', tabId: TAB_ID },
+        POPUP_SENDER,
+      ),
+    ).resolves.toEqual({ ok: true, result: { opened: true } });
+    expect(harness.createTab).toHaveBeenCalledWith({
+      url: reportUrl,
+      active: true,
+    });
+    await expect(
+      harness.dispatch(
+        { type: 'forget-active-tab', tabId: TAB_ID },
+        POPUP_SENDER,
+      ),
+    ).resolves.toMatchObject({ ok: true, result: { paired: false } });
+    expect(actions).toEqual(['pair', 'report-link', 'revoke']);
+    expect(harness.fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('polls and returns one native command result without invoking fetch', async () => {
+    const actions: string[] = [];
+    const harness = await extensionHarness({
+      connection: baseConnection({
+        transport: 'native-messaging',
+        connectorBase: null,
+        bridgeToken: null,
+        observation: undefined,
+      }),
+      capabilityPermit: null,
+      nativeMessaging: true,
+      nativeMessageImplementation: (request) => {
+        const action = String(request.action);
+        actions.push(action);
+        const response =
+          action === 'poll'
+            ? {
+                status: 200,
+                body: {
+                  command_id: COMMAND_ID,
+                  kind: 'inspect-tools',
+                  issued_at: new Date().toISOString(),
+                },
+              }
+            : { status: 202, body: { accepted: true } };
+        return {
+          schemaVersion: 'leftout.local-guard-native-message/1',
+          requestId: request.requestId,
+          ok: true,
+          ...response,
+        };
+      },
+    });
+    await expect(
+      harness.dispatch({ type: 'bridge-tick' }, bridgeSender()),
+    ).resolves.toMatchObject({ ok: true });
+    expect(actions).toEqual(['poll', 'result']);
+    expect(harness.fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when a native poll uses a non-poll success status', async () => {
+    const harness = await extensionHarness({
+      connection: baseConnection({
+        transport: 'native-messaging',
+        connectorBase: null,
+        bridgeToken: null,
+        observation: undefined,
+      }),
+      capabilityPermit: null,
+      nativeMessaging: true,
+      nativeMessageImplementation: (request) => ({
+        schemaVersion: 'leftout.local-guard-native-message/1',
+        requestId: request.requestId,
+        ok: true,
+        status: 202,
+        body: { accepted: true },
+      }),
+    });
+
+    await expect(
+      harness.dispatch({ type: 'bridge-tick' }, bridgeSender()),
+    ).resolves.toMatchObject({ ok: true });
+    expect(harness.fetchMock).not.toHaveBeenCalled();
+    expect(harness.getConnections()[String(TAB_ID)]).toMatchObject({
+      lastError: 'The connector returned an invalid poll status.',
+    });
   });
 });

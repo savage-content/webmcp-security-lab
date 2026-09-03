@@ -21,10 +21,13 @@ The product keeps three execution surfaces explicit:
 2. **Agent browser context** — OpenAI's external browser extension performs
    ordinary browser interaction. Its browser actions are not Site Tools
    discovery or invocation.
-3. **LeftOut Local Guard** — the unpacked extension and loopback connector are
-   an independent Membrane prototype for one selected Chromium document. Its
-   HUD, permit enforcement, and local receipt chain attest only calls routed
-   through that path.
+3. **LeftOut Local Guard** — the `0.3.0` unpacked extension and loopback
+   connector are an independent Membrane prototype for one selected Chromium
+   document. A separate deterministic `0.4.0` source candidate replaces
+   browser loopback authority with Chrome native messaging and authenticated
+   connector IPC. Its HUD, permit enforcement, and local receipt chain attest
+   only calls routed through the selected path; neither package is a signed
+   ordinary-user release.
 
 The official client boundary and current top-level-only support are documented
 in [OpenAI's Site Tools documentation](https://learn.chatgpt.com/docs/webmcp).
@@ -107,13 +110,16 @@ This is dated single-session evidence, not a universal compatibility claim.
    validation. One completed live return path now confirms that ordering for
    the observed session; it does not establish crash-atomic or production
    durability.
-10. **Extension boundary** — the unpacked Manifest V3 extension is a local
-    transport adapter bound to one explicitly selected top-level document. Its
-    WebMCP calls are injected into that page's `MAIN` world, and its manifest
-    intentionally has no `debugger` permission. Isolated-world ModelContext
-    access and the experimental CDP WebMCP domain are alternate, unimplemented
-    adapter surfaces. The extension is not an approval surface, signed package,
-    store release, or public deployment.
+10. **Extension boundary** — the Manifest V3 extension is a local transport
+    adapter bound to one explicitly selected top-level document. Its WebMCP
+    calls are injected into that page's `MAIN` world, and neither manifest has
+    `debugger` permission. The shipping developer preview has exact loopback
+    host permissions; the separate source candidate instead declares
+    `nativeMessaging`, has no host permissions, and routes the closed
+    pair/poll/result/revoke/report-link lifecycle through the native client.
+    Isolated-world ModelContext access and the experimental CDP WebMCP domain
+    are alternate, unimplemented adapter surfaces. The extension is not an
+    approval surface, signed package, store release, or public deployment.
 11. **Android boundary** — the Android directory shares protocol concepts but
     has no runtime connection to the web page or connector. Its JVM and API-36
     checks do not establish generated AppFunction metadata or device behavior.
