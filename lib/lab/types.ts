@@ -188,7 +188,7 @@ export interface CapabilityProposalRecord {
   input: CapabilityProposalInput;
   proposalHash: string;
   proposedAt: string;
-  channel: 'webmcp' | 'fallback-harness';
+  channel: 'page-lesson' | 'webmcp' | 'fallback-harness';
   source: {
     toolName: string;
     sourceDeclarationHash: string;

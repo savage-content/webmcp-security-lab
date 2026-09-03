@@ -106,9 +106,11 @@ describe('Local Guard ordinary-user release gate', () => {
       readFile('app/local-guard/support/page.tsx', 'utf8'),
     ]);
 
-    expect(overview).toContain('unsigned developer preview');
-    expect(privacy).toContain('plain HTTP on');
-    expect(privacy).toContain('has no telemetry');
+    expect(overview).toContain('No public release');
+    expect(overview).toContain('not a public setup choice');
+    expect(privacy).toContain('Future-work privacy boundary');
+    expect(privacy).toContain('no telemetry or advertising');
+    expect(support).toContain('no public Local Guard setup path');
     expect(support).toContain('Public intake and security-feed');
   });
 });

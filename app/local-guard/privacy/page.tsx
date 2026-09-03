@@ -3,27 +3,27 @@ import type { Metadata } from 'next';
 import { LocalGuardPublicShell } from '@/components/local-guard/public-shell';
 
 export const metadata: Metadata = {
-  title: 'Local Guard privacy | Left Out Security',
+  title: 'Proposed Local Guard privacy boundary | Left Out Security',
   description:
-    'The data-handling and retention boundary for the experimental Left Out Local Guard browser extension.',
+    'The proposed privacy boundary for future Local Guard research; no public Local Guard release is available.',
 };
 
 export default function LocalGuardPrivacyPage() {
   return (
     <LocalGuardPublicShell
-      eyebrow="Privacy notice · Version 0.3.0 · September 2, 2026"
-      title="Local means this browser and your connector."
+      eyebrow="Future-work privacy boundary · not active"
+      title="A future release would require local, explicit control."
     >
       <p className="mt-6 text-lg leading-8 text-muted-foreground">
-        Local Guard handles a small amount of selected-tab information so it can
-        show WebMCP activity and relay one protected lab action. It does not
-        transmit that information to Left Out Security or any third party.
+        No public Local Guard product or data-collection path is active. The
+        points below are design requirements for any future release, not a
+        description of the contest&apos;s native Site Tools flow.
       </p>
 
       <section className="mt-10 space-y-8 leading-7 text-muted-foreground">
         <div>
           <h2 className="text-2xl font-semibold text-foreground">
-            Information handled
+            Proposed minimum information
           </h2>
           <ul className="mt-3 space-y-2">
             <li>The origin and path of the tab you explicitly select.</li>
@@ -32,8 +32,8 @@ export default function LocalGuardPrivacyPage() {
               WebMCP actions declared by that page.
             </li>
             <li>
-              A short-lived local pairing identifier, connector credential,
-              document identifier, and one-use capability metadata.
+              A short-lived local document identifier and one-use capability
+              metadata.
             </li>
             <li>
               The bounded result, state comparison, side-effect list, and
@@ -44,40 +44,34 @@ export default function LocalGuardPrivacyPage() {
 
         <div>
           <h2 className="text-2xl font-semibold text-foreground">
-            Information not handled
+            Information a future release must not collect
           </h2>
           <p className="mt-3">
-            Local Guard does not read full page text, form entries, passwords,
-            authentication cookies, payment information, personal messages, or
-            browsing history from tabs you did not explicitly select.
+            Full page text, form entries, passwords, authentication cookies,
+            payment information, personal messages, and unrelated browsing
+            history remain outside the proposed scope.
           </p>
         </div>
 
         <div>
           <h2 className="text-2xl font-semibold text-foreground">
-            Where information goes
+            Proposed transport boundary
           </h2>
           <p className="mt-3">
-            The extension stores state in the current Chrome profile and sends
-            selected-tab WebMCP metadata only to a connector on the same device
-            at an allowlisted loopback address. Version 0.3.0 uses plain HTTP on
-            loopback and is therefore a controlled developer preview, not a
-            production transport. It has no telemetry, advertising, analytics,
-            sale, or developer-operated collection endpoint.
+            Any future implementation would need explicit local consent,
+            authenticated same-device transport, no telemetry or advertising,
+            and an independently reviewed retention design before release.
           </p>
         </div>
 
         <div>
           <h2 className="text-2xl font-semibold text-foreground">
-            Retention and control
+            Proposed retention and control
           </h2>
           <p className="mt-3">
-            Pairing state is removed when you disconnect, navigate, close the
-            tab, or revoke the privacy choice. An unconsumed permit is removed
-            with the pairing. A consumed permit digest may remain only until its
-            stated expiry to prevent one-use authority from being replayed.
-            Receipts remain in the user-controlled local connector until its
-            local runtime data is removed.
+            Pairing state and unused authority would need to disappear on
+            disconnect, navigation, tab close, or consent revocation. Any
+            retained receipt would need a clear user-controlled deletion path.
           </p>
         </div>
 
@@ -86,11 +80,9 @@ export default function LocalGuardPrivacyPage() {
             Reporting boundary
           </h2>
           <p className="mt-3">
-            Opening “Review receipt or report a concern” opens a private local
-            workbench. A draft is not submitted to Left Out Security, the site,
-            or a security feed. The separate reporting-service source in this
-            research repository is disabled by default and is not called by the
-            extension.
+            The current public lab creates only private page-session drafts. A
+            future guard must not submit anything to Left Out Security or a
+            security feed without a separate, explicit human review and action.
           </p>
         </div>
 
@@ -99,10 +91,9 @@ export default function LocalGuardPrivacyPage() {
             Policy changes
           </h2>
           <p className="mt-3">
-            A release that changes these practices must change the in-product
-            consent version and disclose the new practice before handling data.
-            Removing the extension deletes its Chrome-profile storage; local
-            connector data remains under the user&apos;s control.
+            Any release must publish a versioned privacy notice, pass security
+            and accessibility review, and disclose changes before handling data.
+            None of those release gates is satisfied here.
           </p>
         </div>
       </section>

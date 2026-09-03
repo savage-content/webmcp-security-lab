@@ -1,7 +1,8 @@
 import { defaultScenarioId, scenarios } from './scenarios';
 import type { ScenarioId } from './types';
 
-export type ExperienceMode = 'site-tools' | 'local-guard' | 'read-only';
+export type ExperienceMode = 'site-tools' | 'read-only';
+export type StoredExperienceMode = ExperienceMode | 'local-guard';
 export type SiteToolsSupport = 'checking' | 'available' | 'unavailable';
 
 export const experienceOptions = [
@@ -10,12 +11,6 @@ export const experienceOptions = [
     title: 'ChatGPT or Codex built-in browser',
     detail:
       'Use the page’s Site Tool directly with a compatible agent. No extension, local relay, pairing code, or JSON is needed.',
-  },
-  {
-    id: 'local-guard',
-    title: 'Left Out Local Guard',
-    detail:
-      'Use the separate unpacked extension and local relay to test monitoring, drift alerts, one-use enforcement, and local reporting.',
   },
   {
     id: 'read-only',
@@ -35,17 +30,28 @@ export function getExperienceTitle(mode: ExperienceMode) {
 
 export type NoviceJourneyCheckpoint = {
   version: 1;
-  mode: ExperienceMode;
+  mode: StoredExperienceMode;
   setupConfirmed: boolean;
   selectedLessonId: ScenarioId;
   completedLessonIds: ScenarioId[];
   lastReceiptId?: string;
 };
 
+export type RestoredNoviceJourney = {
+  mode: ExperienceMode;
+  setupConfirmed: boolean;
+  selectedLessonId: ScenarioId;
+  completedLessonIds: ScenarioId[];
+  lastReceiptId?: string;
+  recovery: 'restored' | 'retired-local-guard' | 'unavailable';
+};
+
 export const NOVICE_JOURNEY_STORAGE_KEY = 'left-out-webmcp-novice-journey-v1';
 
-const experienceModes = new Set<ExperienceMode>([
+const experienceModes = new Set<StoredExperienceMode>([
   'site-tools',
+  // Parse legacy checkpoints only so migration can preserve lesson progress.
+  // Local Guard remains deliberately non-selectable and non-viable below.
   'local-guard',
   'read-only',
 ]);
@@ -60,19 +66,18 @@ export function recommendExperienceMode(
 }
 
 export function isExperienceModeSelectable(
-  mode: ExperienceMode,
+  mode: StoredExperienceMode,
   siteToolsSupport: SiteToolsSupport,
-) {
+): mode is ExperienceMode {
+  if (mode === 'local-guard') return false;
   return mode !== 'site-tools' || siteToolsSupport === 'available';
 }
 
 export function isExperienceModeViable(
-  mode: ExperienceMode,
+  mode: StoredExperienceMode,
   siteToolsSupport: SiteToolsSupport,
-  localGuardReady = false,
-) {
+): mode is ExperienceMode {
   if (!isExperienceModeSelectable(mode, siteToolsSupport)) return false;
-  if (mode === 'local-guard') return localGuardReady;
   return true;
 }
 
@@ -85,7 +90,7 @@ export function parseNoviceJourneyCheckpoint(
     const value = JSON.parse(raw) as Partial<NoviceJourneyCheckpoint>;
     if (
       value.version !== 1 ||
-      !experienceModes.has(value.mode as ExperienceMode) ||
+      !experienceModes.has(value.mode as StoredExperienceMode) ||
       typeof value.setupConfirmed !== 'boolean' ||
       !scenarioIds.has(value.selectedLessonId as ScenarioId) ||
       !Array.isArray(value.completedLessonIds)
@@ -107,7 +112,7 @@ export function parseNoviceJourneyCheckpoint(
 
     return {
       version: 1,
-      mode: value.mode as ExperienceMode,
+      mode: value.mode as StoredExperienceMode,
       setupConfirmed: value.setupConfirmed,
       selectedLessonId: value.selectedLessonId as ScenarioId,
       completedLessonIds,
@@ -118,13 +123,47 @@ export function parseNoviceJourneyCheckpoint(
   }
 }
 
+export function restoreNoviceJourneyCheckpoint(
+  checkpoint: NoviceJourneyCheckpoint,
+  siteToolsSupport: SiteToolsSupport,
+): RestoredNoviceJourney {
+  const retiredLocalGuard = checkpoint.mode === 'local-guard';
+  let viable = false;
+  let mode = recommendExperienceMode(siteToolsSupport);
+  if (isExperienceModeViable(checkpoint.mode, siteToolsSupport)) {
+    viable = true;
+    mode = checkpoint.mode;
+  }
+
+  return {
+    mode,
+    setupConfirmed: viable && checkpoint.setupConfirmed,
+    selectedLessonId: checkpoint.selectedLessonId,
+    completedLessonIds: [...checkpoint.completedLessonIds],
+    ...(checkpoint.lastReceiptId
+      ? { lastReceiptId: checkpoint.lastReceiptId }
+      : {}),
+    recovery: retiredLocalGuard
+      ? 'retired-local-guard'
+      : viable
+        ? 'restored'
+        : 'unavailable',
+  };
+}
+
 export function createNoviceJourneyCheckpoint({
   mode,
   setupConfirmed,
   selectedLessonId,
   completedLessonIds,
   lastReceiptId,
-}: Omit<NoviceJourneyCheckpoint, 'version'>): NoviceJourneyCheckpoint {
+}: {
+  mode: ExperienceMode;
+  setupConfirmed: boolean;
+  selectedLessonId: ScenarioId;
+  completedLessonIds: ScenarioId[];
+  lastReceiptId?: string;
+}): NoviceJourneyCheckpoint {
   return {
     version: 1,
     mode,

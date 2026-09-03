@@ -423,7 +423,8 @@ export function SiteToolsConformance() {
               This suite measures ChatGPT Site Tools in the built-in browser. It
               records page API support, registration, policy, client discovery,
               invocation, model, workspace, document, and session as separate
-              evidence. The Left Out Local Guard is tested elsewhere.
+              evidence. Experimental browser-guard research is future work and
+              is not evidence for this native Site Tools suite.
             </p>
           </div>
           <Alert className="border-amber-300 bg-amber-50 p-4 text-amber-950">
@@ -462,9 +463,6 @@ export function SiteToolsConformance() {
               >
                 <NativeSelectOption value="chatgpt-built-in-browser">
                   ChatGPT built-in browser
-                </NativeSelectOption>
-                <NativeSelectOption value="external-browser-membrane">
-                  External browser + Membrane
                 </NativeSelectOption>
                 <NativeSelectOption value="in-page-harness">
                   In-page harness

@@ -6,6 +6,7 @@ import {
   isExperienceModeViable,
   parseNoviceJourneyCheckpoint,
   recommendExperienceMode,
+  restoreNoviceJourneyCheckpoint,
 } from '../lib/lab/novice-journey';
 import type { ScenarioId } from '../lib/lab/types';
 
@@ -14,12 +15,11 @@ describe('novice journey checkpoint', () => {
     expect(recommendExperienceMode('available')).toBe('site-tools');
     expect(recommendExperienceMode('unavailable')).toBe('read-only');
     expect(recommendExperienceMode('checking')).toBe('read-only');
-    expect(isExperienceModeSelectable('local-guard', 'unavailable')).toBe(true);
+    expect(isExperienceModeSelectable('local-guard', 'unavailable')).toBe(
+      false,
+    );
     expect(isExperienceModeViable('site-tools', 'unavailable')).toBe(false);
     expect(isExperienceModeViable('local-guard', 'unavailable')).toBe(false);
-    expect(isExperienceModeViable('local-guard', 'unavailable', true)).toBe(
-      true,
-    );
     expect(isExperienceModeViable('read-only', 'unavailable')).toBe(true);
   });
 
@@ -75,6 +75,44 @@ describe('novice journey checkpoint', () => {
         }),
       ),
     ).toBeUndefined();
+  });
+
+  it('preserves progress from a retired Local Guard checkpoint for migration', () => {
+    const checkpoint = parseNoviceJourneyCheckpoint(
+      JSON.stringify({
+        version: 1,
+        mode: 'local-guard',
+        setupConfirmed: true,
+        selectedLessonId: 'over-broad-schema',
+        completedLessonIds: ['read-only-claim'],
+        lastReceiptId: 'receipt-before-migration',
+      }),
+    );
+
+    expect(checkpoint).toEqual({
+      version: 1,
+      mode: 'local-guard',
+      setupConfirmed: true,
+      selectedLessonId: 'over-broad-schema',
+      completedLessonIds: ['read-only-claim'],
+      lastReceiptId: 'receipt-before-migration',
+    });
+
+    expect(restoreNoviceJourneyCheckpoint(checkpoint!, 'available')).toEqual({
+      mode: 'site-tools',
+      setupConfirmed: false,
+      selectedLessonId: 'over-broad-schema',
+      completedLessonIds: ['read-only-claim'],
+      lastReceiptId: 'receipt-before-migration',
+      recovery: 'retired-local-guard',
+    });
+    expect(
+      restoreNoviceJourneyCheckpoint(checkpoint!, 'unavailable'),
+    ).toMatchObject({
+      mode: 'read-only',
+      setupConfirmed: false,
+      recovery: 'retired-local-guard',
+    });
   });
 
   it('falls back to Lesson 1 and stores progress without active authority', () => {

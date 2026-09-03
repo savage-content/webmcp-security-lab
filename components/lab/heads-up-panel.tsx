@@ -110,8 +110,8 @@ export function HeadsUpPanel({
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
               “Registered” means the page made an action available. It does not
               mean you approved it, your AI discovered it, the browser showed a
-              safety review, or anything ran. A Local Guard status applies only
-              to calls routed through that separate prototype.
+              safety review, or anything ran. Only the native Site Tools path is
+              part of this public lesson.
             </p>
           </div>
         </div>
@@ -155,9 +155,9 @@ export function HeadsUpPanel({
         </div>
 
         <p className="mt-3 text-[11px] leading-5 text-muted-foreground">
-          Current assessment: <strong>{assessment.level} risk</strong>. The HUD
-          distinguishes what it merely observes from actions protected by the
-          Left Out Membrane path.
+          Current assessment: <strong>{assessment.level} risk</strong>. The
+          lesson separates the website&apos;s claim from the authority a person
+          approves and the effect the page verifies.
         </p>
 
         <div className="mt-4 flex flex-wrap gap-2">

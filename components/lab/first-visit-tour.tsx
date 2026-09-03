@@ -78,9 +78,7 @@ export function FirstVisitTour({
   setupConfirmed,
   siteToolsSupport,
   clientLabel,
-  localGuardReady,
   onModeChange,
-  onLocalGuardReadyChange,
   onConfirmSetup,
   onFinish,
 }: {
@@ -89,9 +87,7 @@ export function FirstVisitTour({
   setupConfirmed: boolean;
   siteToolsSupport: SiteToolsSupport;
   clientLabel: string;
-  localGuardReady: boolean;
   onModeChange: (mode: ExperienceMode) => void;
-  onLocalGuardReadyChange: (ready: boolean) => void;
   onConfirmSetup: () => void;
   onFinish: () => void;
 }) {
@@ -100,11 +96,7 @@ export function FirstVisitTour({
   const step = firstVisitTourSteps[stepIndex];
   const lastStep = stepIndex === firstVisitTourSteps.length - 1;
   const choosingSetup = step.stage === 'Choose';
-  const selectedModeViable = isExperienceModeViable(
-    mode,
-    siteToolsSupport,
-    localGuardReady,
-  );
+  const selectedModeViable = isExperienceModeViable(mode, siteToolsSupport);
   const setupChoiceReady =
     siteToolsSupport !== 'checking' && selectedModeViable;
 
@@ -218,7 +210,7 @@ export function FirstVisitTour({
             </DialogHeader>
 
             {choosingSetup ? (
-              <fieldset className="mt-5 grid gap-2 sm:grid-cols-3">
+              <fieldset className="mt-5 grid gap-2 sm:grid-cols-2">
                 <legend className="sr-only">
                   Choose a setup for this walkthrough
                 </legend>
@@ -256,30 +248,12 @@ export function FirstVisitTour({
                             : siteToolsSupport === 'checking'
                               ? 'Checking this page…'
                               : 'Not detected in this browser.'
-                          : option.id === 'local-guard'
-                            ? 'Requires the separate connected Local Guard.'
-                            : 'Always available; no tool invocation.'}
+                          : 'Always available; no tool invocation.'}
                       </span>
                     </button>
                   );
                 })}
-                {mode === 'local-guard' ? (
-                  <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-amber-300/50 bg-amber-50 p-3 text-xs leading-5 text-amber-950 sm:col-span-3">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 size-4 accent-emerald-800"
-                      checked={localGuardReady}
-                      onChange={(event) =>
-                        onLocalGuardReadyChange(event.currentTarget.checked)
-                      }
-                    />
-                    <span>
-                      My separate Local Guard HUD currently says “Connected.”
-                      The tour will not assume pairing survived a reload.
-                    </span>
-                  </label>
-                ) : null}
-                <p className="rounded-lg border border-border bg-muted/35 p-3 text-xs leading-5 text-muted-foreground sm:col-span-3">
+                <p className="rounded-lg border border-border bg-muted/35 p-3 text-xs leading-5 text-muted-foreground sm:col-span-2">
                   Detected client: <strong>{clientLabel}</strong>. Selected:{' '}
                   <strong>{getExperienceTitle(mode)}</strong>. This choice does
                   not approve or invoke a tool.

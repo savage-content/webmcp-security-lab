@@ -1,6 +1,6 @@
 'use client';
 
-import { Bot, CheckCircle2, FlaskConical, ShieldCheck } from 'lucide-react';
+import { Bot, CheckCircle2, FlaskConical } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,39 +16,33 @@ import {
 
 export type { ExperienceMode } from '@/lib/lab/novice-journey';
 
-const experienceIcons = {
+const experienceIcons: Record<
+  (typeof experienceOptions)[number]['id'],
+  typeof Bot
+> = {
   'site-tools': Bot,
-  'local-guard': ShieldCheck,
   'read-only': FlaskConical,
-} as const satisfies Record<ExperienceMode, typeof Bot>;
+};
 
 export function ExperienceChooser({
   mode,
   confirmed,
   siteToolsSupport,
   clientLabel,
-  localGuardReady,
   recoveryMessage,
   onChange,
-  onLocalGuardReadyChange,
   onConfirm,
 }: {
   mode: ExperienceMode;
   confirmed: boolean;
   siteToolsSupport: SiteToolsSupport;
   clientLabel: string;
-  localGuardReady: boolean;
   recoveryMessage?: string;
   onChange: (mode: ExperienceMode) => void;
-  onLocalGuardReadyChange: (ready: boolean) => void;
   onConfirm: () => void;
 }) {
   const recommended = recommendExperienceMode(siteToolsSupport);
-  const viable = isExperienceModeViable(
-    mode,
-    siteToolsSupport,
-    localGuardReady,
-  );
+  const viable = isExperienceModeViable(mode, siteToolsSupport);
 
   return (
     <section
@@ -93,7 +87,7 @@ export function ExperienceChooser({
           Observed client: {clientLabel}
         </p>
       </div>
-      <fieldset className="grid gap-px bg-border lg:grid-cols-3">
+      <fieldset className="grid gap-px bg-border lg:grid-cols-2">
         <legend className="sr-only">Practice setup</legend>
         {experienceOptions.map((option) => {
           const selected = option.id === mode;
@@ -109,18 +103,11 @@ export function ExperienceChooser({
                 : siteToolsSupport === 'unavailable'
                   ? 'Unavailable in this browser'
                   : 'Detection in progress'
-              : option.id === 'local-guard'
-                ? localGuardReady
-                  ? 'Advanced · HUD connection confirmed'
-                  : 'Advanced · requires local setup'
-                : recommended === 'read-only'
-                  ? 'Recommended for this browser'
-                  : 'Always available';
+              : recommended === 'read-only'
+                ? 'Recommended for this browser'
+                : 'Always available';
           return (
             <button
-              id={
-                option.id === 'local-guard' ? 'local-guard-option' : undefined
-              }
               key={option.id}
               type="button"
               aria-pressed={selected}
@@ -153,33 +140,10 @@ export function ExperienceChooser({
               <span className="mt-2 block text-xs leading-5 text-muted-foreground">
                 {option.detail}
               </span>
-              {option.id === 'local-guard' ? (
-                <span className="mt-3 block text-[11px] font-medium leading-5 text-amber-900">
-                  The page cannot verify installation or pairing. Choose this
-                  only after the Local Guard HUD says it is connected.
-                </span>
-              ) : null}
             </button>
           );
         })}
       </fieldset>
-      {mode === 'local-guard' ? (
-        <label className="flex cursor-pointer items-start gap-3 border-t border-amber-300/45 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-950 sm:px-6">
-          <input
-            type="checkbox"
-            className="mt-1 size-4 accent-emerald-800"
-            checked={localGuardReady}
-            onChange={(event) =>
-              onLocalGuardReadyChange(event.currentTarget.checked)
-            }
-          />
-          <span>
-            <strong>My Local Guard HUD says “Connected.”</strong> Pairing and
-            extension state are browser-owned, so this page requires your
-            confirmation before it treats the local path as viable.
-          </span>
-        </label>
-      ) : null}
       <div className="flex flex-col gap-3 border-t border-border bg-muted/30 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div>
           <p className="text-sm font-semibold">

@@ -48,7 +48,6 @@ export type GeneratedLessonCapabilityStatus =
   | 'preparing'
   | 'review'
   | 'registering'
-  | 'offering'
   | 'ready'
   | 'claimed'
   | 'verified'
@@ -91,7 +90,6 @@ export function useGeneratedLessonCapability({
   onRestoreSourceTool,
   onCreateReceipt,
   onCommitReceipt,
-  onOfferPermit,
 }: {
   scenario: ScenarioDefinition & { id: LessonCapabilityScenarioId };
   sourceTool: ToolDeclaration;
@@ -108,13 +106,6 @@ export function useGeneratedLessonCapability({
     payload: LessonCapabilityRunPayload,
     receipt: EvidenceReceipt,
   ) => void;
-  onOfferPermit: (
-    contract: CompiledLessonCapabilityContract,
-    approvedAt: string,
-    pageUrl: string,
-    signal: AbortSignal,
-    isCurrent: () => boolean,
-  ) => Promise<void>;
 }) {
   const [status, setStatus] = useState<GeneratedLessonCapabilityStatus>('idle');
   const [message, setMessage] = useState(
@@ -378,7 +369,7 @@ export function useGeneratedLessonCapability({
             }
             setStatus('claimed');
             setMessage(
-              'The browser guard consumed the one-use authority. Verifying the exact result and effect now.',
+              'The Site Tool callback consumed the one-use authority. Verifying the exact result and effect now.',
             );
 
             if (
@@ -482,7 +473,7 @@ export function useGeneratedLessonCapability({
             setRegistration(observedWebMcp);
             setStatus(verification.passed ? 'verified' : 'failed');
             setMessage(
-              `${recorded.verdict}: page receipt ${recorded.id.slice(0, 8)} returned to the caller. Check the extension or connector for independent guard and ledger status. No retry occurred.`,
+              `${recorded.verdict}: page receipt ${recorded.id.slice(0, 8)} returned to the caller. The before/after state and authority status are recorded on this page. No retry occurred.`,
             );
             return createLessonCapabilityToolResult(recorded);
           },
@@ -524,38 +515,10 @@ export function useGeneratedLessonCapability({
       return;
     }
 
-    setStatus('offering');
+    setStatus('ready');
     setMessage(
-      'The exact action is registered. Finishing the page handoff before showing the agent request. Nothing has run.',
+      'The exact one-use Site Tool is registered on this public page. Nothing has run. Keep this page open and ask the agent in this built-in browser to invoke the approved action once.',
     );
-    const handoffIsCurrent = () =>
-      mountedRef.current &&
-      epochRef.current === epoch &&
-      activeRef.current &&
-      leaseRef.current === lease &&
-      lease.state() === 'active';
-    try {
-      await onOfferPermit(
-        contract,
-        approvalTime,
-        window.location.href,
-        controller.signal,
-        handoffIsCurrent,
-      );
-      if (!handoffIsCurrent()) return;
-      setStatus('ready');
-      setMessage(
-        'The one-use action was offered to the browser guard. Nothing has run. Confirm “Protected” in the extension HUD, then ask your connected agent to run it once.',
-      );
-    } catch {
-      if (!handoffIsCurrent()) return;
-      sourceWithdrawnRef.current = false;
-      onRestoreSourceTool();
-      closeRegistration(
-        'error',
-        'The one-use action was registered, but the browser guard did not accept its permit. Nothing ran. Reset this action; do not use a local-run fallback.',
-      );
-    }
   }, [
     closeRegistration,
     contract,
@@ -563,7 +526,6 @@ export function useGeneratedLessonCapability({
     getCurrentStateRevision,
     onCommitReceipt,
     onCreateReceipt,
-    onOfferPermit,
     onRestoreSourceTool,
     onSuppressSourceTool,
     proposal,

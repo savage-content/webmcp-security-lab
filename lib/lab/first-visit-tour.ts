@@ -20,7 +20,7 @@ export const firstVisitTourSteps = [
     anchor: '#setup',
     title: 'Choose the path that matches your browser.',
     description:
-      'The page checks whether this browser exposes the Site Tools API. Use it when detected, choose the advanced Local Guard only when its HUD is connected, or take the always-available learning path.',
+      'The page checks whether this browser exposes the Site Tools API. Use the native path when detected, or take the always-available no-invocation learning path.',
     action:
       'Confirm the recommended viable path here. A missing Site Tools API can never be the default live path.',
   },
@@ -37,7 +37,7 @@ export const firstVisitTourSteps = [
     anchor: '#lesson',
     title: 'Inspect the real authority, then narrow it.',
     description:
-      'Each lesson shows the visible promise, the declared inputs, and the possible effect. The Membrane practice reduces that broad offer to one exact task, one target, and one use.',
+      'Each lesson shows the visible promise, the declared inputs, and the possible effect. Exact human approval reduces that broad offer to one task, one target, and one use.',
     action:
       'Prepare the approval only after the allowed and forbidden effects are clear.',
   },
@@ -55,7 +55,7 @@ export const firstVisitTourSteps = [
     anchor: '#ledger',
     title: 'Verify the effect, close authority, and keep the receipt.',
     description:
-      'The result compares before and after state, checks side effects, and records what this page or Local Guard actually observed. A suspicious result can become a privacy-safe issue draft; nothing is published automatically.',
+      'The result compares before and after state, checks side effects, and records what this page actually observed. A suspicious result can become a privacy-safe issue draft; nothing is published automatically.',
     action:
       'Read PASS or FAIL, then continue to the next lesson or review the evidence.',
   },

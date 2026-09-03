@@ -34,16 +34,12 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  createCapabilityPermitArtifact,
-  createCapabilityPermitHandoff,
   createEvidenceReceiptArtifact,
-  createLessonCapabilityPermitArtifact,
   createPolicyJsonArtifact,
   type JsonArtifact,
 } from '@/lib/lab/artifacts';
 import { createEvidenceReceipt } from '@/lib/lab/evidence';
 import { runScenario } from '@/lib/lab/engine';
-import { deliverCurrentHandoff } from '@/lib/lab/capability-handoff';
 import { createCapabilityEvidence } from '@/lib/lab/capability-negotiation';
 import { createLessonCapabilityEvidence } from '@/lib/lab/lesson-capabilities';
 import { assessScenarioRisk } from '@/lib/lab/risk';
@@ -60,6 +56,7 @@ import {
   NOVICE_JOURNEY_STORAGE_KEY,
   parseNoviceJourneyCheckpoint,
   recommendExperienceMode,
+  restoreNoviceJourneyCheckpoint,
   type ExperienceMode,
   type SiteToolsSupport,
 } from '@/lib/lab/novice-journey';
@@ -127,9 +124,9 @@ const surfaceDefinitions = [
   {
     number: '02',
     label: 'Protect',
-    title: 'See and contain live authority',
+    title: 'Contain one approved action',
     detail:
-      'A browser HUD detects site tools and changes. The Membrane narrows an approved action to the least authority it needs.',
+      'Exact approval narrows a Site Tool to one target, one expected effect, one call, and no retry.',
   },
   {
     number: '03',
@@ -190,7 +187,6 @@ export function LabApp() {
   const [experienceMode, setExperienceMode] =
     useState<ExperienceMode>('read-only');
   const [setupConfirmed, setSetupConfirmed] = useState(false);
-  const [localGuardReady, setLocalGuardReady] = useState(false);
   const [siteToolsSupport, setSiteToolsSupport] =
     useState<SiteToolsSupport>('checking');
   const [journeyHydrated, setJourneyHydrated] = useState(false);
@@ -381,35 +377,24 @@ export function LabApp() {
       sessionIdRef.current = storedSessionId;
       setSiteToolsSupport(detectedSupport);
       if (storedJourney) {
-        const requiresGuardReconnect = storedJourney.mode === 'local-guard';
+        const restoredJourney = restoreNoviceJourneyCheckpoint(
+          storedJourney,
+          detectedSupport,
+        );
         const receiptCheckpoint = storedJourney.lastReceiptId
           ? ` Last receipt checkpoint: ${storedJourney.lastReceiptId.slice(0, 8)}.`
           : '';
-        const storedModeViable = isExperienceModeViable(
-          storedJourney.mode,
-          detectedSupport,
-          false,
-        );
-        const restoredMode = requiresGuardReconnect
-          ? 'local-guard'
-          : storedModeViable
-            ? storedJourney.mode
-            : recommendExperienceMode(detectedSupport);
-        setExperienceMode(restoredMode);
-        setSetupConfirmed(
-          !requiresGuardReconnect &&
-            storedModeViable &&
-            storedJourney.setupConfirmed,
-        );
-        setSelectedId(storedJourney.selectedLessonId);
+        setExperienceMode(restoredJourney.mode);
+        setSetupConfirmed(restoredJourney.setupConfirmed);
+        setSelectedId(restoredJourney.selectedLessonId);
         setPersistedCompletedLessonIds(
-          new Set(storedJourney.completedLessonIds),
+          new Set(restoredJourney.completedLessonIds),
         );
-        setLastReceiptId(storedJourney.lastReceiptId);
+        setLastReceiptId(restoredJourney.lastReceiptId);
         setRecoveryMessage(
-          requiresGuardReconnect
-            ? `Reconnect the Local Guard and confirm that its HUD says “Connected.” No approval or live authority was restored.${receiptCheckpoint}`
-            : storedModeViable
+          restoredJourney.recovery === 'retired-local-guard'
+            ? `Your previous experimental Local Guard setup is no longer a public lesson option. Lesson progress was preserved, but no setup, approval, or live authority was restored.${receiptCheckpoint}`
+            : restoredJourney.recovery === 'restored'
               ? `Restored Lesson ${scenarioById[storedJourney.selectedLessonId].ordinal} and ${storedJourney.completedLessonIds.length} completed lesson${storedJourney.completedLessonIds.length === 1 ? '' : 's'}. No approval or live authority was restored.${receiptCheckpoint}`
               : `Your previous Site Tools setup is unavailable here. Choose a viable path; no approval or live authority was restored.${receiptCheckpoint}`,
         );
@@ -437,7 +422,7 @@ export function LabApp() {
         setExperienceMode('read-only');
         setSetupConfirmed(false);
         setRecoveryMessage(
-          'This page could not register a Site Tool in the current browser or policy. Choose the read-only path or a connected Local Guard; nothing was approved or run.',
+          'This page could not register a Site Tool in the current browser or policy. Choose the read-only path; nothing was approved or run.',
         );
       }
     });
@@ -577,10 +562,10 @@ export function LabApp() {
       setReceiptMap((current) => ({ ...current, [scenario.id]: receipt }));
       setPersistence('saved');
       setLedger((current) =>
-        [
-          receipt,
-          ...current.filter((item) => item.id !== receipt.id),
-        ].slice(0, 12),
+        [receipt, ...current.filter((item) => item.id !== receipt.id)].slice(
+          0,
+          12,
+        ),
       );
 
       setExecutionMessage(
@@ -995,10 +980,10 @@ export function LabApp() {
 
       setSecurePersistence('saved');
       setLedger((current) =>
-        [
-          receipt,
-          ...current.filter((item) => item.id !== receipt.id),
-        ].slice(0, 12),
+        [receipt, ...current.filter((item) => item.id !== receipt.id)].slice(
+          0,
+          12,
+        ),
       );
 
       setExecutionMessage(
@@ -1087,7 +1072,6 @@ export function LabApp() {
       if (nextMode === experienceMode) return;
       restoreSourceTool();
       setExperienceMode(nextMode);
-      setLocalGuardReady(false);
       setSetupConfirmed(false);
       setRecoveryMessage(
         'Setup changed. Confirm this path to continue. Any unused approval was closed and will not be restored.',
@@ -1096,19 +1080,11 @@ export function LabApp() {
     [experienceMode, restoreSourceTool, siteToolsSupport],
   );
 
-  const changeLocalGuardReadiness = useCallback((ready: boolean) => {
-    setLocalGuardReady(ready);
-    if (!ready) setSetupConfirmed(false);
-  }, []);
-
   const confirmExperienceMode = useCallback(() => {
-    if (
-      !isExperienceModeViable(experienceMode, siteToolsSupport, localGuardReady)
-    )
-      return;
+    if (!isExperienceModeViable(experienceMode, siteToolsSupport)) return;
     setSetupConfirmed(true);
     setRecoveryMessage(undefined);
-  }, [experienceMode, localGuardReady, siteToolsSupport]);
+  }, [experienceMode, siteToolsSupport]);
 
   const openPracticeReport = useCallback(() => {
     const report = document.getElementById(
@@ -1181,15 +1157,12 @@ export function LabApp() {
             <a className="nav-link" href="#setup">
               Learn Site Tools
             </a>
-            <a className="nav-link" href="#local-guard-option">
-              Use the Local Guard
-            </a>
             <a className="nav-link" href="#ledger">
               Review evidence
             </a>
-            <Link className="nav-link" href="/conformance">
-              Advanced tests
-            </Link>
+            <a className="nav-link" href="#advanced-lab">
+              Advanced
+            </a>
           </nav>
           <div className="flex items-center gap-3">
             <Badge
@@ -1219,9 +1192,7 @@ export function LabApp() {
         setupConfirmed={setupConfirmed}
         siteToolsSupport={siteToolsSupport}
         clientLabel={clientLabel}
-        localGuardReady={localGuardReady}
         onModeChange={changeExperienceMode}
-        onLocalGuardReadyChange={changeLocalGuardReadiness}
         onConfirmSetup={confirmExperienceMode}
         onFinish={startGuidedLesson}
       />
@@ -1244,9 +1215,8 @@ export function LabApp() {
             </h1>
             <p className="mt-7 max-w-2xl text-pretty text-base leading-7 text-muted-foreground lg:text-lg">
               ChatGPT calls these Site Tools, an implementation of WebMCP.
-              Practice safely with five synthetic lessons. The optional Left Out
-              Local Guard is a separate desktop prototype for monitoring and
-              one-use enforcement.
+              Practice safely with five synthetic lessons using the native
+              browser path or a no-invocation learning path.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Button
@@ -1317,10 +1287,8 @@ export function LabApp() {
           confirmed={setupConfirmed}
           siteToolsSupport={siteToolsSupport}
           clientLabel={clientLabel}
-          localGuardReady={localGuardReady}
           recoveryMessage={recoveryMessage}
           onChange={changeExperienceMode}
-          onLocalGuardReadyChange={changeLocalGuardReadiness}
           onConfirm={confirmExperienceMode}
         />
         {setupConfirmed ? (
@@ -1396,43 +1364,6 @@ export function LabApp() {
               onExport={(receipt) =>
                 setExportArtifact(createEvidenceReceiptArtifact(receipt))
               }
-              onOfferPermit={async (
-                contract,
-                approvedAt,
-                pageUrl,
-                signal,
-                isCurrent,
-              ) => {
-                const delivered = await deliverCurrentHandoff({
-                  create: () =>
-                    createCapabilityPermitArtifact(
-                      contract,
-                      approvedAt,
-                      pageUrl,
-                    ),
-                  isCurrent: () => !signal.aborted && isCurrent(),
-                  deliver: (artifact) =>
-                    window.postMessage(
-                      createCapabilityPermitHandoff(artifact),
-                      window.location.origin,
-                    ),
-                });
-                if (!delivered) {
-                  throw new DOMException(
-                    'The permit handoff was revoked.',
-                    'AbortError',
-                  );
-                }
-              }}
-              onExportPermit={async (contract, approvedAt, pageUrl) =>
-                setExportArtifact(
-                  await createCapabilityPermitArtifact(
-                    contract,
-                    approvedAt,
-                    pageUrl,
-                  ),
-                )
-              }
               onNext={
                 nextScenario
                   ? () => selectGuidedLesson(nextScenario.id)
@@ -1458,34 +1389,6 @@ export function LabApp() {
               onRestoreSourceTool={restoreSourceTool}
               onCreateReceipt={createLocalLessonCapabilityReceipt}
               onCommitReceipt={commitLocalLessonCapabilityReceipt}
-              onOfferPermit={async (
-                contract,
-                approvedAt,
-                pageUrl,
-                signal,
-                isCurrent,
-              ) => {
-                const delivered = await deliverCurrentHandoff({
-                  create: () =>
-                    createLessonCapabilityPermitArtifact(
-                      contract,
-                      approvedAt,
-                      pageUrl,
-                    ),
-                  isCurrent: () => !signal.aborted && isCurrent(),
-                  deliver: (artifact) =>
-                    window.postMessage(
-                      createCapabilityPermitHandoff(artifact),
-                      window.location.origin,
-                    ),
-                });
-                if (!delivered) {
-                  throw new DOMException(
-                    'The permit handoff was revoked.',
-                    'AbortError',
-                  );
-                }
-              }}
               onResetScenario={resetScenario}
               onNext={
                 nextScenario
@@ -1563,6 +1466,31 @@ export function LabApp() {
               </span>
               <ChevronDown className="size-5 shrink-0 transition-transform group-open:rotate-180" />
             </summary>
+
+            <div className="border-t border-white/10 bg-slate-950 px-5 py-5 text-slate-100 sm:px-8">
+              <div className="flex flex-col gap-4 rounded-lg border border-amber-300/25 bg-amber-300/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="max-w-3xl">
+                  <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-300">
+                    Experimental developer preview
+                  </p>
+                  <h3 className="mt-1 text-base font-semibold">
+                    Local Guard is future work, not part of this judged flow.
+                  </h3>
+                  <p className="mt-2 text-xs leading-5 text-slate-400">
+                    The public lesson uses native Site Tools only. A separate,
+                    unsigned browser-monitoring prototype remains research and
+                    is not a setup choice, distributed product, or security
+                    guarantee.
+                  </p>
+                </div>
+                <Link
+                  className="shrink-0 text-sm font-semibold text-amber-200 underline underline-offset-4"
+                  href="/local-guard"
+                >
+                  Read the future-work boundary
+                </Link>
+              </div>
+            </div>
 
             <div className="grid lg:grid-cols-[270px_minmax(0,1fr)]">
               <aside className="border-b border-border bg-muted/45 p-3 lg:border-b-0 lg:border-r">

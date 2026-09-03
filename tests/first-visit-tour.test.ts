@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { firstVisitTourSteps } from '../lib/lab/first-visit-tour';
+import { experienceOptions } from '../lib/lab/novice-journey';
 
 const tourSource = readFileSync(
   resolve('components/lab/first-visit-tour.tsx'),
@@ -47,8 +48,10 @@ describe('first-visit Site Tools walkthrough', () => {
     expect(tourSource).toContain('onConfirmSetup');
     expect(tourSource).toContain('disabled={!selectable}');
     expect(tourSource).toContain("'Use this setup'");
-    expect(tourSource).toContain(
-      'My separate Local Guard HUD currently says “Connected.”',
-    );
+    expect(experienceOptions.map((option) => option.id)).toEqual([
+      'site-tools',
+      'read-only',
+    ]);
+    expect(tourSource).not.toContain('Local Guard');
   });
 });

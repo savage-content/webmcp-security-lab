@@ -13,10 +13,7 @@ describe('public receipt privacy boundary', () => {
     expect(existsSync(resolve('app/api/evidence/route.ts'))).toBe(false);
     expect(existsSync(resolve('db/evidence.ts'))).toBe(false);
 
-    const labApp = readFileSync(
-      resolve('components/lab/lab-app.tsx'),
-      'utf8',
-    );
+    const labApp = readFileSync(resolve('components/lab/lab-app.tsx'), 'utf8');
     const ledgerPanel = readFileSync(
       resolve('components/lab/ledger-panel.tsx'),
       'utf8',
@@ -24,7 +21,7 @@ describe('public receipt privacy boundary', () => {
 
     expect(labApp).not.toContain('/api/evidence');
     expect(labApp).toContain('persisted: false');
-    expect(labApp.match(/\.slice\(0, 12\)/g)).toHaveLength(2);
+    expect(labApp.match(/\.slice\(\s*0,\s*12,\s*\)/g)).toHaveLength(2);
     expect(ledgerPanel).toContain(
       'Nothing here is uploaded to Left Out Security.',
     );

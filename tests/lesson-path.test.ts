@@ -22,6 +22,19 @@ const labAppSource = readFileSync(
   resolve('components/lab/lab-app.tsx'),
   'utf8',
 );
+const experienceChooserSource = readFileSync(
+  resolve('components/lab/experience-chooser.tsx'),
+  'utf8',
+);
+const firstVisitTourSource = readFileSync(
+  resolve('components/lab/first-visit-tour.tsx'),
+  'utf8',
+);
+const conformanceSource = readFileSync(
+  resolve('components/conformance/site-tools-conformance.tsx'),
+  'utf8',
+);
+const demoScript = readFileSync(resolve('docs/DEMO_SCRIPT.md'), 'utf8');
 
 describe('beginner WebMCP lesson path', () => {
   it('covers every fixture in the intended five-lesson order', () => {
@@ -69,7 +82,7 @@ describe('beginner WebMCP lesson path', () => {
     );
   });
 
-  it('explains native Site Tools, the separate Local Guard, and the read-only path', () => {
+  it('explains native Site Tools and the no-invocation learning path', () => {
     const normalizedGuide = guidedLessonSource.replace(/\s+/gu, ' ');
     expect(guidedLessonSource).toContain('First time here?');
     expect(guidedLessonSource).toContain('Use Site Tools directly');
@@ -77,13 +90,8 @@ describe('beginner WebMCP lesson path', () => {
     expect(normalizedGuide).toContain(
       'Client availability still depends on the exact model, workspace, rollout, page registration, and session',
     );
-    expect(guidedLessonSource).toContain('Left Out Local Guard');
-    expect(guidedLessonSource).toContain('Use the local relay');
     expect(normalizedGuide).toContain(
-      'No Left Out extension or local relay is required for the native Site Tools path',
-    );
-    expect(guidedLessonSource).toContain(
-      'separate from native ChatGPT Site Tools',
+      'The native Site Tools path uses this public page and a compatible built-in browser',
     );
     expect(guidedLessonSource).toContain(
       'No agent-driven result is claimed on this path',
@@ -94,7 +102,6 @@ describe('beginner WebMCP lesson path', () => {
     expect(capabilityLessonSource).toContain(
       'Copy this message into the chat that owns this browser',
     );
-    expect(capabilityLessonSource).toContain('Your connected local agent');
     expect(capabilityLessonSource).toContain(
       'If the agent calls the Site Tool, its receipt appears here',
     );
@@ -103,9 +110,6 @@ describe('beginner WebMCP lesson path', () => {
     );
     expect(capabilityLessonSource).toContain('Invoke through WebMCP');
     expect(capabilityLessonSource).toContain('Continue to Lesson 2');
-    expect(capabilityLessonSource).toContain(
-      'In Left Out Local Guard, confirm',
-    );
     expect(capabilityLessonSource).not.toContain(
       'Run local practice check once',
     );
@@ -115,9 +119,6 @@ describe('beginner WebMCP lesson path', () => {
     const normalizedCapability = capabilityLessonSource.replace(/\s+/gu, ' ');
     expect(normalizedCapability).toContain(
       'Run my approved TRAINING-1042 eligibility check once. Do not retry or use another Site Tool.',
-    );
-    expect(normalizedCapability).toContain(
-      'Using the Left Out local relay, run the one protected eligibility check for TRAINING-1042 once. Do not retry.',
     );
     expect(capabilityLessonSource).toContain('Copy request for my agent');
     expect(capabilityLessonSource).toContain(
@@ -129,6 +130,53 @@ describe('beginner WebMCP lesson path', () => {
     );
     expect(capabilityLessonSource).toContain(
       'Copy was blocked — select the exact request above',
+    );
+  });
+
+  it('keeps Local Guard out of the public setup and judged demo path', () => {
+    expect(labAppSource).not.toContain('Use the Local Guard');
+    expect(experienceChooserSource).not.toContain('local-guard');
+    expect(experienceChooserSource).not.toContain('Local Guard');
+    expect(firstVisitTourSource).not.toContain('Local Guard');
+    expect(guidedLessonSource).not.toContain('Local Guard');
+    expect(capabilityLessonSource).not.toContain('Local Guard');
+    expect(capabilityLessonSource).not.toContain('connected local agent');
+    expect(labAppSource).not.toContain('window.postMessage');
+    expect(labAppSource).not.toContain('createCapabilityPermitHandoff');
+    expect(capabilityLessonSource).not.toContain('Export extension permit');
+    expect(generatedCapabilitySource).not.toContain('onOfferPermit');
+    expect(conformanceSource).not.toContain('External browser + Membrane');
+    expect(conformanceSource).toContain(
+      'Experimental browser-guard research is future work',
+    );
+    expect(demoScript).not.toContain('Local Guard');
+    expect(labAppSource).toContain('Experimental developer preview');
+    expect(labAppSource).toContain(
+      'Local Guard is future work, not part of this judged flow.',
+    );
+  });
+
+  it('records page-guided proposal provenance separately from a harness', () => {
+    const registeredStart = capabilityLessonSource.indexOf(
+      'const declaration = createProposalToolDeclaration(intent)',
+    );
+    const guidedStart = capabilityLessonSource.indexOf(
+      'async function prepareGuidedApproval()',
+    );
+    const advancedStart = capabilityLessonSource.indexOf(
+      'Stage exact proposal (harness)',
+    );
+    expect(registeredStart).toBeGreaterThan(-1);
+    expect(guidedStart).toBeGreaterThan(registeredStart);
+    expect(advancedStart).toBeGreaterThan(guidedStart);
+    expect(
+      capabilityLessonSource.slice(registeredStart, guidedStart),
+    ).toContain("stageProposal(input, 'webmcp')");
+    expect(capabilityLessonSource.slice(guidedStart, advancedStart)).toContain(
+      "'page-lesson'",
+    );
+    expect(capabilityLessonSource.slice(advancedStart - 500)).toContain(
+      "'fallback-harness'",
     );
   });
 
@@ -150,6 +198,9 @@ describe('beginner WebMCP lesson path', () => {
       'No approval or live authority was restored.',
     );
     expect(labAppSource).toContain('Last receipt checkpoint:');
+    expect(labAppSource).toContain('restoreNoviceJourneyCheckpoint');
+    expect(labAppSource).toContain("recovery === 'retired-local-guard'");
+    expect(labAppSource).toContain('Lesson progress was preserved');
     expect(labAppSource).toContain('Preview safe report');
     expect(labAppSource).toContain('Save full receipt');
   });
@@ -169,21 +220,20 @@ describe('beginner WebMCP lesson path', () => {
     expect(capabilityLessonSource).toContain('Read-only inspection complete');
   });
 
-  it('discards stale permit handoffs and late registration evidence', () => {
+  it('discards stale registration settlements before showing the native action as ready', () => {
     const normalizedGenerated = generatedCapabilitySource.replace(/\s+/gu, ' ');
     expect(normalizedGenerated).toContain(
-      "setStatus('offering'); setMessage( 'The exact action is registered.",
+      "setStatus('ready'); setMessage( 'The exact one-use Site Tool is registered on this public page.",
     );
-    expect(normalizedGenerated).toContain(
-      "leaseRef.current === lease && lease.state() === 'active'",
-    );
-    expect(normalizedGenerated).toContain('handoffIsCurrent');
     expect(
       normalizedGenerated.indexOf('setRegistration(statusResult)'),
     ).toBeGreaterThan(
       normalizedGenerated.indexOf(
         "if (settlement === 'discard-stale-registration')",
       ),
+    );
+    expect(normalizedGenerated.indexOf("setStatus('ready')")).toBeGreaterThan(
+      normalizedGenerated.indexOf('setRegistration(statusResult)'),
     );
   });
 
@@ -256,9 +306,7 @@ describe('beginner WebMCP lesson path', () => {
     expect(normalizedGuide).toContain(
       'Run the one approved profile-banner update once. Do not invoke any other Site Tool and do not retry.',
     );
-    expect(normalizedGuide).toContain(
-      'Using the Left Out local relay, run the one protected profile-banner update once. Do not retry.',
-    );
+    expect(normalizedGuide).not.toContain('Using the Left Out local relay');
     expect(guidedLessonSource).toContain('Copy request for my agent');
     expect(guidedLessonSource).toContain(
       'Copy was blocked — select the exact request above',
@@ -268,7 +316,7 @@ describe('beginner WebMCP lesson path', () => {
       'Do not trust a chat-only PASS or receipt ID',
     );
     expect(normalizedGuide).toContain(
-      'If the page or action is ambiguous, it stops without invoking anything.',
+      'If it cannot find exactly one, it should stop without calling anything.',
     );
     expect(guidedLessonSource).not.toContain('Generated action');
     expect(guidedLessonSource).toContain('Technical binding details');

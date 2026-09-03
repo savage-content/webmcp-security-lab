@@ -63,8 +63,8 @@ The novice sees one plain question and one decision at a time instead of ports,
 tokens, schemas, or connector setup. A compatible built-in browser needs no
 extension. An always-available no-invocation path teaches the same boundaries
 when Site Tools are unavailable. Advanced learners can inspect declarations,
-hashes, source drift, client variance, and the optional Local Guard developer
-preview without confusing those experiments with OpenAI's built-in surface.
+hashes, source drift, and client variance without confusing those experiments
+with OpenAI's built-in surface.
 
 ### How it was built
 
@@ -73,11 +73,9 @@ top-level imperative `document.modelContext.registerTool()` registration. Pure
 fixtures model the five risks. Generated capabilities bind the exact origin,
 source fingerprint, handler version, target, allowed and prohibited effects,
 expiry, and use count. Verification creates a private, exportable page-session
-receipt. A deterministic
-Manifest V3 Local Guard preview and a disabled, privacy-minimized reporting
-pipeline are documented as separate unfinished product tracks; neither is
-required for the contest's native Site Tools path or represented as production
-ready.
+receipt. A disabled, privacy-minimized reporting pipeline is documented as a
+separate unfinished product track and is not required for the contest's native
+Site Tools path or represented as production ready.
 
 ### Challenges and lessons
 
@@ -90,10 +88,10 @@ uncertainty visible instead of converting missing evidence into a green badge.
 
 ### What is next
 
-After the contest freeze, the separate Local Guard and reporting tracks remain
-developer previews until publisher identity, signed distribution, native-host
-installation, privacy approval, operator ownership, accessibility acceptance,
-and incident rehearsals are independently evidenced. Android remains an
+After the contest freeze, Local Guard remains future research and the reporting
+track remains a developer preview until publisher identity, privacy approval,
+operator ownership, accessibility acceptance, and incident rehearsals are
+independently evidenced. Android remains an
 isolated JVM/API conformance prototype, not a device-supported product.
 
 ## Testing instructions
@@ -116,7 +114,7 @@ substitute ordinary browser automation and describe it as WebMCP.
 ## Suggested technology tags
 
 WebMCP, Site Tools, TypeScript, React, Vinext, Zod, Cloudflare, D1, Chrome,
-Manifest V3, Vitest, AI security, human-in-the-loop, accessibility.
+Vitest, AI security, human-in-the-loop, accessibility.
 
 ## Media checklist
 

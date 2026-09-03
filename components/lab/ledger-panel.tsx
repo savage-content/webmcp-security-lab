@@ -112,15 +112,18 @@ export function LedgerPanel({
             <div>
               <h3 className="font-semibold">Report a WebMCP concern safely</h3>
               <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                The extension never reports a site automatically. You review a
-                redacted draft before anything could leave your device, and a
-                human reviews it before any future security feed.
+                This page never reports a site automatically. You review a
+                redacted practice draft, and a human would review any future
+                submission before it could enter a security feed.
               </p>
             </div>
           </div>
 
           <ol className="mt-5 space-y-3 text-sm">
-            <ReportStep number="1" text="The HUD explains what looked wrong." />
+            <ReportStep
+              number="1"
+              text="The page explains what looked wrong."
+            />
             <ReportStep
               number="2"
               text="You inspect exactly what would be shared."
@@ -142,8 +145,8 @@ export function LedgerPanel({
               <div className="flex gap-2 rounded-md border border-amber-300/60 bg-amber-50 p-3 text-amber-950">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" />
                 <p>
-                  <strong>Practice report only.</strong> This lesson uses a
-                  local address and fake data, so it cannot be submitted.
+                  <strong>Practice report only.</strong> This lesson uses fake
+                  data and its submission path is disabled.
                 </p>
               </div>
               <div>

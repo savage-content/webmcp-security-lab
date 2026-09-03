@@ -139,8 +139,6 @@ export function CapabilityNegotiator({
   onCreateLocalReceipt,
   onCommitLocalReceipt,
   onExport,
-  onOfferPermit,
-  onExportPermit,
   onNext,
 }: {
   experienceMode: ExperienceMode;
@@ -161,18 +159,6 @@ export function CapabilityNegotiator({
     receipt: EvidenceReceipt,
   ) => void;
   onExport: (receipt: EvidenceReceipt) => void;
-  onOfferPermit: (
-    contract: CompiledCapabilityContract,
-    approvedAt: string,
-    pageUrl: string,
-    signal: AbortSignal,
-    isCurrent: () => boolean,
-  ) => Promise<void>;
-  onExportPermit: (
-    contract: CompiledCapabilityContract,
-    approvedAt: string,
-    pageUrl: string,
-  ) => Promise<void>;
   onNext?: () => void;
 }) {
   const [intent, setIntent] = useState<LockedCapabilityIntent>();
@@ -222,9 +208,7 @@ export function CapabilityNegotiator({
   const [approvalEventAt, setApprovalEventAt] = useState<string>();
   const [guidedAdvance, setGuidedAdvance] = useState(false);
   const agentRequest =
-    experienceMode === 'site-tools'
-      ? 'Run my approved TRAINING-1042 eligibility check once. Do not retry or use another Site Tool.'
-      : 'Using the Left Out local relay, run the one protected eligibility check for TRAINING-1042 once. Do not retry.';
+    'Run my approved TRAINING-1042 eligibility check once. Do not retry or use another Site Tool.';
   const agentRequestCopyState =
     agentRequestCopyResult?.request === agentRequest
       ? agentRequestCopyResult.status
@@ -629,7 +613,7 @@ export function CapabilityNegotiator({
       if (!lockedIntent) return;
       await stageProposal(
         createProposalInput(lockedIntent),
-        'fallback-harness',
+        'page-lesson',
         lockedIntent,
       );
       const preparedProposal = proposalRef.current;
@@ -977,7 +961,7 @@ export function CapabilityNegotiator({
               ) {
                 invalidate(
                   'handler-drift',
-                  'Invocation failed after the one-use authority was consumed. The registration was retired and no connector receipt was established. Reset the negotiation before any retest.',
+                  'Invocation failed after the one-use authority was consumed. The registration was retired and no page receipt was established. Reset the negotiation before any retest.',
                 );
               }
             },
@@ -1040,31 +1024,9 @@ export function CapabilityNegotiator({
 
     transitionPhase('active');
     setCapabilityStatus('registered');
-    const handoffIsCurrent = () =>
-      mountedRef.current &&
-      operationEpochRef.current === epoch &&
-      capabilityActiveRef.current &&
-      capabilityGenerationRef.current === capabilityGeneration &&
-      leaseRef.current === lease &&
-      lease.state() === 'active';
-    try {
-      await onOfferPermit(
-        contract,
-        approvedAt,
-        window.location.href,
-        controller.signal,
-        handoffIsCurrent,
-      );
-      if (!handoffIsCurrent()) return;
-      setMessage(
-        'The exact capability is registered and its narrowing rule was offered to the connected browser guard. Nothing has run. Check the browser-owned HUD for authoritative protection status.',
-      );
-    } catch {
-      if (!handoffIsCurrent()) return;
-      setMessage(
-        'The exact capability is registered, but its browser-guard handoff could not be prepared. Nothing has run. The local practice check remains available; advanced recovery can export the rule manually.',
-      );
-    }
+    setMessage(
+      'The exact one-use Site Tool is registered on this public page. Nothing has run. Keep the page open and ask the agent in this built-in browser to invoke the approved action once.',
+    );
   }
 
   async function runCapabilitySelfTest() {
@@ -1074,7 +1036,7 @@ export function CapabilityNegotiator({
     const modelContext = getModelContext();
     if (!modelContext?.getTools || !modelContext.executeTool) {
       setMessage(
-        'This browser can register the approved action but cannot invoke its own page action. Nothing ran. Leave this page open and ask the connected agent to run the one guarded action once with no retry.',
+        'This browser can register the approved action but cannot invoke its own page action. Nothing ran. Leave this page open and ask the connected agent to run the one approved action once with no retry.',
       );
       return;
     }
@@ -1292,9 +1254,9 @@ export function CapabilityNegotiator({
                   </p>
                   <h3 className="mt-2 text-2xl font-semibold">Nothing ran.</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-300">
-                    The permission expired or could not be verified, so the
-                    Membrane closed it. The practice account was not changed and
-                    the lesson did not retry.
+                    The permission expired or could not be verified, so the page
+                    closed it. The practice account was not changed and the
+                    lesson did not retry.
                   </p>
                   <Button
                     className="mt-5 bg-lime-300 text-slate-950 hover:bg-lime-200"
@@ -1456,17 +1418,13 @@ export function CapabilityNegotiator({
                 <p className="mt-3 text-xs leading-5 text-slate-400">
                   {experienceMode === 'site-tools'
                     ? 'This page registered the approved Site Tool. That does not prove the client discovered it; the client must still select and call it.'
-                    : experienceMode === 'local-guard'
-                      ? 'If the Local Guard is connected, the page offered it the exact narrowing rule. Its browser-owned status is authoritative only for calls routed through that local path.'
-                      : 'This read-only path does not claim that any client discovered or invoked the action.'}
+                    : 'This read-only path does not claim that any client discovered or invoked the action.'}
                 </p>
                 <div className="mt-5 rounded-lg border border-lime-300/20 bg-lime-300/5 p-4 text-sm text-slate-200">
                   <strong className="text-white">Who does what:</strong>{' '}
                   {experienceMode === 'site-tools'
                     ? 'you approve one call, the agent invokes the registered Site Tool, and this page verifies the returned result and before/after state.'
-                    : experienceMode === 'local-guard'
-                      ? 'the connected local agent invokes the registered action through the Local Guard and relay.'
-                      : 'no agent-driven invocation is claimed until you choose a live setup.'}{' '}
+                    : 'no agent-driven invocation is claimed until you choose a live setup.'}{' '}
                 </div>
               </div>
               <div className="border-t border-white/10 bg-slate-900/70 p-5 sm:p-7 lg:border-l lg:border-t-0">
@@ -1482,9 +1440,7 @@ export function CapabilityNegotiator({
                   <p className="text-sm font-semibold text-sky-100">
                     {experienceMode === 'site-tools'
                       ? 'Copy this message into the chat that owns this browser'
-                      : experienceMode === 'local-guard'
-                        ? 'Your connected local agent runs this step'
-                        : 'No invocation on the read-only path'}
+                      : 'No invocation on the read-only path'}
                   </p>
                   <ol className="mt-3 space-y-2 text-xs leading-5 text-slate-300">
                     {experienceMode === 'site-tools' ? (
@@ -1499,18 +1455,6 @@ export function CapabilityNegotiator({
                         <li>
                           3. Wait for the result. Do not send a second run
                           command.
-                        </li>
-                      </>
-                    ) : experienceMode === 'local-guard' ? (
-                      <>
-                        <li>1. Leave this lesson open.</li>
-                        <li>
-                          2. In Left Out Local Guard, confirm “Protected: 1
-                          exact action.”
-                        </li>
-                        <li>
-                          3. Send this exact request to your connected local
-                          agent: “{agentRequest}”
                         </li>
                       </>
                     ) : (
@@ -1549,9 +1493,7 @@ export function CapabilityNegotiator({
                           className="mt-2 block text-xs leading-5 text-sky-100"
                         >
                           {agentRequestCopyState === 'copied'
-                            ? experienceMode === 'site-tools'
-                              ? 'Copied — return to this browser’s chat and send it.'
-                              : 'Copied — paste it into your connected local agent.'
+                            ? 'Copied — return to this browser’s chat and send it.'
                             : 'Copy was blocked — select the exact request above and paste it into your agent.'}
                         </output>
                       ) : null}
@@ -1694,7 +1636,7 @@ export function CapabilityNegotiator({
         <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-lime-300">
           Advanced security tests and protocol evidence
           <span className="mt-1 block text-xs font-normal text-slate-400">
-            Schemas, hashes, source drift, connector permits, and manual
+            Schemas, hashes, source drift, registration evidence, and manual
             controls
           </span>
         </summary>
@@ -1863,30 +1805,6 @@ export function CapabilityNegotiator({
               >
                 <Radio data-icon="inline-start" />
                 Invoke through WebMCP
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  contract &&
-                  approvalEventAt &&
-                  void onExportPermit(
-                    contract,
-                    approvalEventAt,
-                    window.location.href,
-                  ).catch(() =>
-                    setMessage(
-                      'The extension permit could not be exported. The capability remains registered but no bridge authority was created.',
-                    ),
-                  )
-                }
-                disabled={
-                  capabilityStatus !== 'registered' ||
-                  !contract ||
-                  !approvalEventAt
-                }
-              >
-                <FileCheck2 data-icon="inline-start" />
-                Export extension permit
               </Button>
               <Button
                 variant="outline"

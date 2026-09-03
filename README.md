@@ -7,10 +7,10 @@
 > issue report.
 
 ChatGPT now calls this built-in-browser surface **Site Tools**. The beginner
-experience supports a direct ChatGPT Work/Codex path that needs no Left Out
-extension or connector, plus a separate advanced Local Guard path for ordinary
-Chromium monitoring and local receipt enforcement. The external OpenAI browser
-extension is a third, computer-use surface and is not counted as Site Tools.
+experience uses the native ChatGPT/Codex path and needs no Left Out extension,
+connector, pairing code, localhost service, or fallback harness. The external
+OpenAI browser extension is a separate computer-use surface and is not counted
+as Site Tools.
 See [OpenAI's Site Tools documentation](https://learn.chatgpt.com/docs/webmcp)
 and the local [conformance family](docs/SITE_TOOLS_CONFORMANCE.md).
 
@@ -28,13 +28,13 @@ are tracked in [CONTEST_READINESS.md](docs/CONTEST_READINESS.md).
 
 Current source-candidate boundaries:
 
-| Product surface | Current boundary |
-| --- | --- |
-| Beginner learning lab | Public, synthetic, and runnable with a first-visit walkthrough and five lessons |
-| Site Tools | Registered by the page when `document.modelContext` is available; discovery and invocation are reported separately |
-| Local Guard | Unpacked Manifest V3 development preview for local testing; not a signed store release |
-| Reporting | Private practice drafts only on the public site; network intake and feeds are disabled |
-| Android | Isolated conformance prototype; no device-support claim |
+| Product surface       | Current boundary                                                                                                   |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Beginner learning lab | Public, synthetic, and runnable with a first-visit walkthrough and five lessons                                    |
+| Site Tools            | Registered by the page when `document.modelContext` is available; discovery and invocation are reported separately |
+| Local Guard           | Future research under Advanced; not a public setup choice, judged dependency, or distributed product               |
+| Reporting             | Private practice drafts only on the public site; network intake and feeds are disabled                             |
+| Android               | Isolated conformance prototype; no device-support claim                                                            |
 
 Receipts created by this source candidate remain private to that page session
 unless the learner explicitly exports them. This candidate does not accept
@@ -61,20 +61,18 @@ surfaces, not just a vulnerable-site demo:
 1. **Learn** — a person and their agent begin with no WebMCP knowledge, inspect
    one synthetic action, approve one exact task, run it once, and read the
    receipt together.
-2. **Protect** — an opt-in browser HUD keeps page detection, client discovery,
-   guarded authority, invocation, and evidence separate. The Membrane path
-   rejects an action that no longer matches the narrow rule.
+2. **Protect** — the Membrane compiles one exact human-approved task into less
+   authority and rejects an action that no longer matches the narrow rule.
 3. **Report** — a private receipt can produce a separate, strictly redacted
    issue draft. One explicit action may save it to a temporary local review
    list. Nothing is reported automatically or sent off-device, and no record
    can enter a future tooling feed before human review.
 
 The repository implements a five-lesson beginner course, a direct built-in
-Site Tools handoff, the Local Guard one-use capability/HUD/connector path, and a
-session-scoped `/conformance` family that captures model, workspace, app build,
-document, registration, discovery, and invocation separately. A fresh Chrome
-152 technical acceptance run completed Lessons 1–5 through the Local Guard
-path. A live Sol/Terra built-in-client conformance run remains outstanding.
+Site Tools handoff, and a session-scoped `/conformance` family that captures
+model, workspace, app build, document, registration, discovery, and invocation
+separately. Local Guard source remains a future research track under Advanced;
+it is not part of the judged public path.
 A strict quarantine/moderation state machine, minimized publication projection,
 and fail-closed invited-intake/reviewer/publisher configuration and
 authentication are implemented locally. A versioned D1 store adds hash-chained
@@ -104,12 +102,11 @@ Agent run, Verify**—and one primary action at each stage. Ports, hashes,
 schemas, drift controls, and manual recovery remain under technical
 disclosures.
 
-The page now distinguishes implementation from evidence: every lesson can hand
-its one-use top-level registration directly to the agent in ChatGPT/Codex's
-built-in browser or route it through the separate Local Guard prototype. Only
-the latter has a dated Chrome 152 extension/connector result. That evidence
-remains scoped to that browser, connector, machine, and session; it does not
-establish native Site Tools support in any other client.
+The page now distinguishes implementation from evidence: every live lesson
+hands its one-use top-level registration directly to the agent in
+ChatGPT/Codex's built-in browser. If native Site Tools are unavailable, the
+learner can take an explicitly no-invocation path instead. No extension result
+is represented as native Site Tools evidence.
 
 1. Learn that a page offering an action is not permission and is not proof of
    safety.
@@ -132,9 +129,7 @@ establish native Site Tools support in any other client.
 - Every path—external WebMCP invocation, in-page WebMCP self-test request, and explicit fallback harness—uses the same scenario handler. Because the shared registered callback cannot distinguish a concurrent external call from the in-page request, WebMCP receipts conservatively record browser confirmation as unobservable.
 - Every fixture run produces a schema-validated receipt in the page session.
   The learner may explicitly export it. The public app does not upload or
-  durably retain receipts. A Local Guard connector receipt reaches its separate
-  local JSONL ledger only after successful transport, validation, append, and
-  acknowledgement.
+  durably retain receipts.
 - The UI reports unsupported, blocked, undiscovered, and failed states without calling them WebMCP success.
 
 The fallback harness is intentionally labeled as a harness. It is useful for education in unsupported browsers, but it is not represented as agent discovery or ordinary browser automation disguised as WebMCP.
@@ -191,9 +186,8 @@ self-reported evidence without a server-issued or signature-bound envelope.
 4. Ask the agent to invoke that exact action once with no retry. Show the
    receipt's required result, byte-identical state, zero side effects, closed
    authority, and receipt ID.
-5. Briefly show the four supporting security lessons and the explicit
-   separation between built-in Site Tools, the Local Guard preview, and
-   human-reviewed reporting.
+5. Briefly show the four supporting security lessons and the private,
+   human-reviewed report draft.
 
 The complete narration is in [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
 
@@ -225,8 +219,9 @@ Only the selected fixture is registered. An `AbortController` unregisters it
 when the user changes scenarios or leaves the page. A random device-local
 lab-session identifier separates the learner's local checkpoints.
 
-The local MVP adds a separate unpacked browser extension, loopback connector,
-one-command desktop-alpha launcher, and append-only JSONL receipt report. A negotiated page receipt is not a
+The future-work research prototype contains source for an unpacked browser
+extension, loopback connector, desktop-alpha launcher, and append-only JSONL
+receipt report. A negotiated page receipt is not a
 connector record until that return path completes. On September 1, 2026, one
 fresh generated zero-input Scenario 1 call completed that path exactly once
 with no retry. Receipt `d421aaaf-262d-4fbe-81ab-e93acb5efce9` was validated,
@@ -241,8 +236,8 @@ See [docs/PRODUCT.md](docs/PRODUCT.md),
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and
 [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 The productization choices and rollout gates are in the
-[Local Guard and reporting hardening review](docs/hardening/local-guard-reporting-2026-09-02/hardening.md),
-the [Local Guard release channel](docs/LOCAL_GUARD_RELEASE.md), and the
+[future-work Local Guard and reporting hardening review](docs/hardening/local-guard-reporting-2026-09-02/hardening.md),
+the [future-work Local Guard release criteria](docs/LOCAL_GUARD_RELEASE.md), and the
 [reporting service release boundary](docs/REPORTING_SERVICE.md).
 
 ## Local development
@@ -256,6 +251,11 @@ npm run dev
 
 Open <http://localhost:3000>.
 
+### Future-work engineering only
+
+The commands below exercise repository research. They are not public learner
+setup, not part of the judged path, and not a distributed Local Guard product.
+
 For the complete local desktop alpha—exact-port learning site, connector,
 bridge, setup center, non-secret status descriptor, and receipt viewer—run:
 
@@ -263,7 +263,7 @@ bridge, setup center, non-secret status descriptor, and receipt viewer—run:
 npm run desktop:alpha
 ```
 
-Create a deterministic, allowlisted Local Guard preview ZIP plus per-file and
+For future-work review, create a deterministic, allowlisted Local Guard preview ZIP plus per-file and
 archive SHA-256 metadata with:
 
 ```bash
@@ -301,17 +301,13 @@ clean-stop request and waits at most ten seconds; it never falls back to a
 process-name or force kill. For terminal-bound debugging only, use
 `npm run desktop:alpha:foreground`.
 
-The beginner path does not use that recovery code. Open the learning page,
-select the unpacked extension, and choose **Connect this practice tab**. A
-short-lived connector challenge pairs the exact page automatically. After the
-person approves the exact Scenario 1 task and the page successfully registers
-its one-use capability, the page offers the permit to the extension
-automatically. The extension revalidates and document-binds the offer; manual
-JSON import is recovery-only.
+The beginner and judged paths do not use any recovery code, extension,
+connector, pairing flow, or localhost service. Local Guard implementation notes
+are retained only as future-work research and are not learner instructions.
 
 The application always works as an educational range through its explicitly labeled harness. To exercise the actual WebMCP path, use a browser/client that exposes `document.modelContext`. Chrome documents an origin trial and a local `chrome://flags/#enable-webmcp-testing` flag; support is experimental and must be checked in the exact client being demonstrated. See the [Chrome WebMCP overview](https://developer.chrome.com/docs/ai/webmcp) and the [WebMCP proposal](https://github.com/webmachinelearning/webmcp).
 
-The local connector and unpacked-extension instructions are in
+Future-work connector and extension research is retained in
 [products/connector/README.md](products/connector/README.md) and
 [products/extension/README.md](products/extension/README.md). The Android
 conformance boundary is in
@@ -350,7 +346,7 @@ The automated suite covers:
 
 `npm run verify` does not claim live connector success and does not run the
 separate Android conformance script. The release gate runs the automated suite,
-typecheck, the Local Guard and reporting readiness assessments, a disabled
+typecheck, the future-work Local Guard and reporting readiness assessments, a disabled
 standalone reporting-Worker dry run, lint, and a production build plus its
 public-artifact boundary check on Node.js 24.
 Source-ready native transport, a
@@ -394,9 +390,9 @@ endpoint and sends no receipt data to Left Out Security.
 
 ## Deployment
 
-The public build contains the beginner page, synthetic Site Tools
-fixtures, and Local Guard overview, privacy, and support disclosures. It does
-not host or distribute the Local Guard extension, loopback connector, private
+The public build contains the beginner page, synthetic Site Tools fixtures, and
+an Advanced future-work disclosure for Local Guard. It does not host or
+distribute the Local Guard extension, loopback connector, private
 reporting workbench or operations, moderation service, security-tooling feed,
 or Android client. Public reporting endpoints remain fail-closed with 404s.
 
@@ -428,7 +424,7 @@ Read [SECURITY.md](SECURITY.md) before extending a fixture.
 - [Current three-minute video script](docs/DEMO_SCRIPT.md)
 - [Contest-period work log](docs/CONTEST_PERIOD_WORK.md)
 - [Verification report](docs/VERIFICATION.md)
-- [Historical Local Guard decision record](docs/GO_NO_GO.md)
+- [Future-work Local Guard decision record](docs/GO_NO_GO.md)
 
 ## License
 

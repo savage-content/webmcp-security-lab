@@ -76,15 +76,14 @@ not invent an outcome or receipt ID.
 
 ## 1:45–2:05 — Show the broader product
 
-**Shot:** The five lesson cards, then the Local Guard and private reporting
-sections without running another action.
+**Shot:** The five lesson cards, then the private report preview without
+running another action.
 
 **Say:**
 
 > Four more lessons teach over-broad inputs, untrusted result text, misleading
-> confirmations, and support overclaims. The optional Local Guard explores
-> browser warnings and one-use enforcement. Reports remain private drafts
-> unless a person explicitly exports them.
+> confirmations, and support overclaims. Reports remain private drafts unless
+> a person explicitly exports them.
 
 ## Close
 

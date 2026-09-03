@@ -62,11 +62,9 @@ does not invoke it. A compatible agent may invoke it once, without retry, and
 the page records before/after state, side effects, authority closure, and a
 receipt.
 
-The public experience also explains the optional Left Out Local Guard: a
-separate, local development preview for Chromium monitoring, change alerts,
-one-use enforcement, and local receipt review. It is not required for the
-built-in Site Tools path and is not represented as a hosted service or signed
-store release.
+The judged path contains no extension, connector, pairing, localhost, or
+fallback harness: public URL → native Site Tool → exact human approval → one
+agent invocation → verified page receipt.
 
 ## Why the human and agent work together
 
@@ -97,8 +95,6 @@ pretending that a green badge or a reassuring annotation is enforcement.
   receipts with explicit export.
 - Private page-session receipts with explicit JSON export; the public app has
   no receipt-upload endpoint.
-- A deterministic, allowlisted Manifest V3 Local Guard preview package and a
-  release-attestation verifier that explicitly does not claim Chrome signing.
 - A disabled-by-default, privacy-minimized reporting core with a strict invited
   intake handler, atomic quotas, hash-chained D1 events, idempotency, and
   optimistic concurrency; authenticated reviewer reads/transitions and a
@@ -119,18 +115,17 @@ pretending that a green badge or a reassuring annotation is enforcement.
 
 ## Verification
 
-On September 3, the cleanup candidate passed 547 automated tests across 76
+On September 3, the cleanup candidate passed 551 automated tests across 76
 files on Node.js 24. The exact
 candidate's automated gate also passes
-typecheck, the Local Guard and reporting release-readiness
-assessments, the standalone reporting-Worker dry run, lint, production build,
-fail-closed public-`dist/` allowlist verification, deterministic Local Guard
-packaging, retention-preserving idempotency replay and deletion-race checks,
+typecheck, reporting release-readiness assessments, the standalone
+reporting-Worker dry run, lint, production build, fail-closed public-`dist/`
+allowlist verification, retention-preserving idempotency replay and
+deletion-race checks,
 and the automated walkthrough/accessibility contracts. A separate live,
 non-invoking acceptance run passed on the historically tested version 11
-release. Earlier bounded browser runs produced passing receipts for all five
-synthetic lessons through the local extension/connector path; those historical
-runs are not relabeled as exact-candidate evidence.
+release. Earlier engineering runs are not relabeled as exact-candidate or
+native Site Tools evidence.
 
 The automated checks do not replace a first-time human study, screen-reader
 operator, entrant attestation, authenticated form rehearsal, or final recorded
@@ -168,9 +163,8 @@ purchases, messages, email, or uncontrolled external effect. Instruction-shaped
 fixture text remains data and causes no follow-on action.
 
 The project does not claim that WebMCP is universally available, that Site Tool
-metadata is trustworthy, that the optional Local Guard is a production control,
-or that this work is novel, patented, independently validated, or cleared for
-freedom to operate.
+metadata is trustworthy, or that this work is novel, patented, independently
+validated, or cleared for freedom to operate.
 
 ## Current limitations
 
@@ -179,8 +173,8 @@ freedom to operate.
 - The built-in client currently supports only a subset of the broader WebMCP
   proposal, so the lab records unsupported surfaces rather than converting
   their absence into a security pass.
-- The Local Guard remains an unsigned developer preview with a loopback
-  companion.
+- A browser-owned Local Guard is future research outside the judged path; no
+  public release, setup choice, or production-security claim exists.
 - Reporting remains locally implemented and publicly disabled. Invited HTTP
   intake, atomic quotas, reviewer routes, a separately authorized publisher,
   signed feed, retention/legal hold, and controlled private deletion exist, but

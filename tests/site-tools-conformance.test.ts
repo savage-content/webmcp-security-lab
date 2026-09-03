@@ -146,7 +146,7 @@ describe('Site Tools conformance classifier', () => {
     expect(result.verdict).toBe('SKIP_UNSUPPORTED_WORKSPACE');
   });
 
-  it('keeps the external Membrane surface separate', () => {
+  it('keeps legacy non-native observations outside the native suite', () => {
     const base = observation('C01-top-level-imperative');
     const result = classifyConformanceObservation({
       ...base,

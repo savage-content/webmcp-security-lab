@@ -26,8 +26,9 @@ The now-public contest-period delta adds or materially extends:
 - the complete novice Site Tools vertical slice and first-visit walkthrough;
 - exact zero-input, one-use capability negotiation and receipt verification;
 - technical accessibility and reduced-motion behavior;
-- the optional Local Guard HUD, deterministic package, release-attestation,
-  native-message transport, IPC, lifecycle, store assets, and operations gates;
+- future-work Local Guard research source, including HUD, packaging,
+  native-message transport, IPC, lifecycle, and operations gates; none of it is
+  a public setup choice or judged runtime dependency;
 - the default-off reporting relay, reviewer workbench, standalone API-only
   Worker candidate, D1 moderation history, role-separated review/publication,
   minimized signed feed, retention, correction, and deletion controls;

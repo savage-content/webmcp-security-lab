@@ -23,14 +23,15 @@ import {
   evidenceReceiptSchema,
   parseCapabilityEvidenceReceipt,
 } from '../lib/lab/schemas';
-import type { RunContext } from '../lib/lab/types';
+import { validateConnectorCapabilityReceipt } from '../products/connector/lesson-capability-policy';
+import type { CapabilityProposalRecord, RunContext } from '../lib/lab/types';
 
 const origin = 'https://lab.example';
 const lockedAt = '2026-08-31T12:00:00.000Z';
 const proposedAt = '2026-08-31T12:00:01.000Z';
 const approvedAt = '2026-08-31T12:00:02.000Z';
 
-async function setup() {
+async function setup(channel: CapabilityProposalRecord['channel'] = 'webmcp') {
   const scenario = scenarioById['read-only-claim'];
   const intent = createLockedIntent({
     origin,
@@ -43,7 +44,7 @@ async function setup() {
     intent,
     sourceTool: scenario.tool,
     proposedAt,
-    channel: 'webmcp',
+    channel,
   });
   const contract = await compileCapabilityContract({
     intent,
@@ -161,6 +162,32 @@ describe('Scenario 1 capability negotiation', () => {
     expect(second.compiled.toolName).not.toBe(contract.compiled.toolName);
   });
 
+  it('tracks proposal provenance without changing authority identity', async () => {
+    const records = await Promise.all([
+      setup('page-lesson'),
+      setup('webmcp'),
+      setup('fallback-harness'),
+    ]);
+
+    expect(records.map(({ proposal }) => proposal.channel)).toEqual([
+      'page-lesson',
+      'webmcp',
+      'fallback-harness',
+    ]);
+    expect(
+      new Set(records.map(({ proposal }) => proposal.proposalHash)).size,
+    ).toBe(1);
+    expect(
+      new Set(records.map(({ contract }) => contract.contractHash)).size,
+    ).toBe(1);
+    expect(
+      new Set(records.map(({ contract }) => contract.capabilityId)).size,
+    ).toBe(1);
+    expect(
+      new Set(records.map(({ contract }) => contract.compiled.toolName)).size,
+    ).toBe(1);
+  });
+
   it('accepts only the bound origin, source, handler, lifetime, and first claim', async () => {
     const { scenario, contract } = await setup();
     const valid = await verifyCapabilityBinding({
@@ -220,7 +247,7 @@ describe('Scenario 1 capability negotiation', () => {
   });
 
   it('confirms the fixed result and unchanged controlled state in one linked receipt', async () => {
-    const { scenario, proposal, contract } = await setup();
+    const { scenario, proposal, contract } = await setup('page-lesson');
     const checkedAt = '2026-08-31T12:01:00.000Z';
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const { outcome, verification } = await executeScenarioOneCapability({
@@ -277,6 +304,8 @@ describe('Scenario 1 capability negotiation', () => {
     expect(outcome.before).toEqual(outcome.after);
     expect(outcome.sideEffects).toEqual([]);
     expect(outcome.verdict).toBe('PASS');
+    expect(receipt.capability?.proposal.channel).toBe('page-lesson');
+    expect(receipt.invocation.channel).toBe('negotiated-capability');
     expect(receipt.capability?.invalidation.reason).toBe('consumed');
     await expect(
       validateCapabilityEvidenceIntegrity(capability),
@@ -285,6 +314,30 @@ describe('Scenario 1 capability negotiation', () => {
       receipt,
     );
     expect(evidenceReceiptSchema.parse(receipt)).toEqual(receipt);
+
+    for (const channel of [
+      'page-lesson',
+      'webmcp',
+      'fallback-harness',
+    ] as const) {
+      const channelReceipt = structuredClone(receipt);
+      if (!channelReceipt.capability) throw new Error('Missing capability.');
+      channelReceipt.capability.proposal.channel = channel;
+      await expect(
+        validateConnectorCapabilityReceipt(channelReceipt),
+      ).resolves.toMatchObject({
+        capability: { proposal: { channel } },
+        invocation: { channel: 'negotiated-capability' },
+      });
+    }
+
+    const unknownChannel = structuredClone(receipt) as unknown as {
+      capability: { proposal: { channel: string } };
+    };
+    unknownChannel.capability.proposal.channel = 'native-ish';
+    await expect(
+      validateConnectorCapabilityReceipt(unknownChannel),
+    ).rejects.toThrow();
 
     const stripped = structuredClone(receipt) as unknown as Record<
       string,

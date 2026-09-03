@@ -4,60 +4,55 @@ import Link from 'next/link';
 import { LocalGuardPublicShell } from '@/components/local-guard/public-shell';
 
 export const metadata: Metadata = {
-  title: 'Local Guard support | Left Out Security',
+  title: 'Local Guard future-work status | Left Out Security',
   description:
-    'Installation, connection, privacy, and safe issue-reporting guidance for the Local Guard developer preview.',
+    'Why the experimental Local Guard research has no public installation or connection path.',
 };
 
 export default function LocalGuardSupportPage() {
   return (
     <LocalGuardPublicShell
-      eyebrow="Controlled tester support"
-      title="Recover safely without widening authority."
+      eyebrow="Advanced · experimental developer preview"
+      title="There is no public Local Guard setup path."
     >
       <p className="mt-6 text-lg leading-8 text-muted-foreground">
-        These instructions apply to the unsigned 0.3.0 developer preview. Do not
-        install files received from an untrusted source or bypass a browser
-        warning to make the preview appear production-ready.
+        The contest experience uses the public page and native Site Tools only.
+        Local Guard remains future research, so this site does not ask learners
+        to install an extension, start a connector, pair a tab, or use
+        localhost.
       </p>
 
       <section className="mt-10 space-y-8 leading-7 text-muted-foreground">
         <div>
           <h2 className="text-2xl font-semibold text-foreground">
-            “Connect this practice tab” is unavailable
-          </h2>
-          <ol className="mt-3 list-decimal space-y-2 pl-6">
-            <li>
-              Use an ordinary HTTP(S) page, not the extension&apos;s own file.
-            </li>
-            <li>Read and accept the local data-handling notice.</li>
-            <li>Start the matching local connector on an allowlisted port.</li>
-            <li>
-              Open the extension from the exact practice tab and reconnect.
-            </li>
-          </ol>
-        </div>
-
-        <div>
-          <h2 className="text-2xl font-semibold text-foreground">
-            The page or declaration changed
+            Why setup is intentionally absent
           </h2>
           <p className="mt-3">
-            Stop. Disconnect and pair the new document explicitly. Never reuse
-            an old permit, invent a tool name, or retry an invocation whose
-            outcome is unknown.
+            Signed distribution, authenticated native transport, independent
+            privacy review, accessibility acceptance, updates, recovery, and
+            incident response must be completed before any public setup journey
+            could be offered.
           </p>
         </div>
 
         <div>
           <h2 className="text-2xl font-semibold text-foreground">
-            Remove the preview
+            Use the judged path instead
           </h2>
           <p className="mt-3">
-            Choose “Disconnect and revoke pairing,” then remove the unpacked
-            extension from Chrome&apos;s extension-management page. Delete the
-            local connector runtime-data directory separately if you also want
-            to remove retained local receipts.
+            Return to the public lab, select the detected native Site Tools
+            option, approve one exact synthetic action, ask the agent to invoke
+            it once, and verify the receipt on the same page.
+          </p>
+        </div>
+
+        <div>
+          <h2 className="text-2xl font-semibold text-foreground">
+            Do not install research artifacts
+          </h2>
+          <p className="mt-3">
+            Repository research artifacts are not a signed consumer release. Do
+            not bypass browser warnings or present them as a production control.
           </p>
         </div>
 
@@ -66,10 +61,8 @@ export default function LocalGuardSupportPage() {
             Report a security concern
           </h2>
           <p className="mt-3">
-            Start with the extension&apos;s private local concern draft. Review
-            and redact it before sharing anything. Do not include credentials,
-            cookies, source code, client evidence, customer records, production
-            payloads, or other private material. Public intake and security-feed
+            Use only the public lab&apos;s private page-session draft. Review
+            and redact it before sharing. Public intake and security-feed
             publication are not enabled.
           </p>
         </div>
@@ -85,9 +78,9 @@ export default function LocalGuardSupportPage() {
           className="font-semibold text-foreground underline"
           href="/local-guard/privacy"
         >
-          privacy boundary
+          proposed privacy boundary
         </Link>{' '}
-        before reconnecting.
+        for the future research track.
       </p>
     </LocalGuardPublicShell>
   );

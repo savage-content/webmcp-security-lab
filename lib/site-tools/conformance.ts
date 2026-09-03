@@ -161,7 +161,7 @@ export function classifyConformanceObservation(
     return {
       verdict: 'NOT_APPLICABLE',
       summary:
-        'This case measures ChatGPT Site Tools. External browser control and the Left Out Membrane are a separate surface.',
+        'This case measures native ChatGPT Site Tools. Non-native execution surfaces are outside this suite.',
     };
   }
 

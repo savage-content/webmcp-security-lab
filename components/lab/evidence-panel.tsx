@@ -254,7 +254,7 @@ export function SecureComparison({
           </div>
           <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
             Learning policies describe allow, warn, or ask guidance. They are
-            marked non-enforceable and cannot authorize the browser extension.
+            marked non-enforceable and cannot authorize another client.
           </p>
           {receipt ? (
             <div

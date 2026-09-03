@@ -122,9 +122,10 @@ export function validateArguments(
   const schema = secure
     ? secureArgumentSchemas[scenarioId]
     : vulnerableArgumentSchemas[scenarioId];
-  return schema.parse(
-    normalizeInvocationArguments(argumentsValue),
-  ) as Record<string, unknown>;
+  return schema.parse(normalizeInvocationArguments(argumentsValue)) as Record<
+    string,
+    unknown
+  >;
 }
 
 const scenarioIdSchema = z.enum([
@@ -408,7 +409,7 @@ export const evidenceReceiptSchema = z
             }),
             proposalHash: z.string().regex(/^[0-9a-f]{64}$/),
             proposedAt: z.iso.datetime(),
-            channel: z.enum(['webmcp', 'fallback-harness']),
+            channel: z.enum(['page-lesson', 'webmcp', 'fallback-harness']),
             source: z.object({
               toolName: z.string().min(1).max(128),
               sourceDeclarationHash: z.string().regex(/^[0-9a-f]{64}$/),
