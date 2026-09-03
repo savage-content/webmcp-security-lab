@@ -4,10 +4,9 @@
 
 The product teaches a first-time human and agent what WebMCP offers, protects
 one exact approved action through a browser-owned Membrane, and turns verified
-local evidence into a privacy-minimized issue preview. The live application
-strongly content-matches version 12 source at `d0c1676`: the setup gate,
-walkthrough, five fixtures, and Local Guard disclosure pages are public, while
-reporting APIs remain fail-closed. The Local Guard extension, connector,
+local evidence into a privacy-minimized issue preview. The public application
+contains the setup gate, walkthrough, five fixtures, and Local Guard disclosure
+pages, while reporting APIs remain fail-closed. The Local Guard extension, connector,
 moderation operations, reporting workbench, and isolated Android conformance
 prototype remain undeployed.
 
@@ -52,12 +51,11 @@ flowchart LR
   F[Explicit lab harness] --> X
   X --> O[Observed result and state transition]
   O --> E[Schema-validated evidence receipt]
-  E --> D[(Cloudflare D1)]
   E --> J[Downloadable JSON]
   P --> G[Downloadable learning-awareness artifact]
 ```
 
-That diagram is the frozen version 1 web/D1 boundary. The local MVP adds a
+That diagram is the public browser boundary. The local MVP adds a
 separate path. The solid route is the shipping developer preview; the dashed
 route is a source-ready native candidate that disables the browser HTTP bridge
 when selected:
@@ -99,13 +97,13 @@ This is dated single-session evidence, not a universal compatibility claim.
 1. **Human presentation boundary** — text, controls, and approval copy may be inaccurate in a vulnerable fixture.
 2. **WebMCP declaration boundary** — name, description, schema, and annotations describe a capability but do not enforce handler behavior, authority, or actor identity.
 3. **Execution boundary** — the shared scenario engine is the only place fixture state changes.
-4. **Baseline persistence boundary** — the web API validates and appends
-   ordinary frozen-version-1 receipts to D1. It exposes no mutation or deletion
-   path.
+4. **Public receipt privacy boundary** — page receipts remain in memory and are
+   retained only when the learner explicitly exports them. The public app has
+   no receipt-upload endpoint.
 5. **Client-observation boundary** — browser API support, registration, permissions policy, discovery, and invocation are recorded separately. External client behavior is not inferred when the page cannot observe it, and a fallback receipt never counts as WebMCP invocation. The shared registered callback cannot distinguish the page's approved `executeTool()` request from a competing client invocation, so it never upgrades browser confirmation to known.
 6. **Awareness-policy boundary** — deterministic rules explain why a declaration deserves allow, warn, or ask treatment. They provide guidance and do not replace browser enforcement or professional validation.
 7. **Negotiated-capability boundary** — each built-in lesson can replace its broad registration within one document session with a uniquely named, closed, zero-input capability. V1 retains Lesson 1's byte-identical read contract; V2 freezes the exact profile, arguments, source, baseline, permitted effect, and prohibited effects for Lessons 2–5. A synchronous generation gate invalidates cached handles, and a monotonic in-memory lease atomically closes logical authority before any awaited work. After the page callback settles successfully, the now-inert capability registration is scheduled for retirement through its `AbortController` after a 50 ms Chrome 152 compatibility delay; post-claim failure retires it immediately. The timer does not observe browser/client delivery. Chrome documents non-cancelling in-flight unregistration beginning in version 153. This is not a cross-tab or server-atomic grant.
-8. **Capability-evidence boundary** — negotiated-capability receipts are created locally only after the profile-specific handler result and effect are verified. Lesson 1 receipts are local-export-only; Lessons 2–5 return their v2 receipt to the caller for connector validation and local ledger commitment. Neither form is independently attested. The ordinary D1 endpoint rejects receipts that retain negotiated-capability markers; because client JSON is not provenance-authenticated, a caller that relabels every marker cannot be distinguished from ordinary self-reported evidence. The capability handler path contains no evidence POST, but browser egress is not isolated or independently observed.
+8. **Capability-evidence boundary** — negotiated-capability receipts are created locally only after the profile-specific handler result and effect are verified. Lesson 1 receipts are local-export-only; Lessons 2–5 return their v2 receipt to the caller for connector validation and local ledger commitment. Neither form is independently attested. The public application accepts no receipt upload. Browser egress is not isolated or independently observed.
 9. **Connector boundary** — the connector is a loopback-only, token-protected
    development process. It may append a returned capability receipt to a local
    JSONL chain only after schema, identity, chronology, state, and hash
@@ -218,10 +216,9 @@ Meaningful mismatches map to `ask`, scoped support uncertainty maps to `warn`, a
 
 ## Evidence data model
 
-For ordinary frozen-version-1 scenarios, the downloadable receipt is the
-canonical evidence record and D1 may store its complete serialization plus
-indexed columns for id, lab session, scenario, timestamp, invocation channel,
-and verdict. Negotiated receipts are `local-export-only` at the page. Their
+For public scenarios, the downloadable receipt is the learner-controlled
+evidence record. It remains in the page session unless explicitly exported.
+Negotiated receipts are also `local-export-only` at the page. Their
 `capability.invalidation` timestamp records when the lease ceased granting
 authority; it does not attest when the browser physically removed the
 registration. When the page callback produces a successful result, the receipt
@@ -236,7 +233,7 @@ Secure builder retests run the narrowed declaration against a fresh synthetic fi
 
 ## Reporting privacy boundary
 
-The receipt ledger and issue-reporting model are separate. The current local
+Private page receipts and the issue-reporting model are separate. The current local
 issue page is a scriptless preview of a fixed, typed, redacted synthetic draft;
 it has no form, submit control, issue store, or outbound network action. Local
 and synthetic observations are never submittable. A future public path would
@@ -293,27 +290,19 @@ signing key is supplied outside source, and consumers must pin the public-key
 fingerprint through a separately trusted channel rather than trust the response
 header.
 
-Indexes match the actual read patterns:
-
-- session + timestamp for the current ledger;
-- scenario + timestamp for scenario analysis; and
-- timestamp for operational inspection.
-
-`PRAGMA optimize` runs after runtime schema initialization. Generated migrations remain in source control.
-
 ## Session model
 
 Fixture state is held in memory and is resettable. A random UUID in browser
-storage identifies the device-local baseline ledger; it does not authorize any
-account or hold product data. Ordinary baseline evidence persisted to D1 may
-survive page reloads. Ledger requests must provide the same UUID in
-`X-Lab-Session`, and the receipt must match it. Negotiated page receipts and
-connector JSONL reports follow the separate boundaries above.
+storage identifies the learner's local journey checkpoint; it does not
+authorize any account or hold product data. Page receipts do not survive reload
+unless explicitly exported. Connector JSONL reports follow the separate local
+boundary above.
 
 ## Delivery phases
 
 1. Architecture, contracts, and visual system.
-2. Functional range, real registration, five scenario handlers, and D1 evidence API.
+2. Functional range, real registration, five scenario handlers, and private
+   exportable receipts.
 3. Tests, migrations, safety documentation, CI, and verification.
 4. Frozen version 1 submission copy, screenshots, demo script, public source,
    and deployment. The current MVP remains a separate local technical

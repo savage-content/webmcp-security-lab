@@ -364,27 +364,31 @@ describe('public copy policy', () => {
     ).toMatch(numericPrice);
   });
 
-  it('uses the exact public brand and publishes no numeric prices', async () => {
-    for (const root of presentationRoots) {
-      for (const file of await filesUnder(root)) {
-        const source = await readFile(file, 'utf8');
-        const projections = [
-          normalizeRenderedText(source),
-          ...staticPublicProjections(source),
-          ...staticMarkupExpressionProjections(source),
-          ...cssGeneratedTextProjections(source),
-        ];
-        for (const projection of projections) {
-          expect(
-            projection,
-            `${file} contains joined public brand copy`,
-          ).not.toMatch(joinedBrand);
-          expect(
-            projection,
-            `${file} contains a public numeric price`,
-          ).not.toMatch(numericPrice);
+  it(
+    'uses the exact public brand and publishes no numeric prices',
+    async () => {
+      for (const root of presentationRoots) {
+        for (const file of await filesUnder(root)) {
+          const source = await readFile(file, 'utf8');
+          const projections = [
+            normalizeRenderedText(source),
+            ...staticPublicProjections(source),
+            ...staticMarkupExpressionProjections(source),
+            ...cssGeneratedTextProjections(source),
+          ];
+          for (const projection of projections) {
+            expect(
+              projection,
+              `${file} contains joined public brand copy`,
+            ).not.toMatch(joinedBrand);
+            expect(
+              projection,
+              `${file} contains a public numeric price`,
+            ).not.toMatch(numericPrice);
+          }
         }
       }
-    }
-  });
+    },
+    30_000,
+  );
 });

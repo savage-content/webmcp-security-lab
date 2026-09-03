@@ -14,13 +14,9 @@ import type { EvidenceReceipt } from '@/lib/lab/types';
 
 export function LedgerPanel({
   receipts,
-  loading,
-  unavailable,
   onExport,
 }: {
   receipts: EvidenceReceipt[];
-  loading: boolean;
-  unavailable: boolean;
   onExport: (receipt: EvidenceReceipt) => void;
 }) {
   return (
@@ -49,31 +45,19 @@ export function LedgerPanel({
           <div className="border-b border-border p-5">
             <div className="flex items-center gap-2">
               <Database className="size-4 text-emerald-700" />
-              <h3 className="font-semibold">Private evidence receipts</h3>
+              <h3 className="font-semibold">Private session receipts</h3>
             </div>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              Runs are appended, never silently replaced. Receipts retain the
-              detail needed to compare approval, result, and observable effect.
+              Runs stay in this page session unless you explicitly export them.
+              Nothing here is uploaded to Left Out Security.
             </p>
           </div>
-          {loading ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              Reading the evidence ledger…
-            </div>
-          ) : unavailable ? (
-            <div className="p-8 text-center">
-              <p className="text-sm font-semibold">Ledger is unavailable</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                New runs still show a local receipt, but they are not claimed as
-                durable.
-              </p>
-            </div>
-          ) : receipts.length === 0 ? (
+          {receipts.length === 0 ? (
             <div className="flex flex-col items-center p-10 text-center">
               <Database className="size-7 text-muted-foreground" />
-              <p className="mt-3 text-sm font-semibold">No stored runs yet</p>
+              <p className="mt-3 text-sm font-semibold">No session runs yet</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Complete a fixture to append the first evidence receipt.
+                Complete a fixture to create the first private receipt.
               </p>
             </div>
           ) : (

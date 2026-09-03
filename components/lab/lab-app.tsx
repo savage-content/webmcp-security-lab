@@ -49,6 +49,7 @@ import { createLessonCapabilityEvidence } from '@/lib/lab/lesson-capabilities';
 import { assessScenarioRisk } from '@/lib/lab/risk';
 import { planStateRevisionCommit } from '@/lib/lab/state-revision';
 import {
+  normalizeInvocationArguments,
   parseCapabilityEvidenceReceipt,
   parseEvidenceReceipt,
 } from '@/lib/lab/schemas';
@@ -159,22 +160,6 @@ function buildInitialStateMap(): StateMap {
   ) as StateMap;
 }
 
-function normalizeArguments(input: unknown): Record<string, JsonValue> {
-  if (typeof input === 'string') {
-    const parsed = JSON.parse(input) as unknown;
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error('WebMCP arguments must be a JSON object.');
-    }
-    return parsed as Record<string, JsonValue>;
-  }
-
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new Error('WebMCP arguments must be an object.');
-  }
-
-  return input as Record<string, JsonValue>;
-}
-
 function describeBrowser(userAgent: string) {
   const chrome = userAgent.match(/(?:Chrome|Chromium)\/(\d+)/);
   if (chrome) return `Chromium ${chrome[1]}`;
@@ -237,8 +222,6 @@ export function LabApp() {
   const [securePersistence, setSecurePersistence] =
     useState<PersistenceState>('idle');
   const [ledger, setLedger] = useState<EvidenceReceipt[]>([]);
-  const [ledgerLoading, setLedgerLoading] = useState(true);
-  const [ledgerUnavailable, setLedgerUnavailable] = useState(false);
   const [webMcp, setWebMcp] = useState<WebMcpStatus>(initialWebMcpStatus);
   const webMcpRef = useRef(webMcp);
   const [clientLabel, setClientLabel] = useState('This browser session');
@@ -252,7 +235,6 @@ export function LabApp() {
   const [secureRunning, setSecureRunning] = useState(false);
   const [executionMessage, setExecutionMessage] = useState('');
   const [exportArtifact, setExportArtifact] = useState<JsonArtifact>();
-  const [sessionId, setSessionId] = useState('');
   const sessionIdRef = useRef('');
 
   const scenario = useMemo(() => {
@@ -397,7 +379,6 @@ export function LabApp() {
       if (!active) return;
       setClientLabel(describeBrowser(userAgent));
       sessionIdRef.current = storedSessionId;
-      setSessionId(storedSessionId);
       setSiteToolsSupport(detectedSupport);
       if (storedJourney) {
         const requiresGuardReconnect = storedJourney.mode === 'local-guard';
@@ -493,35 +474,6 @@ export function LabApp() {
     setupConfirmed,
   ]);
 
-  useEffect(() => {
-    if (!sessionId) return;
-    let cancelled = false;
-
-    async function loadLedger() {
-      try {
-        const response = await fetch('/api/evidence?limit=12', {
-          cache: 'no-store',
-          headers: { 'X-Lab-Session': sessionId },
-        });
-        if (!response.ok) throw new Error('Ledger request failed.');
-        const body = (await response.json()) as { receipts: EvidenceReceipt[] };
-        if (!cancelled) {
-          setLedger(body.receipts);
-          setLedgerUnavailable(false);
-        }
-      } catch {
-        if (!cancelled) setLedgerUnavailable(true);
-      } finally {
-        if (!cancelled) setLedgerLoading(false);
-      }
-    }
-
-    void loadLedger();
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionId]);
-
   const recordNoviceReceipt = useCallback(
     (scenarioId: ScenarioId, receipt: EvidenceReceipt) => {
       setLastReceiptId(receipt.id);
@@ -559,7 +511,7 @@ export function LabApp() {
       channel: InvocationChannel,
       confirmation: ConfirmationEvidence,
     ) => {
-      const argumentsValue = normalizeArguments(input);
+      const argumentsValue = normalizeInvocationArguments(input);
       const now = new Date().toISOString();
       const currentState = stateMapRef.current[scenario.id];
       const currentWebMcp = webMcpRef.current;
@@ -623,38 +575,16 @@ export function LabApp() {
       );
 
       setReceiptMap((current) => ({ ...current, [scenario.id]: receipt }));
-      setPersistence('saving');
-
-      let persisted = false;
-      try {
-        const response = await fetch('/api/evidence', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Lab-Session': receipt.sessionId,
-          },
-          body: JSON.stringify(receipt),
-        });
-        if (!response.ok) throw new Error('Evidence append failed.');
-        const body = (await response.json()) as {
-          receipt: EvidenceReceipt;
-          persisted: boolean;
-        };
-        persisted = body.persisted;
-        setPersistence('saved');
-        setLedgerUnavailable(false);
-        setLedger((current) => [
-          body.receipt,
-          ...current.filter((item) => item.id !== body.receipt.id),
-        ]);
-      } catch {
-        setPersistence('error');
-      }
+      setPersistence('saved');
+      setLedger((current) =>
+        [
+          receipt,
+          ...current.filter((item) => item.id !== receipt.id),
+        ].slice(0, 12),
+      );
 
       setExecutionMessage(
-        persisted
-          ? `Run ${receipt.id.slice(0, 8)} appended to the evidence ledger.`
-          : `Run ${receipt.id.slice(0, 8)} completed, but durable storage was unavailable.`,
+        `Run ${receipt.id.slice(0, 8)} completed. Its receipt is private to this page session unless you export it.`,
       );
 
       window.setTimeout(() => {
@@ -669,7 +599,7 @@ export function LabApp() {
         result: outcome.rawResult,
         evidence: {
           receipt_id: receipt.id,
-          persisted,
+          persisted: false,
           verdict: outcome.verdict,
         },
       };
@@ -1010,7 +940,7 @@ export function LabApp() {
 
   async function runSecureRetest() {
     setSecureRunning(true);
-    setSecurePersistence('saving');
+    setSecurePersistence('idle');
     try {
       const now = new Date().toISOString();
       const secureArguments = structuredClone(scenario.secureDefaultArguments);
@@ -1063,36 +993,16 @@ export function LabApp() {
       }));
       recordNoviceReceipt(scenario.id, receipt);
 
-      let persisted = false;
-      try {
-        const response = await fetch('/api/evidence', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Lab-Session': receipt.sessionId,
-          },
-          body: JSON.stringify(receipt),
-        });
-        if (!response.ok) throw new Error('Evidence append failed.');
-        const body = (await response.json()) as {
-          receipt: EvidenceReceipt;
-          persisted: boolean;
-        };
-        persisted = body.persisted;
-        setSecurePersistence('saved');
-        setLedgerUnavailable(false);
-        setLedger((current) => [
-          body.receipt,
-          ...current.filter((item) => item.id !== body.receipt.id),
-        ]);
-      } catch {
-        setSecurePersistence('error');
-      }
+      setSecurePersistence('saved');
+      setLedger((current) =>
+        [
+          receipt,
+          ...current.filter((item) => item.id !== receipt.id),
+        ].slice(0, 12),
+      );
 
       setExecutionMessage(
-        persisted
-          ? `Secure retest ${receipt.id.slice(0, 8)} ${receipt.verdict} was appended to the ledger.`
-          : `Secure retest ${receipt.id.slice(0, 8)} finished ${receipt.verdict}; durable storage was unavailable.`,
+        `Secure retest ${receipt.id.slice(0, 8)} finished ${receipt.verdict}. Its receipt is private to this page session unless you export it.`,
       );
       window.setTimeout(() => {
         document
@@ -1984,8 +1894,6 @@ export function LabApp() {
 
       <LedgerPanel
         receipts={ledger}
-        loading={ledgerLoading}
-        unavailable={ledgerUnavailable}
         onExport={(receipt) =>
           setExportArtifact(createEvidenceReceiptArtifact(receipt))
         }
@@ -2009,7 +1917,7 @@ export function LabApp() {
               'Generated training identities only',
               'No credentials or real accounts',
               'No email, purchase, or external mutation',
-              'Session-scoped fixtures; append-only receipts',
+              'Session-scoped fixtures; private exportable receipts',
             ].map((item) => (
               <div
                 key={item}

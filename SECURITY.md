@@ -19,19 +19,19 @@ All fixture identifiers use visibly synthetic values such as `TRAINING-1042` and
 
 ## Evidence handling
 
-Ordinary frozen-version-1 evidence accepted by the public API is append-only.
-The API accepts only schema-valid, size-limited receipts whose session
-identifier matches the request header. Ledger reads are scoped to that same
-device-local lab session. No update or delete endpoint is provided.
+Public-page receipts stay in memory and are `local-export-only`. The public app
+has no receipt-upload endpoint and does not treat a self-reported browser
+receipt as authenticated evidence. The learner must explicitly export a receipt
+to retain it after reload.
 
-Negotiated page receipts are `local-export-only` and are rejected by the
-ordinary evidence route while they retain capability markers. The local
-connector has a separate JSONL receipt chain and may acknowledge an invocation
-result only after validating and appending it. A page-side `PASS` does not prove
-that return transport or connector commitment succeeded. Both observed
-2026-09-01 return attempts failed before connector commitment; the latest
-isolated a Chrome 152 in-flight registration-retirement incompatibility. Its
-deferred-retirement candidate requires a fresh approved retest.
+Earlier deployments may have written synthetic receipts to a D1 table. Retiring
+the route prevents new application writes; it does not itself purge provider
+storage. Any retention or deletion action requires a separate, exact operator
+decision.
+
+The local connector has a separate JSONL receipt chain and may acknowledge an
+invocation result only after validating and appending it. A page-side `PASS`
+does not prove that return transport or connector commitment succeeded.
 
 The unpacked extension and connector are local development components, not
 production controls or public services. The Android directory is an isolated

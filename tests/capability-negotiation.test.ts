@@ -20,7 +20,6 @@ import {
 import { createEvidenceReceipt } from '../lib/lab/evidence';
 import { scenarioById } from '../lib/lab/scenarios';
 import {
-  assertDurableEvidenceReceipt,
   evidenceReceiptSchema,
   parseCapabilityEvidenceReceipt,
 } from '../lib/lab/schemas';
@@ -286,9 +285,6 @@ describe('Scenario 1 capability negotiation', () => {
       receipt,
     );
     expect(evidenceReceiptSchema.parse(receipt)).toEqual(receipt);
-    expect(() => assertDurableEvidenceReceipt(receipt)).toThrow(
-      'local-export-only',
-    );
 
     const stripped = structuredClone(receipt) as unknown as Record<
       string,
@@ -296,16 +292,6 @@ describe('Scenario 1 capability negotiation', () => {
     >;
     delete stripped.capability;
     expect(evidenceReceiptSchema.safeParse(stripped).success).toBe(false);
-    expect(() =>
-      assertDurableEvidenceReceipt(stripped as unknown as typeof receipt),
-    ).toThrow('local-export-only');
-
-    const fullyRelabeled = structuredClone(receipt);
-    delete fullyRelabeled.capability;
-    fullyRelabeled.invocation.channel = 'lab-harness';
-    fullyRelabeled.invocation.confirmation.source = 'lab-dialog';
-    expect(evidenceReceiptSchema.safeParse(fullyRelabeled).success).toBe(true);
-    expect(() => assertDurableEvidenceReceipt(fullyRelabeled)).not.toThrow();
 
     const tamperedContract = structuredClone(capability);
     tamperedContract.contract.compiled.declaration.annotations.readOnlyHint = false;

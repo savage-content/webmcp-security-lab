@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Left Out Security WebMCP Security Lab',
     description:
-      'Trust the effect, not the label. Explore five controlled WebMCP security fixtures with durable evidence.',
+      'Trust the effect, not the label. Explore five controlled WebMCP security fixtures with private, exportable evidence.',
     type: 'website',
     url: '/',
     images: [

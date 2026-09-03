@@ -1,7 +1,7 @@
 # Devpost form handoff
 
-**Status:** ready to paste after the entrant signs in and joins the challenge.
-Do not submit until the video URL, final public-source SHA, working public URL,
+**Status:** ready to paste after the entrant completes challenge registration.
+Do not submit until the video URL, final public-source SHA, verified public URL,
 and personal attestations at the end of this file are complete. The official
 submission requirements do not create a separate exact-candidate native-
 invocation attestation; do not mislabel historical invocation evidence, and
@@ -15,9 +15,8 @@ describe.
 - **Live application:** <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>
 - **Public source:** <https://github.com/savage-content/webmcp-security-lab>
 - **Public YouTube demo:** **BLOCKING — add the final sub-three-minute URL**
-- **Reconciled source checkpoint:** `d0c1676` in both public GitHub and Sites source
-- **Final public source SHA:** record immediately after the reviewed final merge
-- **Current live release:** Sites version 12 strongly content-matches `d0c1676`; the hosting API exposes no cryptographic live-version binding
+- **Final public source SHA:** add after the tested cleanup candidate is public
+- **Current live release:** verify after deploying that exact candidate
 
 ## Paste-ready project story
 
@@ -73,7 +72,8 @@ The application uses React 19, TypeScript, Vinext, Zod, Cloudflare D1, and
 top-level imperative `document.modelContext.registerTool()` registration. Pure
 fixtures model the five risks. Generated capabilities bind the exact origin,
 source fingerprint, handler version, target, allowed and prohibited effects,
-expiry, and use count. Verification records append-only receipts. A deterministic
+expiry, and use count. Verification creates a private, exportable page-session
+receipt. A deterministic
 Manifest V3 Local Guard preview and a disabled, privacy-minimized reporting
 pipeline are documented as separate unfinished product tracks; neither is
 required for the contest's native Site Tools path or represented as production

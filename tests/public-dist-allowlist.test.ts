@@ -140,6 +140,17 @@ describe('public dist allowlist', () => {
     );
   });
 
+  it('rejects a generated build that restores the retired receipt upload surface', async () => {
+    const paths = await fixture();
+    await write(
+      resolve(paths.distRoot, 'server/index.js'),
+      'const retiredRoute = "/api/evidence";\n',
+    );
+    await expect(verifyPublicDist(paths)).rejects.toThrow(
+      /retired public receipt API/u,
+    );
+  });
+
   it('requires internal build metadata to stay outside the public asset surface', async () => {
     const paths = await fixture();
     await write(

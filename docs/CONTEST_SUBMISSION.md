@@ -1,8 +1,8 @@
 # Contest submission copy
 
-> **CURRENT CANDIDATE — NOT YET SUBMITTED.** Sites version 12 from `d0c1676`
-> and its matching source are public. The final truth-and-brand candidate below
-> still requires reviewed merge and deployment. Submission remains blocked
+> **CURRENT CANDIDATE — NOT YET SUBMITTED.** The final cleanup candidate passed
+> its local release gate and still requires a public push, exact-build
+> deployment, and live verification. Submission remains blocked
 > until entrant attestations, the final public YouTube video, and authenticated
 > form rehearsal pass
 > [CONTEST_READINESS.md](CONTEST_READINESS.md).
@@ -93,8 +93,10 @@ pretending that a green badge or a reassuring annotation is enforcement.
   with browser feature detection and registration-lifecycle cleanup.
 - Pure TypeScript fixtures and capability contracts.
 - Exact, zero-input, one-use generated capabilities for the controlled path.
-- Zod validation, before/after comparison, and append-only evidence receipts.
-- Cloudflare D1 persistence for public lab receipts.
+- Zod validation, before/after comparison, and bounded private session
+  receipts with explicit export.
+- Private page-session receipts with explicit JSON export; the public app has
+  no receipt-upload endpoint.
 - A deterministic, allowlisted Manifest V3 Local Guard preview package and a
   release-attestation verifier that explicitly does not claim Chrome signing.
 - A disabled-by-default, privacy-minimized reporting core with a strict invited
@@ -117,8 +119,8 @@ pretending that a green badge or a reassuring annotation is enforcement.
 
 ## Verification
 
-On September 3, the final truth/brand candidate passed 542 automated tests
-with two intentional Windows-only skips across 75 files on Node.js 24. The exact
+On September 3, the cleanup candidate passed 547 automated tests across 76
+files on Node.js 24. The exact
 candidate's automated gate also passes
 typecheck, the Local Guard and reporting release-readiness
 assessments, the standalone reporting-Worker dry run, lint, production build,

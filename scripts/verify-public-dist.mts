@@ -109,6 +109,17 @@ const SECRET_PATTERNS = [
   },
 ] as const;
 
+const RETIRED_PUBLIC_SURFACE_PATTERNS = [
+  {
+    label: 'retired public receipt API',
+    pattern: /\/api\/evidence\b/u,
+  },
+  {
+    label: 'retired public receipt writer',
+    pattern: /appendEvidenceReceipt/u,
+  },
+] as const;
+
 type FileRecord = {
   absolutePath: string;
   relativePath: string;
@@ -481,6 +492,11 @@ export async function verifyPublicDist(
           fail(`${candidate.label} appears in ${file.relativePath}.`);
         }
       }
+      for (const candidate of RETIRED_PUBLIC_SURFACE_PATTERNS) {
+        if (candidate.pattern.test(contents)) {
+          fail(`${candidate.label} appears in ${file.relativePath}.`);
+        }
+      }
     }
   }
   if (totalBytes > MAX_TOTAL_BYTES) {
@@ -550,6 +566,7 @@ export async function verifyPublicDist(
       'source and source maps excluded',
       'repository-only material excluded',
       'known credential forms absent',
+      'retired receipt upload surface absent',
       'internal client manifests ignored',
       'reviewed hosting and migration inputs matched byte-for-byte',
       'server assets and bindings constrained',

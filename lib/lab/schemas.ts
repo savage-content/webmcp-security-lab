@@ -8,7 +8,7 @@ import {
 import { validateLessonCapabilityEvidenceIntegrity } from './lesson-capabilities';
 import { scenarios } from './scenarios';
 import { SELF_REPORTED_LIMITATION } from './constants';
-import type { EvidenceReceipt, ScenarioId } from './types';
+import type { EvidenceReceipt, JsonValue, ScenarioId } from './types';
 
 const jsonPrimitiveSchema = z.union([
   z.string(),
@@ -27,6 +27,68 @@ export const jsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
 
 const trainingAccount = z.string().regex(/^TRAINING-[0-9]{4}$/);
 const trainingParcel = z.string().regex(/^PKG-LAB-[0-9]{3}$/);
+
+export const MAX_INVOCATION_ARGUMENT_BYTES = 8 * 1024;
+const MAX_INVOCATION_ARGUMENT_DEPTH = 6;
+const MAX_INVOCATION_ARGUMENT_ITEMS = 64;
+
+export function normalizeInvocationArguments(
+  input: unknown,
+): Record<string, JsonValue> {
+  let serialized: string;
+  try {
+    serialized = typeof input === 'string' ? input : JSON.stringify(input);
+  } catch {
+    throw new Error('WebMCP arguments must be bounded JSON.');
+  }
+
+  if (
+    typeof serialized !== 'string' ||
+    new TextEncoder().encode(serialized).byteLength >
+      MAX_INVOCATION_ARGUMENT_BYTES
+  ) {
+    throw new Error('WebMCP arguments exceed the 8 KiB limit.');
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(serialized) as unknown;
+  } catch {
+    throw new Error('WebMCP arguments must be valid JSON.');
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('WebMCP arguments must be a JSON object.');
+  }
+
+  const stack: Array<{ value: unknown; depth: number }> = [
+    { value: parsed, depth: 0 },
+  ];
+  let itemCount = 0;
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current) break;
+    if (current.depth > MAX_INVOCATION_ARGUMENT_DEPTH) {
+      throw new Error('WebMCP arguments exceed the nesting limit.');
+    }
+    if (!current.value || typeof current.value !== 'object') continue;
+
+    const entries = Array.isArray(current.value)
+      ? current.value.map((value) => ['', value] as const)
+      : Object.entries(current.value);
+    itemCount += entries.length;
+    if (itemCount > MAX_INVOCATION_ARGUMENT_ITEMS) {
+      throw new Error('WebMCP arguments contain too many items.');
+    }
+    for (const [key, value] of entries) {
+      if (key.length > 64) {
+        throw new Error('WebMCP argument names must be at most 64 characters.');
+      }
+      stack.push({ value, depth: current.depth + 1 });
+    }
+  }
+
+  return parsed as Record<string, JsonValue>;
+}
 
 export const vulnerableArgumentSchemas = {
   'read-only-claim': z.object({ account_id: trainingAccount }).strict(),
@@ -60,7 +122,9 @@ export function validateArguments(
   const schema = secure
     ? secureArgumentSchemas[scenarioId]
     : vulnerableArgumentSchemas[scenarioId];
-  return schema.parse(argumentsValue) as Record<string, unknown>;
+  return schema.parse(
+    normalizeInvocationArguments(argumentsValue),
+  ) as Record<string, unknown>;
 }
 
 const scenarioIdSchema = z.enum([
@@ -811,19 +875,6 @@ export async function parseCapabilityEvidenceReceipt(
     }
   }
 
-  return receipt;
-}
-
-export function assertDurableEvidenceReceipt(receipt: EvidenceReceipt) {
-  if (
-    receipt.capability ||
-    receipt.invocation.channel === 'negotiated-capability' ||
-    receipt.invocation.confirmation.source === 'capability-contract'
-  ) {
-    throw new Error(
-      'Negotiated-capability receipts are local-export-only and cannot be persisted as ordinary evidence.',
-    );
-  }
   return receipt;
 }
 

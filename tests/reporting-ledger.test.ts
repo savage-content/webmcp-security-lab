@@ -288,10 +288,12 @@ describe('reporting moderation ledger', () => {
   });
 
   it('rehydrates frozen d0c ledgers byte-for-byte and appends a current transition', async () => {
-    const bytes = await readFile(
-      new URL('./fixtures/legacy/reporting-v1.json', import.meta.url),
-      'utf8',
-    );
+    const bytes = (
+      await readFile(
+        new URL('./fixtures/legacy/reporting-v1.json', import.meta.url),
+        'utf8',
+      )
+    ).replace(/\r\n/g, '\n');
     expect(createHash('sha256').update(bytes).digest('hex')).toBe(
       '7ad772b797b6a9bd937e87a78413559d413fdbf7a3247b67e6d224257c74203e',
     );

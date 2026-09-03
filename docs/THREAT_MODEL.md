@@ -22,9 +22,9 @@ them. See [SITE_TOOLS_CONFORMANCE.md](SITE_TOOLS_CONFORMANCE.md).
 ## Scope
 
 This model covers the public web application, including the deployed
-version 12 setup gate, first-visit walkthrough, page-scoped Site Tool
-registrations, synthetic scenario state, evidence API, D1 ledger, and Local
-Guard disclosure pages. It also
+setup gate, first-visit walkthrough, page-scoped Site Tool registrations,
+synthetic scenario state, private page-session receipts, and Local Guard
+disclosure pages. It also
 covers the local capability connector, unpacked extension, deterministic
 preview package, and moderation core. Public reporting routes fail closed; the
 Local Guard extension, connector, reporting operations, and Android directory
@@ -34,7 +34,7 @@ are not part of the public runtime.
 
 - integrity of the scenario declarations and handlers;
 - fidelity of before/after evidence;
-- append-only receipt history;
+- integrity of private, exportable page-session receipts;
 - integrity of extension-to-connector receipt transport;
 - connector pairing, bridge, and access tokens;
 - binding of a paired extension to one selected top-level document;
@@ -63,9 +63,7 @@ There are intentionally no credentials, real identities, production accounts, or
 | Prompt injection in result                                    | Agent treats returned text as authority                                                     | Controlled fixed payload, raw-result display, `untrustedContentHint` comparison, no automatic follow-on action                                                                                                                                                                                                                                  |
 | Misleading confirmation                                       | Human approves a different effect                                                           | Confirmation copy stored verbatim beside actual state transition                                                                                                                                                                                                                                                                                |
 | Client-support overclaim                                      | Judges mistake registration for discovery                                                   | Separate registration, policy, and discovery states; unavailable is reported honestly                                                                                                                                                                                                                                                           |
-| Receipt overwrite                                             | Evidence is rewritten after a run                                                           | Primary-key insert only; no update/delete endpoint                                                                                                                                                                                                                                                                                              |
-| Cross-session ledger leakage                                  | One visitor sees another visitor’s inputs                                                   | D1 queries partitioned by random lab-session UUID                                                                                                                                                                                                                                                                                               |
-| Oversized receipt spam                                        | Storage or parsing pressure                                                                 | 128 KiB request limit plus Zod validation and bounded fixture strings                                                                                                                                                                                                                                                                           |
+| Public receipt-upload abuse                                   | Forged evidence, retained private content, or resource exhaustion                           | The public application has no receipt-upload endpoint; page receipts remain in memory unless the learner explicitly exports them                                                                                                                                                                                                                |
 | Real-world side effect                                        | Educational fixture causes harm                                                             | No credentials or external integrations; handlers mutate generated in-memory state only                                                                                                                                                                                                                                                         |
 | Ordinary automation mislabeled WebMCP                         | False contest claim                                                                         | Fallback explicitly says “lab harness”; only `document.modelContext` status is called WebMCP                                                                                                                                                                                                                                                    |
 | Page success mislabeled connector success                     | A consumed grant appears durably reported when its receipt was lost                         | Connector success requires validated append before acknowledgement; page and connector statuses are documented separately                                                                                                                                                                                                                       |
@@ -90,7 +88,9 @@ The fixture mismatches are intentional application-design failures. The lab does
 
 ## Residual risks
 
-- A hostile public visitor can create many small, valid receipts; production rate limiting is a hosting-level follow-up.
+- Public page receipts are not durable and disappear on reload unless the
+  learner explicitly exports them. Server-side evidence intake would require a
+  separate authenticated, bounded, privacy-reviewed design.
 - Browser support is experimental and may change after this report.
 - Browser-managed actor-stack interaction is not relied on. Chromium issue
   [535256664](https://issues.chromium.org/issues/535256664/resources) remains
@@ -109,7 +109,7 @@ The fixture mismatches are intentional application-design failures. The lab does
   unserializable results has changed. Connector evidence depends on strict JSON
   parsing and validation, not on browser type preservation.
 - A browser-managed confirmation is not always observable to page JavaScript. The receipt records the unknown state rather than inferring approval.
-- Device-local session ids are isolation labels, not authentication. The ledger stores synthetic educational data only.
+- Device-local session ids are local checkpoint labels, not authentication.
 - The connector's local JSONL chain detects retained-file edits, reordering,
   duplication, and gaps, but it is not signed, externally anchored,
   deletion-resistant, or crash-atomic.

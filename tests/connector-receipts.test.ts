@@ -105,7 +105,9 @@ describe('connector receipt reporting store', () => {
     'preserves a frozen pre-brand-correction $label ledger and appends current records',
     async ({ file, fileSha256, entryHash, label }) => {
       const { store, ledgerPath } = await storeFixture();
-      const fixture = await readFile(new URL(file, import.meta.url), 'utf8');
+      const fixture = (
+        await readFile(new URL(file, import.meta.url), 'utf8')
+      ).replace(/\r\n/g, '\n');
       expect(createHash('sha256').update(fixture).digest('hex')).toBe(
         fileSha256,
       );

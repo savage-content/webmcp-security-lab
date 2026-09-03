@@ -216,39 +216,18 @@ those legal analyses before any patentability, non-infringement, or FTO statemen
 
 | Time (UTC unless otherwise stated)                | Recoverable evidence                                                                                               | What it establishes                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-08-30 20:44 UTC                              | Codex task `01a04aa2-9baa-74e3-9e76-7c612562d680`, “Inspect capability exchange site”                              | A prior internal note used the sequence “intent → bounded authority → execution → external observation → receipt → independent verification.” This is related background, not proof of the current design or public priority.                                                                                                                                                                                                                 |
-| 2026-08-31 05:52:31 UTC (turn start)              | ChatGPT conversation `6a951674-72d4-83e9-a810-b000a59b0218`, assistant item `5025cbf4-5a38-579d-b9be-8081db732e97` | Earliest occurrence found in the audited histories of the three-surface taxonomy and “Effective Surface is the security truth.” The response describes the model as already decided, so its true origin is not recoverable.                                                                                                                                                                                                                   |
-| 2026-08-31 10:51:46 UTC (turn start)              | Same conversation, assistant item `7528a08a-0bf6-5f0a-934c-88e450ea30a1`                                           | The assistant returned the exact fenced build brief later supplied to Codex; this records compilation of the brief, not authorship of its underlying ideas. After newline normalization it matches the 5,847-character attachment exactly. Windows filesystem metadata reports creation at 11:10:13 UTC, and the Codex turn containing it began at 11:10:41 UTC. SHA-256: `034BFD0BD7B905A42C23459B5FBB18F8FA94743C641A62D5AA8BE8CD3EDC822A`. |
 | 2026-08-31 11:58:22 UTC                           | Earliest reachable commit across the audited refs (Sites root), `2c039165b543b7e7b6d527ea483e52c6cd774519`         | The README already contained all three surface names and “The Effective Surface is the security truth.”                                                                                                                                                                                                                                                                                                                                       |
 | 2026-08-31                                        | Commits `a6955`, `78d2f`, `d5c085`, `07653a`, `0e5e`, and local baseline `21cff`                                   | Iteration of the original five-scenario test range.                                                                                                                                                                                                                                                                                                                                                                                           |
 | 2026-09-01 04:30:25 UTC (2026-08-31 23:30:25 CDT) | Creation of `codex/capability-negotiator`; audit work continued afterward                                          | Earliest recoverable repository work on the Capability Negotiator vertical slice. Neither “Capability Delta” nor “WebMCP Capability Negotiator” appears in earlier repository history.                                                                                                                                                                                                                                                        |
 
-The three-surface model and five fixtures demonstrably predate this audit and the capability-negotiator branch. The earliest occurrence found in the audited histories of the exact phrase “Capability Delta” and working label “WebMCP Capability Negotiator” is ChatGPT assistant item `c8c94805-7bd8-4d89-b43c-864f5269ee88`, in a turn beginning at 2026-08-31 23:07:47 UTC; Scenario 2 in the earlier brief already embodied the broader idea of authority exceeding the visible task. The recoverable evidence does **not** show that these ideas predate the public projects below, several of which were published earlier. No public priority claim follows from this chronology.
+The three-surface model and five fixtures demonstrably predate this audit and
+the capability-negotiator branch. Scenario 2 in the earlier public repository
+history already embodied the broader idea of authority exceeding the visible
+task. The recoverable evidence does **not** show that these ideas predate the
+public projects below, several of which were published earlier. No public
+priority claim follows from this chronology.
 
 Repository history has a provenance discontinuity. The earliest Sites-root commit is `2c039165…`; a separate GitHub root begins at `78d2f33…`; merge `4adea05…` joined them with the `ours` strategy. An older checkout retains guided-remediation commit `d0c2427…`, which is absent from the current object database. This explains current blame/history differences but proves neither copying nor authorship.
-
-## Recoverable browsing and source history
-
-The following histories were inspected where records remained available:
-
-**Codex tasks**
-
-- `01a05783-9d21-7d11-8732-a075272d36db` — “Build WebMCP security test range”
-- `01a05809-99df-7313-bf50-db4432da78b0` — “Build WebMCP Safety Lab”
-- `01a05849-646b-7352-939a-282fb9e20777` — “Publish WebMCP Security Lab v1”
-- `01a04aa2-9baa-74e3-9e76-7c612562d680` — “Inspect capability exchange site”
-
-**ChatGPT conversations**
-
-- `6a951674-72d4-83e9-a810-b000a59b0218` — “OpenAI WebMCP Lab Summary”
-- `6a95b346-70d0-83ea-a0b6-ad094f03b614` — “Inspect WebMCP capabilities”
-- `6a95f975-4d98-83ea-babc-a6ff57e8b7d1` — “WebMCP Prototype Comparison”
-
-Recoverable Codex tool history directly records searches or opens for the official WebMCP proposal repository, its implementation-status material, Chrome WebMCP and ChromeStatus documentation, Permissions Policy and iframe behavior, Chrome’s imperative API, OpenAI contest information, OpenAI WebMCP guidance, `executeTool`, and ChatGPT Work documentation.
-
-Separate ChatGPT/user-message history records direct links to the WebMCP draft, a capability-exchange site, Chrome documentation, the OpenAI showcase, a Chrome Web Store inspector, a W3C introduction-layer call, `github.com/WebMCP-org`, and `webmcp.dev`. The accessible records contain the base Devpost challenge link, but do not establish a direct open of `/rules`. A later assistant response names Varden and other prior art; its underlying citation query events are unavailable.
-
-This record is incomplete. Some task messages and tool outputs are summarized or truncated, and raw pages and query events behind several ChatGPT citation placeholders were not available. A query or open proves an action, not that a source caused a particular design choice. Deleted chats, rewritten remote history, and human-versus-agent authorship cannot be reconstructed; all Git commits use the same unsigned identity.
 
 ## Primary prior art reviewed
 

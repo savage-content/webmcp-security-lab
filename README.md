@@ -14,48 +14,32 @@ extension is a third, computer-use surface and is not counted as Site Tools.
 See [OpenAI's Site Tools documentation](https://learn.chatgpt.com/docs/webmcp)
 and the local [conformance family](docs/SITE_TOOLS_CONFORMANCE.md).
 
-**Live public learning lab (last explicitly deployed Sites version):**
+**Live public learning lab:**
 <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>
 
 **Source:** <https://github.com/savage-content/webmcp-security-lab>
 
 **License:** [MIT](LICENSE)
 
-> **Working status (September 3, 2026): Sites version 12 was saved from commit
-> `d0c1676`, and that exact commit is public on GitHub. The live site's three
-> version-12-only Local Guard disclosure routes and normalized application bundle
-> strongly match that candidate. The Sites API does not expose the live version
-> identifier, so this is strong content identity rather than cryptographic
-> deployment binding.** Historical version 11 acceptance established the setup
-> gate, six-step first-visit walkthrough, five-lesson beginner page, and
-> reduced-motion support. A
-> fresh Chrome 152 run completed all five lessons
-> through the unpacked extension and loopback connector with one zero-input
-> call per lesson and no retries. All five receipts returned `PASS`, the HUD
-> closed each permit, and the local report path retained five verified
-> hash-chained entries. That is not first-time-human, direct built-in-client,
-> cross-client, or universal-compatibility evidence. The extension remains
-> unpacked and unsigned, public report intake and feeds remain disabled, and
-> Android remains conformance-only. The independent prior-art decision remains NO-GO for
-> novelty, patentability, clean-room, and freedom-to-operate claims. See
-> [TARGET_CLIENT_VALIDATION.md](docs/TARGET_CLIENT_VALIDATION.md),
-> [PRIOR_ART.md](PRIOR_ART.md), and [docs/GO_NO_GO.md](docs/GO_NO_GO.md).
+**Contest status (September 3, 2026):** the WebMCP learning app and its source
+are public. The Devpost entry still needs the entrant's final attestations and
+a public demo video under three minutes. Release identity and remaining gates
+are tracked in [CONTEST_READINESS.md](docs/CONTEST_READINESS.md).
 
-The earlier Scenario 1-only baseline used post-`f7290d9` page and extension
-content with a connector still running from `f7290d9`. The newer five-lesson
-run used the then-current page, extension, and restarted connector in a fresh
-Chrome 152 profile. Neither run proves a future commit, signed package, direct
-Site Tools support, or another client.
+Current source-candidate boundaries:
 
-| Current component                                    | Status                                                                                                                                                              |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public learning range                                | Live content strongly matches commit `d0c1676`, Sites version 12; the core setup gate, walkthrough, and five lessons are byte-identical to the historically tested version 11 source                    |
-| Five guided page capabilities                        | `PASS` in one fresh Chrome 152 sequence; one exact call per lesson and no retries                                                                                   |
-| Connector receipt and report path                    | `PASS` for five validated receipts, the hash chain, local redacted draft, zero feed-eligible synthetic records, and a source-tested default-off public-report relay |
-| Browser extension                                    | Manifest V3 development preview; deterministic package, integrity manifest, and detached release-attestation gate now available; still unsigned by Chrome           |
-| Android                                              | JVM/API conformance prototype; not device-invokable                                                                                                                 |
-| Deployment split                                     | Public learning site only; Local Guard, connector, moderation core, and reporting workbench are not hosted                                                          |
-| Novelty, patentability, or freedom-to-operate claims | NO-GO under the technical prior-art review; no legal infringement conclusion                                                                                        |
+| Product surface | Current boundary |
+| --- | --- |
+| Beginner learning lab | Public, synthetic, and runnable with a first-visit walkthrough and five lessons |
+| Site Tools | Registered by the page when `document.modelContext` is available; discovery and invocation are reported separately |
+| Local Guard | Unpacked Manifest V3 development preview for local testing; not a signed store release |
+| Reporting | Private practice drafts only on the public site; network intake and feeds are disabled |
+| Android | Isolated conformance prototype; no device-support claim |
+
+Receipts created by this source candidate remain private to that page session
+unless the learner explicitly exports them. This candidate does not accept
+receipt uploads. Treat those as live-site facts only after the exact build is
+deployed and verified.
 
 ## Why this lab exists
 
@@ -85,7 +69,7 @@ surfaces, not just a vulnerable-site demo:
    list. Nothing is reported automatically or sent off-device, and no record
    can enter a future tooling feed before human review.
 
-The current branch implements a five-lesson beginner course, a direct built-in
+The repository implements a five-lesson beginner course, a direct built-in
 Site Tools handoff, the Local Guard one-use capability/HUD/connector path, and a
 session-scoped `/conformance` family that captures model, workspace, app build,
 document, registration, discovery, and invocation separately. A fresh Chrome
@@ -146,18 +130,18 @@ establish native Site Tools support in any other client.
 - Registration is always attempted when the API exists. A policy probe is displayed as an observation, but only a successful registration or `NotAllowedError` decides the registration outcome.
 - A supported same-origin client can discover it with `document.modelContext.getTools()` and invoke it with `document.modelContext.executeTool()`.
 - Every path—external WebMCP invocation, in-page WebMCP self-test request, and explicit fallback harness—uses the same scenario handler. Because the shared registered callback cannot distinguish a concurrent external call from the in-page request, WebMCP receipts conservatively record browser confirmation as unobservable.
-- Every baseline fixture run produces a schema-validated evidence receipt and
-  attempts an append-only write to Cloudflare D1. Negotiated-capability
-  receipts are deliberately `local-export-only`; a connector receipt reaches
-  its separate local JSONL ledger only after successful transport, validation,
-  append, and acknowledgement.
+- Every fixture run produces a schema-validated receipt in the page session.
+  The learner may explicitly export it. The public app does not upload or
+  durably retain receipts. A Local Guard connector receipt reaches its separate
+  local JSONL ledger only after successful transport, validation, append, and
+  acknowledgement.
 - The UI reports unsupported, blocked, undiscovered, and failed states without calling them WebMCP success.
 
 The fallback harness is intentionally labeled as a harness. It is useful for education in unsupported browsers, but it is not represented as agent discovery or ordinary browser automation disguised as WebMCP.
 
 ## Scenario 1 capability-negotiation slice
 
-The local working branch adds one bounded demonstration:
+The primary lesson provides one bounded demonstration:
 
 ```text
 lock intent → inspect → propose → approve → withdraw broad source
@@ -228,19 +212,18 @@ Detailed contracts are in [docs/SCENARIOS.md](docs/SCENARIOS.md).
 ## Architecture
 
 The baseline app is a Vinext/React site that emits Cloudflare Worker-compatible
-ESM. Scenario state remains isolated in the browser; ordinary baseline evidence
-receipts may be persisted to D1 behind a small storage boundary.
+ESM. Scenario state and public-page receipts remain isolated in the browser.
 
 ```text
 Human UI ───────┐
                 ├──> one scenario handler ──> before/after + raw result
 WebMCP execute ─┘                              │
-                                              └──> validated receipt ──> D1 append
+                                              └──> private exportable receipt
 ```
 
 Only the selected fixture is registered. An `AbortController` unregisters it
-when the user changes scenarios or leaves the page. The baseline D1 ledger is
-partitioned by a random device-local lab-session identifier.
+when the user changes scenarios or leaves the page. A random device-local
+lab-session identifier separates the learner's local checkpoints.
 
 The local MVP adds a separate unpacked browser extension, loopback connector,
 one-command desktop-alpha launcher, and append-only JSONL receipt report. A negotiated page receipt is not a
@@ -366,10 +349,10 @@ The automated suite covers:
   credential forms, unreviewed deployment inputs, and extra Worker authority.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The final truth/brand candidate passes
-542 passing tests plus two Windows-only skips across 75 files, typecheck, the Local Guard and reporting
-release-readiness assessments, a disabled standalone reporting-Worker dry run,
-lint, and a production build plus its public-artifact boundary check on Node.js 24.
+separate Android conformance script. The release gate runs the automated suite,
+typecheck, the Local Guard and reporting readiness assessments, a disabled
+standalone reporting-Worker dry run, lint, and a production build plus its
+public-artifact boundary check on Node.js 24.
 Source-ready native transport, a
 separately packaged no-host-permission extension candidate, authenticated
 replay-resistant named-pipe IPC with a native-only connector mode,
@@ -377,7 +360,7 @@ lifecycle, platform-matrix, incident-response, default-off external-report
 relay, isolated reporting routes, and loopback-only human reviewer checkpoints
 are included in those tests but are not installed, signed, rehearsed, or wired
 into the shipping preview.
-Live connector evidence is recorded separately: the
+Historical connector evidence is recorded separately: the
 September 1 target-client run satisfied the bounded end-to-end checks in
 [docs/GO_NO_GO.md](docs/GO_NO_GO.md).
 
@@ -393,9 +376,9 @@ registration ownership, and alternate extension worlds. See
 
 The current verification matrix—including unsupported and unverified items—is in [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
-## Evidence ledger
+## Private evidence receipts
 
-Each append-only receipt contains:
+Each page-session receipt contains:
 
 - scenario id and version;
 - ISO timestamp and origin;
@@ -406,27 +389,26 @@ Each append-only receipt contains:
 - raw result, before/after state, and side effects;
 - verdict, plain-language debrief, and remediation.
 
-Receipts can be downloaded as JSON. There are no update or delete endpoints. Request bodies are schema-validated, size-limited, and scoped to the visitor’s lab session.
+Receipts can be downloaded as JSON. The public app exposes no receipt-upload
+endpoint and sends no receipt data to Left Out Security.
 
 ## Deployment
 
-The public URL strongly matches the build saved from commit `d0c1676` as Sites
-version 12. Unique routes and a normalized application-bundle comparison support
-that conclusion; the hosting API does not expose a cryptographic live-version
-binding. The public build contains the beginner page, synthetic Site Tools
+The public build contains the beginner page, synthetic Site Tools
 fixtures, and Local Guard overview, privacy, and support disclosures. It does
 not host or distribute the Local Guard extension, loopback connector, private
 reporting workbench or operations, moderation service, security-tooling feed,
 or Android client. Public reporting endpoints remain fail-closed with 404s.
 
-The repository includes `.openai/hosting.json` with a logical `DB` binding and
-generated Drizzle migrations for a possible future web deployment.
+The repository includes `.openai/hosting.json` and generated Drizzle migrations
+for the disabled reporting-service development track. The public learning path
+does not require or write to that database.
 
 1. Run `npm ci` and `npm run verify` on the exact release candidate.
 2. Save a new Sites version from the reviewed commit.
 3. Deploy that saved version only after explicit public-publish authorization.
-4. Verify `/`, `/api/evidence`, one persisted baseline receipt, and the
-   selected WebMCP tool in the exact deployed target client.
+4. Verify `/`, one private exportable receipt, and the selected WebMCP tool in
+   the exact deployed target client.
 
 The web range requires no application secrets, but any hosted connector would
 require a new authentication, authorization, storage, monitoring, privacy, and
@@ -446,7 +428,7 @@ Read [SECURITY.md](SECURITY.md) before extending a fixture.
 - [Current three-minute video script](docs/DEMO_SCRIPT.md)
 - [Contest-period work log](docs/CONTEST_PERIOD_WORK.md)
 - [Verification report](docs/VERIFICATION.md)
-- [Current go/no-go decision](docs/GO_NO_GO.md)
+- [Historical Local Guard decision record](docs/GO_NO_GO.md)
 
 ## License
 

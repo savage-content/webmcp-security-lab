@@ -5,7 +5,6 @@ import {
   ArrowRight,
   CheckCircle2,
   Code2,
-  Database,
   Download,
   FileDown,
   FileJson,
@@ -22,7 +21,7 @@ import type {
   ScenarioDefinition,
 } from '@/lib/lab/types';
 
-export type PersistenceState = 'idle' | 'saving' | 'saved' | 'error';
+export type PersistenceState = 'idle' | 'saved';
 
 export function EvidencePanel({
   scenario,
@@ -275,7 +274,7 @@ export function SecureComparison({
                   Secure retest {receipt.verdict}
                 </p>
                 <span className="font-mono text-[9px] uppercase">
-                  {persistence === 'saved' ? 'ledger saved' : persistence}
+                  {persistence === 'saved' ? 'session receipt' : persistence}
                 </span>
               </div>
               <p className="mt-2 text-[11px] leading-5 opacity-75">
@@ -419,22 +418,12 @@ function PersistenceBadge({
   }
 
   const label =
-    state === 'saving'
-      ? 'Appending…'
-      : state === 'saved'
-        ? 'Stored in ledger'
-        : state === 'error'
-          ? 'Storage failed'
-          : 'Receipt created';
+    state === 'saved' ? 'Private session receipt' : 'Receipt created';
 
   return (
-    <span
-      className={`flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] ${state === 'error' ? 'text-amber-300' : 'text-background/75'}`}
-    >
+    <span className="flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-background/75">
       {state === 'saved' ? (
-        <Database className="size-3.5" />
-      ) : state === 'error' ? (
-        <AlertTriangle className="size-3.5" />
+        <ShieldCheck className="size-3.5" />
       ) : (
         <CheckCircle2 className="size-3.5" />
       )}
