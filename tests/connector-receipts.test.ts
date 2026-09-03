@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION } from '../lib/legacy-contracts';
 import type { PairedPageSummary } from '../products/connector/bridge-coordinator';
 import { createIssueCandidateFromVerifiedReceipt } from '../products/connector/issue-candidate';
+import { validateConnectorCapabilityReceipt } from '../products/connector/lesson-capability-policy';
 import {
   ReceiptStore,
   REPORT_LIMITATION,
@@ -52,7 +53,25 @@ async function storeFixture() {
 describe('connector receipt reporting store', () => {
   it('validates and appends a local capability receipt into a verified chain', async () => {
     const { store } = await storeFixture();
-    const entry = await store.append(await validCapabilityReceipt(), page);
+    const receipt = await validCapabilityReceipt();
+    await expect(validateConnectorCapabilityReceipt(receipt)).resolves.toEqual(
+      receipt,
+    );
+    const legacyReceipt = {
+      ...receipt,
+      limitation: LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION,
+    };
+    await expect(
+      validateConnectorCapabilityReceipt(legacyReceipt),
+    ).resolves.toEqual(legacyReceipt);
+    await expect(
+      validateConnectorCapabilityReceipt({
+        ...receipt,
+        limitation: 'unrecognized assurance text',
+      }),
+    ).rejects.toThrow('limitation is missing or changed');
+
+    const entry = await store.append(receipt, page);
     expect(entry).toMatchObject({
       schemaVersion: 'leftout.connector-receipt/1',
       receiptId: '6f8f5771-9cde-4f2d-b9f1-66d29ef5a930',

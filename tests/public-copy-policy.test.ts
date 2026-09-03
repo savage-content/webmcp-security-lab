@@ -106,6 +106,14 @@ function staticPublicProjections(source: string): string[] {
       const value = staticExpressionText(node);
       if (value !== undefined) projections.push(value);
     }
+    if (ts.isJsxAttribute(node) && node.initializer) {
+      const value = ts.isStringLiteral(node.initializer)
+        ? node.initializer.text
+        : ts.isJsxExpression(node.initializer) && node.initializer.expression
+          ? staticExpressionText(node.initializer.expression)
+          : undefined;
+      if (value !== undefined) projections.push(value);
+    }
     ts.forEachChild(node, visit);
   }
   visit(syntax);
@@ -197,11 +205,12 @@ function stripMarkup(source: string): string {
 }
 
 function renderedTextProjection(source: string): string {
-  const wrapped = `const __copy = <>${source}</>;`;
+  const withoutComments = source.replace(/<!--[\s\S]*?-->/gu, '');
+  const wrapped = `const __copy = <>${withoutComments}</>;`;
   const jsx = staticPublicProjections(wrapped).at(0);
   if (jsx !== undefined) return jsx;
   return normalizeRenderedText(
-    stripMarkup(source.replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, '')),
+    stripMarkup(withoutComments.replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, '')),
   );
 }
 
@@ -272,6 +281,11 @@ describe('public copy policy', () => {
       ),
     ).toMatch(joinedBrand);
     expect(
+      renderedTextProjection(
+        '<span>Left</span><!-- formatting --><span>Out</span>',
+      ),
+    ).toMatch(joinedBrand);
+    expect(
       renderedTextProjection('<span title="1 > 0">Left</span><span>Out</span>'),
     ).toMatch(joinedBrand);
     expect(renderedTextProjection('<span>Left&#x4f;ut</span>')).toMatch(
@@ -336,6 +350,16 @@ describe('public copy policy', () => {
     expect(
       staticMarkupExpressionProjections(
         "const html = `<button aria-label=\"${'$'}${'5,000'}\"></button>`;",
+      ).join(' '),
+    ).toMatch(numericPrice);
+    expect(
+      staticPublicProjections(
+        "const button = <button aria-label={`${'Left'}${'Out'}`} />;",
+      ).join(' '),
+    ).toMatch(joinedBrand);
+    expect(
+      staticPublicProjections(
+        "const button = <button aria-label={`${'$'}${'5,000'}`} />;",
       ).join(' '),
     ).toMatch(numericPrice);
   });

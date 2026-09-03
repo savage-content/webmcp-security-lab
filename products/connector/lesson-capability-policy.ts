@@ -1013,6 +1013,13 @@ export async function validateConnectorCapabilityReceipt(
   receiptValue: unknown,
 ): Promise<EvidenceReceipt> {
   const canonicalReceipt = await parseCapabilityEvidenceReceipt(receiptValue);
+  if (
+    canonicalReceipt.limitation !== SELF_REPORTED_LIMITATION &&
+    canonicalReceipt.limitation !==
+      LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION
+  ) {
+    throw new Error('Capability receipt limitation is missing or changed.');
+  }
   const receipt = asRecord(canonicalReceipt, 'Capability receipt');
   const capability = asRecord(receipt.capability, 'Capability evidence');
   if (capability.protocol === 'webmcp-capability-negotiation/2') {
