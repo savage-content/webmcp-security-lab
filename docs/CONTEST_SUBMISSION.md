@@ -7,6 +7,9 @@
 > This copy makes no novelty, patentability, universal-compatibility, or
 > production-security claim.
 
+The concise, field-ready copy and final human attestations are staged in
+[CONTEST_FORM_HANDOFF.md](CONTEST_FORM_HANDOFF.md).
+
 ## Project title
 
 Left Out Security WebMCP Security Lab
