@@ -4,10 +4,11 @@ The GitHub repository `savage-content/webmcp-security-lab` was confirmed public 
 
 ## Current provenance checkpoint
 
-The repository history currently begins at commit `2c03916`, authored on
-2026-08-31 at 06:58 CDT. Every project commit through the reconciled version 12
-checkpoint `d0c1676` has an author date between 2026-08-31 and 2026-09-03,
-inside the challenge's August 25–September 3 development period.
+The repository history contains two contest-period roots, `78d2f33` and
+`2c03916`, joined by merge `4adea05`. Both roots and every project commit
+through the reconciled version 12 checkpoint `d0c1676` have author dates
+between 2026-08-31 and 2026-09-03, inside the challenge's August 25–September 3
+development period.
 
 The authoritative remote reconciliation on 2026-09-03 found public
 `origin/main` at `d0c167651b463deb047b7490eec2779e3c7ab3f2`, matching Sites source
