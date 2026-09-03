@@ -11,6 +11,10 @@ const migrationUrls = [
   new URL('../drizzle/0005_fine_toad.sql', import.meta.url),
   new URL('../drizzle/0006_silly_talkback.sql', import.meta.url),
   new URL('../drizzle/0007_swift_hitman.sql', import.meta.url),
+  new URL(
+    '../drizzle/0008_secure_reporting_deletion_snapshot.sql',
+    import.meta.url,
+  ),
 ];
 
 async function applyReportingMigration(
@@ -67,6 +71,10 @@ describe('reporting database migration', () => {
       },
       {
         name: 'trg_leftout_report_deletion_authorizations_no_update',
+        type: 'trigger',
+      },
+      {
+        name: 'trg_leftout_report_deletion_tombstone_snapshot',
         type: 'trigger',
       },
       {
@@ -337,6 +345,62 @@ describe('reporting database migration', () => {
         .bind('custodian-substituted', reportId)
         .run(),
     ).rejects.toThrow('deletion_authorizations_immutable');
+
+    const tombstoneId = randomUUID();
+    const tombstoneStatement = () =>
+      database.prepare(
+        `INSERT INTO leftout_report_deletion_tombstones (
+          tombstone_id, schema_version, deleted_at, reason, policy_version,
+          public_id, publication_survives, moderation_event_count,
+          retention_event_count, last_moderation_event_sha256,
+          last_retention_event_sha256, custodian_id, request_id,
+          request_sha256, tombstone_sha256, tombstone_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+    const tombstoneBindings = (lastModerationEventSha256: string) => [
+      tombstoneId,
+      'leftout.reporting-deletion-tombstone/1',
+      '2026-09-02T19:01:00.000Z',
+      'data_subject_request',
+      'retention.private-v1',
+      null,
+      0,
+      1,
+      1,
+      lastModerationEventSha256,
+      retentionEventSha256,
+      'custodian-alpha',
+      authorizationRequestId,
+      '7'.repeat(64),
+      'd'.repeat(64),
+      '{}',
+    ];
+    await expect(
+      tombstoneStatement()
+        .bind(...tombstoneBindings('a'.repeat(64)))
+        .run(),
+    ).rejects.toThrow('deletion_tombstone_snapshot_mismatch');
+    await tombstoneStatement()
+      .bind(...tombstoneBindings(eventSha256))
+      .run();
+    await expect(
+      database
+        .prepare(
+          `UPDATE leftout_report_deletion_tombstones
+           SET custodian_id = ? WHERE tombstone_id = ?`,
+        )
+        .bind('custodian-substituted', tombstoneId)
+        .run(),
+    ).rejects.toThrow('deletion_tombstones_immutable');
+    await expect(
+      database
+        .prepare(
+          'DELETE FROM leftout_report_deletion_tombstones WHERE tombstone_id = ?',
+        )
+        .bind(tombstoneId)
+        .run(),
+    ).rejects.toThrow('deletion_tombstones_immutable');
+
     await database
       .prepare(
         'DELETE FROM leftout_report_deletion_authorizations WHERE report_id = ?',
@@ -372,54 +436,6 @@ describe('reporting database migration', () => {
         )
         .run(),
     ).rejects.toThrow('deletion_authorization_snapshot_mismatch');
-
-    const tombstoneId = randomUUID();
-    await database
-      .prepare(
-        `INSERT INTO leftout_report_deletion_tombstones (
-          tombstone_id, schema_version, deleted_at, reason, policy_version,
-          public_id, publication_survives, moderation_event_count,
-          retention_event_count, last_moderation_event_sha256,
-          last_retention_event_sha256, custodian_id, request_id,
-          request_sha256, tombstone_sha256, tombstone_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .bind(
-        tombstoneId,
-        'leftout.reporting-deletion-tombstone/1',
-        '2026-09-02T19:03:00.000Z',
-        'data_subject_request',
-        'retention.private-v1',
-        null,
-        0,
-        1,
-        1,
-        'a'.repeat(64),
-        'b'.repeat(64),
-        'custodian-alpha',
-        randomUUID(),
-        'c'.repeat(64),
-        'd'.repeat(64),
-        '{}',
-      )
-      .run();
-    await expect(
-      database
-        .prepare(
-          `UPDATE leftout_report_deletion_tombstones
-           SET custodian_id = ? WHERE tombstone_id = ?`,
-        )
-        .bind('custodian-substituted', tombstoneId)
-        .run(),
-    ).rejects.toThrow('deletion_tombstones_immutable');
-    await expect(
-      database
-        .prepare(
-          'DELETE FROM leftout_report_deletion_tombstones WHERE tombstone_id = ?',
-        )
-        .bind(tombstoneId)
-        .run(),
-    ).rejects.toThrow('deletion_tombstones_immutable');
 
     await database
       .prepare(

@@ -57,6 +57,13 @@
       "when": 1788395720759,
       "tag": "0007_swift_hitman",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1788415589283,
+      "tag": "0008_secure_reporting_deletion_snapshot",
+      "breakpoints": true
     }
   ]
 }

@@ -131,6 +131,7 @@ const evidencePaths = [
   'drizzle/0005_fine_toad.sql',
   'drizzle/0006_silly_talkback.sql',
   'drizzle/0007_swift_hitman.sql',
+  'drizzle/0008_secure_reporting_deletion_snapshot.sql',
   'docs/PRODUCT.md',
   'docs/ARCHITECTURE.md',
   'docs/THREAT_MODEL.md',

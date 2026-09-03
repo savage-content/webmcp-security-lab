@@ -145,7 +145,7 @@ describe('controlled reporting deletion', () => {
     return ((await response.json()) as { reportId: string }).reportId;
   }
 
-  async function publishReport(reportId: string) {
+  async function acceptReport(reportId: string) {
     for (const [expectedRevision, to] of [
       [1, 'under_review'],
       [2, 'accepted_private'],
@@ -160,6 +160,10 @@ describe('controlled reporting deletion', () => {
       );
       expect(response.status).toBe(200);
     }
+  }
+
+  async function publishReport(reportId: string) {
+    await acceptReport(reportId);
     const response = await handleReportingPublication(
       jsonRequest(
         `https://reports.example.test/api/reports/publish/${reportId}`,
@@ -176,6 +180,24 @@ describe('controlled reporting deletion', () => {
       { environment: environment(), database },
     );
     expect(response.status).toBe(200);
+  }
+
+  function interleaveBeforeDeletionBatch(interleave: () => Promise<void>) {
+    let interleaved = false;
+    const wrapped = {
+      prepare: database.prepare.bind(database),
+      batch: async (statements: D1PreparedStatement[]) => {
+        if (!interleaved && statements.length === 9) {
+          interleaved = true;
+          await interleave();
+        }
+        return database.batch(statements);
+      },
+    } as unknown as D1Database;
+    return Object.freeze({
+      database: wrapped,
+      didInterleave: () => interleaved,
+    });
   }
 
   it('is absent while disabled and rejects broader authority', async () => {
@@ -356,5 +378,90 @@ describe('controlled reporting deletion', () => {
     );
     expect(JSON.stringify(page.publications)).not.toContain(reportId);
     expect(JSON.stringify(page.publications)).not.toContain('shop.example.com');
+  }, 15_000);
+
+  it('rejects a stale deletion snapshot when publication wins the transaction race', async () => {
+    const reportId = await createReport();
+    await acceptReport(reportId);
+    const requestId = randomUUID();
+    const race = interleaveBeforeDeletionBatch(async () => {
+      const published = await handleReportingPublication(
+        jsonRequest(
+          `https://reports.example.test/api/reports/publish/${reportId}`,
+          publisherToken,
+          {
+            expectedRevision: 3,
+            publication: {
+              hostnameVisibility: 'withheld',
+              hostnameConsent: 'not_granted',
+              evidenceBasis: 'human_reproduced',
+            },
+          },
+        ),
+        { environment: environment(), database },
+      );
+      expect(published.status).toBe(200);
+    });
+    const deleted = await handleReportingDeletion(
+      deletionRequest(reportId, { key: requestId }),
+      {
+        environment: environment(),
+        database: race.database,
+        now: () => Date.parse('2026-09-04T20:15:00.000Z'),
+      },
+    );
+    const authorization = await database
+      .prepare(
+        `SELECT count(*) AS count FROM leftout_report_deletion_authorizations
+         WHERE request_id = ?`,
+      )
+      .bind(requestId)
+      .first<{ count: number }>();
+
+    expect(race.didInterleave()).toBe(true);
+    expect(deleted.status).toBe(409);
+    expect(authorization?.count).toBe(0);
+    expect(
+      await loadReportingDeletionTombstone(database, requestId),
+    ).toBeNull();
+    expect(
+      (await loadReportingLedger(database, reportId))?.record.moderation.state,
+    ).toBe('published');
+    expect(await loadReportingPublication(database, reportId)).not.toBeNull();
+  }, 15_000);
+
+  it('rejects a stale deletion snapshot when review wins the transaction race', async () => {
+    const reportId = await createReport();
+    const requestId = randomUUID();
+    const race = interleaveBeforeDeletionBatch(async () => {
+      const reviewed = await handleReportingReviewTransition(
+        jsonRequest(
+          `https://reports.example.test/api/reports/review/${reportId}`,
+          reviewerToken,
+          { expectedRevision: 1, to: 'under_review' },
+        ),
+        { environment: environment(), database },
+      );
+      expect(reviewed.status).toBe(200);
+    });
+    const deleted = await handleReportingDeletion(
+      deletionRequest(reportId, { key: requestId }),
+      {
+        environment: environment(),
+        database: race.database,
+        now: () => Date.parse('2026-09-04T20:15:00.000Z'),
+      },
+    );
+
+    expect(race.didInterleave()).toBe(true);
+    expect(deleted.status).toBe(409);
+    expect(
+      await loadReportingDeletionTombstone(database, requestId),
+    ).toBeNull();
+    expect(
+      (await loadReportingLedger(database, reportId))?.record.moderation.state,
+    ).toBe('under_review');
+    expect(await loadReportingRetention(database, reportId)).not.toBeNull();
+    expect(await loadReportingPublication(database, reportId)).toBeNull();
   }, 15_000);
 });

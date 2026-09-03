@@ -37,7 +37,7 @@ import {
   type ReportingPublicCorrectionReason,
 } from './correction-core';
 
-export const REPORTING_STORE_SCHEMA_VERSION = 5 as const;
+export const REPORTING_STORE_SCHEMA_VERSION = 6 as const;
 
 export class ReportingStoreConflictError extends Error {
   override readonly name = 'ReportingStoreConflictError';
@@ -509,6 +509,53 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     )
     BEGIN
       SELECT RAISE(ABORT, 'leftout_report_deletion_authorization_snapshot_mismatch');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_deletion_tombstone_snapshot
+    BEFORE INSERT ON leftout_report_deletion_tombstones
+    WHEN NOT EXISTS (
+      SELECT 1
+      FROM leftout_report_deletion_authorizations AS authorization
+      JOIN leftout_report_records AS record
+        ON record.id = authorization.report_id
+      JOIN leftout_report_retention_states AS retention
+        ON retention.report_id = authorization.report_id
+      WHERE authorization.request_id = NEW.request_id
+        AND authorization.request_sha256 = NEW.request_sha256
+        AND authorization.custodian_id = NEW.custodian_id
+        AND authorization.authorized_at = NEW.deleted_at
+        AND record.revision = NEW.moderation_event_count
+        AND record.last_event_sha256 = NEW.last_moderation_event_sha256
+        AND retention.revision = NEW.retention_event_count
+        AND retention.last_event_sha256 = NEW.last_retention_event_sha256
+        AND retention.policy_version = NEW.policy_version
+        AND (
+          (
+            NEW.publication_survives = 0
+            AND NEW.public_id IS NULL
+            AND record.state != 'published'
+            AND NOT EXISTS (
+              SELECT 1 FROM leftout_report_publication_links AS link
+              WHERE link.report_id = authorization.report_id
+            )
+          )
+          OR
+          (
+            NEW.publication_survives = 1
+            AND NEW.public_id IS NOT NULL
+            AND record.state = 'published'
+            AND EXISTS (
+              SELECT 1
+              FROM leftout_report_publication_links AS link
+              JOIN leftout_report_publications AS publication
+                ON publication.public_id = link.public_id
+              WHERE link.report_id = authorization.report_id
+                AND publication.public_id = NEW.public_id
+            )
+          )
+        )
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_deletion_tombstone_snapshot_mismatch');
     END`,
   `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_deletion_authorizations_no_update
     BEFORE UPDATE ON leftout_report_deletion_authorizations
@@ -2166,6 +2213,7 @@ export async function listReportingLedgers(
 async function resolveExistingIntake(
   database: D1Database,
   value: Readonly<ReportingIntakeIdempotency>,
+  requireRetention = false,
 ) {
   const existing = await findIntake(database, value);
   if (!existing) return null;
@@ -2180,10 +2228,13 @@ async function resolveExistingIntake(
       'Reporting idempotency record points to a missing report.',
     );
   }
+  if (requireRetention) {
+    await verifyStoredIntakeRetention(database, ledger);
+  }
   return Object.freeze({ disposition: 'existing' as const, ledger });
 }
 
-async function verifyExistingRetention(
+async function verifyPersistedInitialRetention(
   database: D1Database,
   expected: Readonly<{
     state: Readonly<ReportingRetentionState>;
@@ -2199,6 +2250,30 @@ async function verifyExistingRetention(
     retained.state.retainUntil !== expected.state.retainUntil ||
     retained.state.policyVersion !== expected.state.policyVersion ||
     JSON.stringify(retained.events[0]) !== JSON.stringify(expected.event)
+  ) {
+    throw new ReportingStoreIntegrityError(
+      'Existing reporting intake is missing its original retention assignment.',
+    );
+  }
+}
+
+async function verifyStoredIntakeRetention(
+  database: D1Database,
+  ledger: Readonly<ReportingLedgerBundle>,
+) {
+  const retained = await loadReportingRetention(
+    database,
+    ledger.record.moderation.id,
+  );
+  const intakeEvent = ledger.events[0];
+  const assignment = retained?.events[0];
+  if (
+    !retained ||
+    !intakeEvent ||
+    !assignment ||
+    assignment.reportId !== ledger.record.moderation.id ||
+    assignment.requestId !== intakeEvent.requestId ||
+    assignment.at !== ledger.record.moderation.receivedAt
   ) {
     throw new ReportingStoreIntegrityError(
       'Existing reporting intake is missing its original retention assignment.',
@@ -2239,9 +2314,12 @@ export async function saveReportingIntake(
     );
   }
   await ensureReportingStoreSchema(database);
-  const existing = await resolveExistingIntake(database, idempotency);
+  const existing = await resolveExistingIntake(
+    database,
+    idempotency,
+    Boolean(retention),
+  );
   if (existing) {
-    if (retention) await verifyExistingRetention(database, retention);
     return existing;
   }
 
@@ -2273,8 +2351,14 @@ export async function saveReportingIntake(
         ),
     ]);
   } catch (error) {
-    const raced = await resolveExistingIntake(database, idempotency);
-    if (raced) return raced;
+    const raced = await resolveExistingIntake(
+      database,
+      idempotency,
+      Boolean(retention),
+    );
+    if (raced) {
+      return raced;
+    }
     if (String(error).includes('leftout_reporting_quota_exhausted')) {
       throw new ReportingStoreQuotaError(
         'Reporting intake quota is exhausted.',
@@ -2293,7 +2377,9 @@ export async function saveReportingIntake(
       'Committed reporting intake did not match its source record.',
     );
   }
-  if (retention) await verifyExistingRetention(database, retention);
+  if (retention) {
+    await verifyPersistedInitialRetention(database, retention);
+  }
   return Object.freeze({ disposition: 'created' as const, ledger });
 }
 

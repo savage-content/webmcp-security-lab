@@ -113,19 +113,58 @@ describe('durable reporting store', () => {
       undefined,
       retention,
     );
+    const replayBundle = intake();
+    const replayRetention = createReportingRetention(
+      {
+        reportId: replayBundle.record.moderation.id,
+        receivedAt: replayBundle.record.moderation.receivedAt,
+        retentionDays: 30,
+        policyVersion: 'retention.private-v2',
+        requestId: replayBundle.event.requestId,
+      },
+      { eventId: randomUUID },
+    );
     const replay = await saveReportingIntake(
       database,
-      created,
+      replayBundle,
       key,
       undefined,
-      retention,
+      replayRetention,
     );
 
     expect(first.disposition).toBe('created');
     expect(replay.disposition).toBe('existing');
+    expect(replay.ledger.record).toEqual(created.record);
     expect(
       await loadReportingRetention(database, created.record.moderation.id),
     ).toEqual({ state: retention.state, events: [retention.event] });
+  });
+
+  it('fails closed when lifecycle is required but the stored intake has no assignment', async () => {
+    const created = intake();
+    const key = idempotency();
+    await saveReportingIntake(database, created, key);
+    const replayBundle = intake();
+    const replayRetention = createReportingRetention(
+      {
+        reportId: replayBundle.record.moderation.id,
+        receivedAt: replayBundle.record.moderation.receivedAt,
+        retentionDays: 90,
+        policyVersion: 'retention.private-v1',
+        requestId: replayBundle.event.requestId,
+      },
+      { eventId: randomUUID },
+    );
+
+    await expect(
+      saveReportingIntake(
+        database,
+        replayBundle,
+        key,
+        undefined,
+        replayRetention,
+      ),
+    ).rejects.toBeInstanceOf(ReportingStoreIntegrityError);
   });
 
   it('returns an identical idempotent intake and rejects conflicting reuse', async () => {

@@ -215,6 +215,67 @@ describe('invited reporting intake', () => {
     expect(retained?.events[0]?.action).toBe('policy_assigned');
   });
 
+  it('returns the original lifecycle report on an exact retry without replacing its retention assignment', async () => {
+    const id = invitationId();
+    const key = randomUUID();
+    const first = await handleReportingIntake(
+      request(reportBody(), { idempotencyKey: key }),
+      {
+        environment: lifecycleEnvironment(id),
+        database,
+        now: () => Date.parse('2026-09-02T20:15:00.000Z'),
+      },
+    );
+    const firstBody = (await first.json()) as Record<string, unknown>;
+    const second = await handleReportingIntake(
+      request(reportBody(), { idempotencyKey: key }),
+      {
+        environment: invitedEnvironment(id, {
+          LEFTOUT_REPORTING_LIFECYCLE: 'true',
+          LEFTOUT_REPORTING_RETENTION_DAYS: '30',
+          LEFTOUT_REPORTING_RETENTION_POLICY_VERSION: 'retention.private-v2',
+          LEFTOUT_REPORTING_ACTORS_JSON: JSON.stringify([
+            {
+              id: 'custodian-alpha',
+              role: 'custodian',
+              tokenSha256: digest(
+                'custodian-token-with-at-least-32-characters',
+              ),
+            },
+          ]),
+        }),
+        database,
+        now: () => Date.parse('2026-10-02T20:15:00.000Z'),
+      },
+    );
+    const secondBody = (await second.json()) as Record<string, unknown>;
+    const retained = await loadReportingRetention(
+      database,
+      String(firstBody.reportId),
+    );
+    const quota = await database
+      .prepare(
+        `SELECT count FROM leftout_report_intake_quotas
+         WHERE scope_type = 'invitation' AND scope_id_sha256 = ?`,
+      )
+      .bind(digest(id))
+      .first<{ count: number }>();
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(200);
+    expect(secondBody).toMatchObject({
+      disposition: 'existing',
+      reportId: firstBody.reportId,
+    });
+    expect(retained?.state).toMatchObject({
+      retainUntil: '2026-12-01T20:15:00.000Z',
+      policyVersion: 'retention.private-v1',
+      revision: 1,
+    });
+    expect(retained?.events).toHaveLength(1);
+    expect(quota?.count).toBe(1);
+  });
+
   it('rejects conflicting reuse, hidden fields, browser origins, and broad media types', async () => {
     const id = invitationId();
     const key = randomUUID();
