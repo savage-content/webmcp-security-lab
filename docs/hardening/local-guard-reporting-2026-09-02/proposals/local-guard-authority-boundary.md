@@ -2,9 +2,9 @@
 
 ## Decision
 
-Decide whether Local Guard remains a reproducible developer preview over exact
-loopback HTTP or becomes a signed desktop product whose browser-to-host channel
-is owned by the operating system and extension identity.
+Keep the exact loopback build as a reproducible developer preview while moving
+the ordinary-user release toward a signed desktop product whose browser-to-host
+channel is owned by the operating system and extension identity.
 
 ## Executive Recommendation
 
@@ -14,9 +14,9 @@ gate, hashes, and explicit preview channel. **Option 2, Signed native-host
 product,** replaces the browser-accessible bridge port with extension-ID-bound
 native messaging and uses stdio or OS-owned IPC for the local agent boundary.
 
-I recommend Option 1 for the next controlled preview because it is reversible
-and we can validate it now. Option 2 should be the release gate for general
-desktop distribution. A hosted relay is deliberately excluded: it would add
+Option 1 remains appropriate only for controlled preview use because it is
+reversible and validated locally. The product-release objective selects Option
+2 as the gate for general desktop distribution. A hosted relay is deliberately excluded: it would add
 account, telemetry, cross-tenant, availability, and privacy authority without
 helping the core one-device safety case.
 

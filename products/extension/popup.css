@@ -76,6 +76,53 @@ h2 {
   background: rgb(255 255 255 / 3%);
 }
 
+.data-disclosure {
+  margin: 14px 0 12px;
+  padding: 12px;
+  border: 1px solid #496454;
+  border-radius: 8px;
+  background: rgb(74 126 105 / 10%);
+}
+
+.data-disclosure p {
+  margin: 0;
+  color: #c8d2cb;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.consent-choice {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 8px;
+  align-items: start;
+  margin-top: 10px;
+  color: #edf2ee;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.consent-choice input {
+  width: 18px;
+  min-height: 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: #8bd3ae;
+}
+
+.consent-choice input:disabled + span {
+  color: #b8c0ba;
+}
+
+.disclosure-links {
+  margin-top: 9px !important;
+}
+
+.disclosure-links a {
+  color: #a8e8c4;
+  text-underline-offset: 2px;
+}
+
 .page p {
   margin: 0;
 }
@@ -147,6 +194,11 @@ button.secondary {
   border-color: #4b5750;
   background: transparent;
   color: #d9ded9;
+}
+
+button.danger {
+  border-color: #8a554e;
+  color: #ffc5bc;
 }
 
 .hud-summary {
@@ -301,7 +353,8 @@ button.secondary {
 }
 
 #reports-button,
-#forget-button {
+#forget-button,
+#withdraw-consent-button {
   margin-top: 8px;
 }
 

@@ -4,6 +4,7 @@ import { sanitizeHudModel } from './hud-model.js';
 import { pageIdentityFromUrl, safeErrorMessage } from './validation.js';
 
 const form = document.querySelector('#pair-form');
+const dataConsent = document.querySelector('#data-consent');
 const connector = document.querySelector('#connector');
 const pairButton = document.querySelector('#pair-button');
 const pageOrigin = document.querySelector('#page-origin');
@@ -20,6 +21,9 @@ const connectionOrigin = document.querySelector('#connection-origin');
 const connectionSession = document.querySelector('#connection-session');
 const connectionCommand = document.querySelector('#connection-command');
 const forgetButton = document.querySelector('#forget-button');
+const withdrawConsentButton = document.querySelector(
+  '#withdraw-consent-button',
+);
 const reportsButton = document.querySelector('#reports-button');
 const permitText = document.querySelector('#permit-text');
 const permitPasteImport = document.querySelector('#permit-paste-import');
@@ -29,8 +33,13 @@ const permitStatus = document.querySelector('#permit-status');
 const permitRemove = document.querySelector('#permit-remove');
 
 let selectedTab;
+let consentGranted = false;
+let initializePending = false;
 let permitImportPending = false;
 let pairPending = false;
+
+const CONSENT_STORAGE_KEY = 'local_guard_data_handling_consent';
+const CONSENT_VERSION = 'leftout.local-guard-data-handling/1';
 
 const HUD_COPY = Object.freeze({
   checking: Object.freeze({
@@ -265,7 +274,7 @@ async function importCapabilityPermitText(textOrPromise) {
 }
 
 function validateForm() {
-  pairButton.disabled = pairPending || !selectedTab;
+  pairButton.disabled = pairPending || !selectedTab || !consentGranted;
 }
 
 async function refreshStatus() {
@@ -284,6 +293,8 @@ async function refreshStatus() {
 }
 
 async function initialize() {
+  if (!consentGranted || initializePending || selectedTab) return;
+  initializePending = true;
   try {
     const [tab] = await chrome.tabs.query({
       active: true,
@@ -303,8 +314,54 @@ async function initialize() {
     form.hidden = true;
     renderHud(undefined);
     setStatus(safeErrorMessage(error), 'error');
+  } finally {
+    initializePending = false;
   }
 }
+
+async function initializeConsent() {
+  try {
+    const stored = await chrome.storage.local.get(CONSENT_STORAGE_KEY);
+    consentGranted = stored[CONSENT_STORAGE_KEY] === CONSENT_VERSION;
+    dataConsent.checked = consentGranted;
+    dataConsent.disabled = consentGranted;
+    withdrawConsentButton.hidden = !consentGranted;
+    if (consentGranted) {
+      pageOrigin.textContent = 'Checking…';
+      await initialize();
+      return;
+    }
+    renderDisconnectedHud();
+    setStatus(
+      'Review the local data boundary above. Nothing has been read, connected, approved, or run.',
+    );
+    validateForm();
+  } catch (error) {
+    dataConsent.disabled = true;
+    form.hidden = true;
+    setStatus(safeErrorMessage(error), 'error');
+  }
+}
+
+dataConsent.addEventListener('change', async () => {
+  if (!dataConsent.checked || consentGranted) return;
+  dataConsent.disabled = true;
+  try {
+    await chrome.storage.local.set({
+      [CONSENT_STORAGE_KEY]: CONSENT_VERSION,
+    });
+    consentGranted = true;
+    withdrawConsentButton.hidden = false;
+    pageOrigin.textContent = 'Checking…';
+    setStatus('Privacy choice saved locally. Checking only this tab.');
+    await initialize();
+  } catch (error) {
+    consentGranted = false;
+    dataConsent.checked = false;
+    dataConsent.disabled = false;
+    setStatus(safeErrorMessage(error), 'error');
+  }
+});
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -343,6 +400,40 @@ forgetButton.addEventListener('click', async () => {
     setStatus(safeErrorMessage(error), 'error');
   } finally {
     forgetButton.disabled = false;
+  }
+});
+
+withdrawConsentButton.addEventListener('click', async () => {
+  withdrawConsentButton.disabled = true;
+  try {
+    const result = await send({ type: 'withdraw-local-consent' });
+    consentGranted = false;
+    selectedTab = undefined;
+    dataConsent.checked = false;
+    dataConsent.disabled = false;
+    withdrawConsentButton.hidden = true;
+    connection.hidden = true;
+    forgetButton.hidden = true;
+    reportsButton.hidden = true;
+    form.hidden = false;
+    pageOrigin.textContent = 'Not read until you agree';
+    renderDisconnectedHud();
+    if (result.connectorRevocationConfirmed) {
+      setStatus(
+        'Local handling stopped. Pairings and any unconsumed permit were removed; nothing was run.',
+        'ok',
+      );
+    } else {
+      setStatus(
+        `Local state was cleared, but ${result.unconfirmedConnectorSessions} connector session revocation could not be confirmed. Do not reconnect until those short-lived sessions expire.`,
+        'error',
+      );
+    }
+    validateForm();
+  } catch (error) {
+    setStatus(safeErrorMessage(error), 'error');
+  } finally {
+    withdrawConsentButton.disabled = false;
   }
 });
 
@@ -395,5 +486,7 @@ permitRemove.addEventListener('click', async () => {
   }
 });
 
-void initialize();
-setInterval(() => void refreshStatus(), 1_500);
+void initializeConsent();
+setInterval(() => {
+  if (consentGranted) void refreshStatus();
+}, 1_500);

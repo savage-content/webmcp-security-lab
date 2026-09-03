@@ -20,10 +20,10 @@ The five lessons share one learning sequence, but the live handoff is explicit:
 - **ChatGPT/Codex built-in browser:** use native Site Tools directly with an
   eligible model and workspace. No LeftOut extension or local connector is
   required.
-- **LeftOut Local Guard:** use regular Chromium with the unpacked local
+- **LeftOut Local Guard:** use regular Chromium with the unsigned local
   extension and relay. This advanced prototype tests monitoring, drift alerts,
   one-use enforcement, and local reporting; it cannot attest native Site Tools
-  calls outside its path.
+  calls outside its path and is not an ordinary-user release.
 - **Read-only/harness:** inspect and demonstrate the fixtures without claiming
   client discovery or invocation.
 
@@ -76,6 +76,8 @@ contract, and 360 px popup contract have passed technical checks. See
 The browser extension and local connector form the current Membrane boundary:
 
 - explicit, per-tab activation;
+- a versioned data-handling choice before the popup reads the selected tab, with
+  a withdrawal control that removes all local pairings and unconsumed permits;
 - a short-lived, one-use pairing challenge bound to the exact extension,
   browser document, page, and local session;
 - a one-way permit offer only after explicit page approval and successful
@@ -177,20 +179,29 @@ An agent using this product should:
 - Reporting preview shows included and excluded fields; synthetic and local
   data can enter only the temporary local review list and cannot be submitted
   externally.
+- Store disclosure, privacy policy, runtime behavior, permissions, transport,
+  signing identity, and release evidence agree without unsupported claims.
+- Ordinary-user distribution uses Chrome Web Store hosting/signing and an
+  extension-ID-bound native channel; an integrity-attested ZIP or loopback HTTP
+  preview is insufficient.
 
 ## Delivery sequence
 
-1. Complete first-time human acceptance of the five-lesson end-to-end path.
-2. Verify keyboard, screen-reader, 200% zoom, and 360 px popup journeys with
-   first-time users.
-3. Complete novice acceptance of the HUD-to-receipt-to-local-review-list handoff.
-4. Conduct privacy/security review for the implemented intake, review, and
+1. Complete Local Guard store assets, publisher identity, Web Store review and
+   signing, extension-ID-bound native transport, installation lifecycle, and
+   incident-response ownership.
+2. Complete first-time human acceptance of the five-lesson end-to-end path
+   against the exact signed candidate.
+3. Verify keyboard, screen-reader, 200% zoom, and 360 px popup journeys with
+   first-time users against that same candidate.
+4. Complete novice acceptance of the HUD-to-receipt-to-local-review-list handoff.
+5. Conduct privacy/security review for the implemented intake, review, and
    publication service boundary.
-5. Complete production identity, abuse handling, backup purge, and lifecycle
+6. Complete production identity, abuse handling, backup purge, and lifecycle
    operations; rehearse private deletion and immutable public correction; and
    add an explicit external submission confirmation.
-6. Serve only a signed, versioned, human-reviewed feed projection—never raw
+7. Serve only a signed, versioned, human-reviewed feed projection—never raw
    reports or receipts.
-7. Extract the policy, receipt, and conformance logic for a small native Android
+8. Extract the policy, receipt, and conformance logic for a small native Android
    AppFunctions prototype. Android is a separate native client, not a browser
    extension claim.

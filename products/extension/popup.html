@@ -15,9 +15,39 @@
         anything ran.
       </p>
 
+      <section
+        id="data-disclosure"
+        class="data-disclosure"
+        aria-labelledby="data-heading"
+      >
+        <h2 id="data-heading">Before you connect</h2>
+        <p>
+          Local Guard reads only this selected tab's address and WebMCP action
+          declarations. If one approved practice action runs, it also handles
+          that action's result and receipt. It stores this information in this
+          browser profile and sends it only to the connector running on this
+          computer—not to LeftOut Security, the website, advertisers, or any
+          third party.
+        </p>
+        <label class="consent-choice" for="data-consent">
+          <input id="data-consent" type="checkbox" />
+          <span
+            >I agree to this local handling for this extension version.</span
+          >
+        </label>
+        <p class="disclosure-links">
+          <a
+            href="https://left-out-webmcp-security-lab.taitfor.chatgpt.site/local-guard/privacy"
+            target="_blank"
+            rel="noreferrer"
+            >Read the privacy details</a
+          >
+        </p>
+      </section>
+
       <section class="page" aria-labelledby="page-heading">
         <h2 id="page-heading">This tab</h2>
-        <p id="page-origin" class="mono">Checking…</p>
+        <p id="page-origin" class="mono">Not read until you agree</p>
       </section>
 
       <section id="hud-summary" class="hud-summary" data-state="checking">
@@ -92,6 +122,15 @@
 
         <button id="forget-button" class="secondary" type="button" hidden>
           Disconnect and revoke pairing
+        </button>
+
+        <button
+          id="withdraw-consent-button"
+          class="secondary danger"
+          type="button"
+          hidden
+        >
+          Stop local handling and reset privacy choice
         </button>
 
         <section class="permit" aria-labelledby="permit-heading">

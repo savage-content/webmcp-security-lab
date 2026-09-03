@@ -3,7 +3,8 @@
 ## Evidence Basis
 
 I inspected the extension authority, service-worker enforcement, loopback
-connector, privacy-safe issue model, local review list, feed projection, product
+connector, consent surface, store/privacy disclosure contract, release gate,
+privacy-safe issue model, local review list, feed projection, product
 requirements, and threat model. The exact inventory and hashes are in
 [context.md](context.md). This is source-backed design evidence; it is not a
 claim that the proposed production boundaries exist.
@@ -28,8 +29,9 @@ review uses a balanced profile and requires measurement before rollout.
 
 The attractive near-term path is intentionally asymmetric. We can distribute a
 reproducible Local Guard developer preview now because the package gate narrows
-exactly what leaves the repository and verifies its permissions and hashes. We
-should not call that a consumer release: the loopback token and unpacked
+exactly what leaves the repository and verifies its permissions and hashes. The
+consent and release-assessment work makes the remaining gates explicit, but we
+should not call that a consumer release: loopback HTTP and the unsigned
 extension still rely on a trusted local machine and browser profile.
 
 For reporting, the safest product move is to finish the pure quarantine and
@@ -40,8 +42,8 @@ privacy notice exist. A direct report-to-feed path is not an acceptable option.
 
 ## Next Decisions
 
-1. Choose whether a public desktop release warrants a signed extension plus
-   native-messaging host, or whether Local Guard remains a developer preview.
+1. Establish the publisher/store identity needed to bind and validate the
+   selected signed extension plus native-messaging host release path.
 2. Name the owner and system for authenticated human moderation.
 3. Approve retention, abuse handling, hostname-consent, and incident-response
    rules before any public intake endpoint is connected.

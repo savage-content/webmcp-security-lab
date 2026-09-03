@@ -30,6 +30,7 @@ import {
 import { buildHudModel } from './hud-model.js';
 
 const CONNECTION_STORAGE_PREFIX = 'leftoutBridgeConnectionV2:';
+const CONSENT_STORAGE_KEY = 'local_guard_data_handling_consent';
 const MAX_CONSUMED_PERMIT_TOMBSTONES = 256;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const PERMIT_DOCUMENT_BINDING_SCHEMA =
@@ -459,6 +460,22 @@ async function getConnection(tabId) {
   return isPlainRecord(stored[key]) ? stored[key] : undefined;
 }
 
+async function getAllConnections() {
+  const stored = await chrome.storage.local.get(null);
+  const connections = [];
+  for (const [key, value] of Object.entries(stored)) {
+    if (!key.startsWith(CONNECTION_STORAGE_PREFIX)) continue;
+    const tabId = Number(key.slice(CONNECTION_STORAGE_PREFIX.length));
+    if (Number.isInteger(tabId) && tabId >= 0) {
+      connections.push({
+        tabId,
+        connection: isPlainRecord(value) ? value : undefined,
+      });
+    }
+  }
+  return connections;
+}
+
 async function putConnection(tabId, connection) {
   return withConnectionMutation(tabId, async () => {
     if (closedTabs.has(tabId)) {
@@ -772,6 +789,31 @@ async function removeCapabilityPermit() {
     await chrome.storage.local.remove(CAPABILITY_PERMIT_STORAGE_KEY);
   });
   return { imported: false };
+}
+
+async function withdrawLocalConsent() {
+  const connections = await getAllConnections();
+  let unconfirmedConnectorSessions = 0;
+  for (const { tabId, connection } of connections) {
+    if (connection) {
+      try {
+        await revokeConnection(connection);
+      } catch {
+        unconfirmedConnectorSessions += 1;
+      }
+    }
+    await clearBoundCapabilityPermit(tabId, connection);
+    await removeConnection(tabId);
+    await setBadge(tabId, 'idle').catch(() => undefined);
+  }
+  await removeCapabilityPermit();
+  await chrome.storage.local.remove(CONSENT_STORAGE_KEY);
+  return {
+    paired: false,
+    clearedConnectionCount: connections.length,
+    connectorRevocationConfirmed: unconfirmedConnectorSessions === 0,
+    unconfirmedConnectorSessions,
+  };
 }
 
 async function consumeCapabilityPermit(
@@ -1638,6 +1680,10 @@ async function handleMessage(message, sender) {
   if (message.type === 'remove-capability-permit') {
     requirePopupSender(sender);
     return removeCapabilityPermit();
+  }
+  if (message.type === 'withdraw-local-consent') {
+    requirePopupSender(sender);
+    return withdrawLocalConsent();
   }
   if (message.type === 'open-active-reports') {
     requirePopupSender(sender);

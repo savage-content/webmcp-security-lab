@@ -14,6 +14,8 @@
     "desktop:alpha:foreground": "tsx scripts/desktop-alpha.mts",
     "local-guard:package": "tsx scripts/package-local-guard.mts",
     "local-guard:attest": "tsx scripts/attest-local-guard-release.mts",
+    "local-guard:readiness": "tsx scripts/assess-local-guard-release.mts",
+    "local-guard:release-gate": "tsx scripts/assess-local-guard-release.mts --require-product-release",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",
@@ -25,7 +27,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify": "npm run typecheck && npm test && npm run lint && npm run build"
+    "verify": "npm run typecheck && npm run local-guard:readiness && npm test && npm run lint && npm run build"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

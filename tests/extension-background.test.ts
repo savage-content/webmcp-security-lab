@@ -301,7 +301,7 @@ async function extensionHarness({
   ) => Promise<unknown>;
   fetchImplementation?: (...args: unknown[]) => unknown;
   storageGetImplementation?: (
-    key: string,
+    key: string | null,
     call: number,
     readSnapshot: () => Record<string, unknown>,
   ) => Promise<Record<string, unknown>>;
@@ -376,9 +376,10 @@ async function extensionHarness({
     scripting: { executeScript },
     storage: {
       local: {
-        async get(key: string) {
+        async get(key: string | null) {
           storageGetCalls += 1;
           const readSnapshot = () => {
+            if (key === null) return structuredClone(storageValues);
             const value = storageValues[key];
             return {
               [key]: value === undefined ? undefined : structuredClone(value),
@@ -738,6 +739,37 @@ describe('extension bridge delivery state', () => {
 
     expect(harness.getConnections()).not.toHaveProperty(String(TAB_ID));
     expect(harness.executeScript).not.toHaveBeenCalled();
+    expect(harness.fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('clears every local pairing when consent is withdrawn even if connector revocation fails', async () => {
+    const harness = await extensionHarness({
+      initialConnections: {
+        [String(TAB_ID)]: baseConnection(),
+        [String(SECOND_TAB_ID)]: baseConnection({
+          sessionId: '8a64b91f-d2f2-498f-a10b-59093ff472ef',
+          bridgeToken: 'b'.repeat(43),
+          documentId: OTHER_DOCUMENT_ID,
+        }),
+      },
+      fetchImplementation: async () => {
+        throw new Error('connector unavailable');
+      },
+    });
+
+    await expect(
+      harness.dispatch({ type: 'withdraw-local-consent' }, POPUP_SENDER),
+    ).resolves.toEqual({
+      ok: true,
+      result: {
+        paired: false,
+        clearedConnectionCount: 2,
+        connectorRevocationConfirmed: false,
+        unconfirmedConnectorSessions: 2,
+      },
+    });
+    expect(harness.getConnections()).toEqual({});
+    expect(harness.getCapabilityPermit()).toBeUndefined();
     expect(harness.fetchMock).toHaveBeenCalledTimes(2);
   });
 

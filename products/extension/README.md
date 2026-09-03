@@ -28,7 +28,8 @@ does not establish universal compatibility. This remains a local development
 preview, not a signed package, Chrome Web Store release, or public deployment.
 Manifest `0.3.0` adds the local safety HUD, one-click loopback challenge,
 automatic untrusted permit handoff, exact browser-document/session binding,
-connector-side revocation, and safe report opening. Those additions have
+connector-side revocation, pre-inspection data consent, consent withdrawal
+across every stored pairing, and safe report opening. Those additions have
 automated coverage but have not inherited the earlier live-browser result.
 Consumed permit digests remain tombstoned until expiry, so removing or
 re-importing a permit cannot restore its one-use authority.
@@ -63,11 +64,25 @@ service worker or popup references, symlinked inputs, or dynamic code. The
 result is still an unsigned developer preview; reproducibility does not provide
 a publisher identity or Chrome Web Store review.
 
+Run `npm run local-guard:readiness` to produce the disclosure and external-gate
+report. `npm run local-guard:release-gate` is intentionally red until publisher
+identity, store signing, identity-bound native transport, signed-candidate
+acceptance, platform lifecycle evidence, and public policy deployment are all
+independently evidenced.
+
 The bridge token is kept in `chrome.storage.local` and is never shown to the
 page or popup. The extension badge distinguishes observed, protected, changed,
 receipt, and error states; the in-page HUD is advisory because a page can
 imitate an overlay. Trust the extension icon and popup for browser-owned state,
 not a page's claim that the offer was accepted.
+
+Before reading the selected tab, the popup presents and records a versioned
+local data-handling choice. Withdrawing that choice removes every stored
+pairing and unconsumed permit even when connector revocation cannot be
+confirmed; in that case the popup warns the person not to reconnect until the
+short-lived remote sessions expire. The public source privacy notice is at
+`/local-guard/privacy`, but that route is not a production policy URL until its
+deployed bytes are independently captured.
 
 ## Exact authority
 

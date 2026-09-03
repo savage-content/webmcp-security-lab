@@ -24,6 +24,12 @@ const evidencePaths = [
   'products/extension/background.js',
   'products/extension/popup.html',
   'products/extension/popup.css',
+  'products/extension/popup.js',
+  'products/extension/release/store-submission.json',
+  'products/extension/release/release-evidence.json',
+  'app/local-guard/page.tsx',
+  'app/local-guard/privacy/page.tsx',
+  'app/local-guard/support/page.tsx',
   'products/connector/server.ts',
   'products/connector/issue-draft.ts',
   'products/connector/issue-review.ts',
@@ -54,6 +60,7 @@ const evidencePaths = [
   'app/api/reports/corrections/[publicId]/route.ts',
   'scripts/package-local-guard.mts',
   'scripts/attest-local-guard-release.mts',
+  'scripts/assess-local-guard-release.mts',
   'db/schema.ts',
   'drizzle/0002_furry_miss_america.sql',
   'drizzle/0003_mixed_nightmare.sql',
@@ -64,6 +71,7 @@ const evidencePaths = [
   'docs/PRODUCT.md',
   'docs/THREAT_MODEL.md',
   'docs/LOCAL_GUARD_RELEASE.md',
+  'docs/LOCAL_GUARD_PRIVACY_REVIEW.md',
   'docs/REPORTING_SERVICE.md',
 ];
 
@@ -103,7 +111,10 @@ describe('Local Guard and reporting hardening portfolio', () => {
     const canonical = `${evidencePaths
       .map((path) => {
         const digest = createHash('sha256')
-          .update(readFileSync(resolve(path)))
+          .update(
+            readFileSync(resolve(path), 'utf8').replaceAll('\r\n', '\n'),
+            'utf8',
+          )
           .digest('hex');
         return `${path}\t${digest}`;
       })

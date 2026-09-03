@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "leftout.local-guard-release-evidence/1",
+  "targetVersion": "0.3.0",
+  "releaseChannel": "developer_preview",
+  "evidenceDate": "2026-09-02",
+  "gates": [
+    {
+      "id": "store_graphic_assets",
+      "status": "missing",
+      "evidence": []
+    },
+    {
+      "id": "publisher_identity",
+      "status": "missing",
+      "evidence": []
+    },
+    {
+      "id": "chrome_web_store_review_and_signing",
+      "status": "missing",
+      "evidence": []
+    },
+    {
+      "id": "native_messaging_identity_channel",
+      "status": "missing",
+      "evidence": []
+    },
+    {
+      "id": "secure_local_transport",
+      "status": "missing",
+      "evidence": []
+    },
+    {
+      "id": "install_update_rollback_removal",
+      "status": "missing",
+      "evidence": []
+    },
+    {
+      "id": "signed_candidate_novice_accessibility",
+      "status": "missing",
+      "evidence": []
+    },
+    {
+      "id": "public_privacy_and_support_deployment",
+      "status": "source_ready",
+      "evidence": [
+        "app/local-guard/page.tsx",
+        "app/local-guard/privacy/page.tsx",
+        "app/local-guard/support/page.tsx"
+      ]
+    },
+    {
+      "id": "supported_platform_matrix",
+      "status": "missing",
+      "evidence": []
+    },
+    {
+      "id": "release_incident_response",
+      "status": "missing",
+      "evidence": []
+    }
+  ]
+}

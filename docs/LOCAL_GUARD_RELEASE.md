@@ -8,6 +8,11 @@ no production release key is configured and the extension has not been signed
 or approved by the Chrome Web Store. A self-verifying attestation is not a
 publisher identity, installation policy, or safe update channel.
 
+The source now also contains a versioned pre-inspection privacy choice, public
+overview/privacy/support routes, conservative Web Store disclosure copy, and a
+machine-readable release-gate ledger. These are submission prerequisites, not
+evidence that the routes are deployed or the store approved the extension.
+
 ## Package the reviewed bytes
 
 Use Node.js 24 from a clean checkout:
@@ -53,6 +58,32 @@ npm run local-guard:attest -- verify --archive outputs/local-guard/leftout-local
 The command fails if the trusted key, manifest, archive name, archive bytes,
 size, hashes, contract fields, or signature differ.
 
+## Assess ordinary-user release readiness
+
+Run the non-claiming assessment during normal verification:
+
+```powershell
+npm run local-guard:readiness
+```
+
+It validates that runtime consent, manifest authority, permission
+justifications, data-use disclosure, privacy routes, declared graphic assets,
+and the external evidence ledger agree. It writes a readiness report under
+`outputs/local-guard/` and succeeds when the disclosure state is internally
+consistent, even while external gates remain open.
+
+The strict product gate is deliberately separate:
+
+```powershell
+npm run local-guard:release-gate
+```
+
+That command must fail until every required gate is independently evidenced,
+the Chrome Web Store identity and signing fields are bound, the release uses an
+identity-bound native channel, and ordinary-user distribution is explicitly
+approved. Editing a status to `verified` without matching artifacts or runtime
+configuration fails closed.
+
 ## External gates before ordinary-user distribution
 
 The release is not product-ready until a human release owner completes and
@@ -60,7 +91,7 @@ records all of these external controls:
 
 1. Establish and protect a persistent publisher identity and release key.
 2. Complete Chrome Web Store developer verification, privacy disclosure,
-   permissions justification, listing review, and store signing.
+   permissions justification, listing assets, review, and store signing.
 3. Publish the trusted release-key fingerprint through an independently
    controlled channel and document key rotation and revocation.
 4. Verify installation, update, rollback, disablement, and removal in every
@@ -70,6 +101,18 @@ records all of these external controls:
    security boundary.
 6. Complete first-time human, keyboard, screen-reader, 200% zoom, and 360 CSS
    pixel popup acceptance against the exact signed candidate.
+7. Deploy and independently capture the exact public privacy, support, and
+   homepage routes named in the store metadata.
+8. Approve a supported browser/operating-system matrix, incident contact, and
+   release rollback owner.
+
+The release-gate sources are:
+
+- `products/extension/release/store-submission.json` — listing, permission,
+  data-use, remote-code, and current distribution disclosures;
+- `products/extension/release/release-evidence.json` — explicit external gate
+  status and inspectable evidence paths; and
+- `docs/LOCAL_GUARD_PRIVACY_REVIEW.md` — reviewed privacy and store rationale.
 
 Until those gates pass, distribute the ZIP only to controlled testers and call
 it an unsigned developer preview.

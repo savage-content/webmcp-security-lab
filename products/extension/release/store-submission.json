@@ -1,0 +1,121 @@
+{
+  "schemaVersion": "leftout.local-guard-store-submission/1",
+  "extension": {
+    "name": "LeftOut WebMCP Safety",
+    "version": "0.3.0",
+    "releaseChannel": "developer_preview"
+  },
+  "listing": {
+    "language": "en",
+    "category": "Developer Tools",
+    "singlePurpose": "Show WebMCP activity on one selected tab and enforce one already approved synthetic lab action through a closed local policy.",
+    "summary": "See WebMCP activity and guard one exact synthetic practice action through a local connector.",
+    "description": "Local Guard is an experimental browser-owned heads-up display for the LeftOut WebMCP Security Lab. It observes Site Tool declarations only on a tab the person explicitly selects, distinguishes observed, protected, changed, and receipt states, and can relay one already approved synthetic action through a closed, document-bound, no-retry policy. It does not approve actions, invoke arbitrary tools, read full page content, or send data to LeftOut Security. Version 0.3.0 is an unsigned controlled-tester preview, not a production security guarantee.",
+    "homepageUrl": "https://left-out-webmcp-security-lab.taitfor.chatgpt.site/local-guard",
+    "privacyPolicyUrl": "https://left-out-webmcp-security-lab.taitfor.chatgpt.site/local-guard/privacy",
+    "supportUrl": "https://left-out-webmcp-security-lab.taitfor.chatgpt.site/local-guard/support"
+  },
+  "permissions": [
+    {
+      "name": "activeTab",
+      "justification": "After the person opens Local Guard, identify and bind only the selected top-level tab and document."
+    },
+    {
+      "name": "scripting",
+      "justification": "Call the experimental page-scoped WebMCP inspection and one exact approved action in the selected tab's main world without reading general page content."
+    },
+    {
+      "name": "storage",
+      "justification": "Retain the person's privacy choice, exact document pairing, one-use permit state, pending result delivery, and anti-replay tombstone in the local browser profile."
+    }
+  ],
+  "hostPermissions": [
+    {
+      "pattern": "http://127.0.0.1:8788/*",
+      "justification": "Reach only the default connector on this device during the developer preview."
+    },
+    {
+      "pattern": "http://localhost:8788/*",
+      "justification": "Reach only the default localhost connector alias during the developer preview."
+    },
+    {
+      "pattern": "http://127.0.0.1:48788/*",
+      "justification": "Reach only the approved fallback connector port on this device during the developer preview."
+    },
+    {
+      "pattern": "http://localhost:48788/*",
+      "justification": "Reach only the approved localhost fallback connector alias during the developer preview."
+    }
+  ],
+  "remoteCode": {
+    "used": false,
+    "declaration": "No remotely hosted code is loaded or executed. All extension logic is packaged in the reviewed Manifest V3 archive."
+  },
+  "dataUse": {
+    "prominentConsentVersion": "leftout.local-guard-data-handling/1",
+    "categories": [
+      {
+        "name": "web_history",
+        "handled": true,
+        "detail": "Only the origin and path of the tab the person explicitly selects."
+      },
+      {
+        "name": "website_content",
+        "handled": true,
+        "detail": "Only WebMCP declarations and the bounded result and receipt for one approved synthetic action; no general page text or forms."
+      },
+      {
+        "name": "authentication_information",
+        "handled": true,
+        "detail": "Short-lived connector challenge and session credentials generated for the local bridge; never a website password or cookie."
+      }
+    ],
+    "destinations": ["user_controlled_loopback_connector"],
+    "sentToDeveloper": false,
+    "sold": false,
+    "usedForAdvertising": false,
+    "usedForCreditworthiness": false,
+    "humanReviewByDeveloper": false,
+    "externalTelemetry": false,
+    "transport": "plain_http_loopback_developer_preview",
+    "retention": "Pairing ends on disconnect, navigation, tab close, or consent withdrawal. Unconsumed permits are removed; consumed permit digests remain only until expiry to prevent replay. Local connector receipts remain until the user removes local runtime data."
+  },
+  "distribution": {
+    "ordinaryUserDistributionApproved": false,
+    "chromeWebStoreHosted": false,
+    "chromeWebStoreSigned": false,
+    "publisherIdentityVerified": false,
+    "storeItemId": null,
+    "productionReleaseKeyFingerprint": null,
+    "nativeMessagingEnabled": false,
+    "nativeHostName": null,
+    "nativeHostAllowedExtensionId": null
+  },
+  "requiredAssets": [
+    {
+      "id": "extension_icon_128",
+      "path": "products/extension/icons/icon-128.png",
+      "width": 128,
+      "height": 128
+    },
+    {
+      "id": "store_screenshot_1280x800",
+      "path": "products/extension/release/assets/store-screenshot-1280x800.png",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "small_promo_440x280",
+      "path": "products/extension/release/assets/small-promo-440x280.png",
+      "width": 440,
+      "height": 280
+    }
+  ],
+  "policySources": [
+    "https://developer.chrome.com/docs/extensions/how-to/distribute",
+    "https://developer.chrome.com/docs/webstore/cws-dashboard-privacy",
+    "https://developer.chrome.com/docs/webstore/program-policies/disclosure-requirements",
+    "https://developer.chrome.com/docs/webstore/program-policies/mv3-requirements",
+    "https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging"
+  ]
+}
