@@ -7,6 +7,10 @@ export const LOCAL_GUARD_RUNTIME_FILES = Object.freeze([
   'background.js',
   'content-script.js',
   'hud-model.js',
+  'icons/icon-16.png',
+  'icons/icon-32.png',
+  'icons/icon-48.png',
+  'icons/icon-128.png',
   'lesson-policy.js',
   'manifest.json',
   'policy-validation.js',
@@ -23,6 +27,12 @@ const EXPECTED_HOST_PERMISSIONS = [
   'http://127.0.0.1:48788/*',
   'http://localhost:48788/*',
 ];
+const EXPECTED_ICONS = Object.freeze({
+  '16': 'icons/icon-16.png',
+  '32': 'icons/icon-32.png',
+  '48': 'icons/icon-48.png',
+  '128': 'icons/icon-128.png',
+});
 const ZIP_UTF8_FLAG = 0x0800;
 const ZIP_VERSION = 20;
 const ZIP_UNIX_VERSION = 0x0314;
@@ -97,6 +107,16 @@ function validateManifest(value: unknown) {
   const action = manifest.action as Record<string, unknown> | undefined;
   if (action?.default_popup !== 'popup.html') {
     throw new Error('Local Guard must use the reviewed local popup.');
+  }
+  if (JSON.stringify(manifest.icons) !== JSON.stringify(EXPECTED_ICONS)) {
+    throw new Error(
+      'Local Guard manifest icons differ from the release allowlist.',
+    );
+  }
+  if (JSON.stringify(action.default_icon) !== JSON.stringify(EXPECTED_ICONS)) {
+    throw new Error(
+      'Local Guard action icons differ from the release allowlist.',
+    );
   }
   if (
     typeof manifest.name !== 'string' ||

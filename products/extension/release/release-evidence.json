@@ -6,8 +6,17 @@
   "gates": [
     {
       "id": "store_graphic_assets",
-      "status": "missing",
-      "evidence": []
+      "status": "verified",
+      "evidence": [
+        "products/extension/release/assets-src/local-guard-icon.svg",
+        "products/extension/release/assets-src/small-promo-440x280.svg",
+        "products/extension/release/assets/store-screenshot.provenance.json",
+        "products/extension/release/assets/store-screenshot-1280x800.png",
+        "products/extension/release/assets/small-promo-440x280.png",
+        "products/extension/icons/icon-128.png",
+        "scripts/render-local-guard-store-assets.mts",
+        "tests/local-guard-store-assets.test.ts"
+      ]
     },
     {
       "id": "publisher_identity",

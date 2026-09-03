@@ -82,6 +82,25 @@ npm run local-guard:attest -- verify --archive outputs/local-guard/leftout-local
 The command fails if the trusted key, manifest, archive name, archive bytes,
 size, hashes, contract fields, or signature differ.
 
+## Rebuild the reviewed store graphics
+
+The extension icons, 440×280 promotional tile, and 1280×800 listing screenshot
+are generated from repository-owned sources:
+
+```powershell
+npm run local-guard:assets
+```
+
+The screenshot combines a real controlled-browser capture of the current lab
+with the shipping popup HTML, CSS, JavaScript, validation, policy, and HUD code
+rendered against a read-only fixture. The fixture permits consent lookup,
+selected-tab lookup, and `get-active-status` only; it rejects every other
+extension message and cannot invoke a site tool. Exact input and output hashes
+are recorded in
+`products/extension/release/assets/store-screenshot.provenance.json` and
+verified by the test suite. Graphic completion does not imply publisher
+verification, store review, signing, or ordinary-user distribution approval.
+
 ## Assess ordinary-user release readiness
 
 Run the non-claiming assessment during normal verification:
@@ -115,7 +134,8 @@ records all of these external controls:
 
 1. Establish and protect a persistent publisher identity and release key.
 2. Complete Chrome Web Store developer verification, privacy disclosure,
-   permissions justification, listing assets, review, and store signing.
+   permissions justification, review, and store signing using the already
+   verified listing assets.
 3. Publish the trusted release-key fingerprint through an independently
    controlled channel and document key rotation and revocation.
 4. Verify installation, update, rollback, disablement, and removal in every

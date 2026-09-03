@@ -187,9 +187,10 @@ An agent using this product should:
 
 ## Delivery sequence
 
-1. Complete Local Guard store assets, publisher identity, Web Store review and
-   signing, extension-ID-bound native transport, installation lifecycle, and
-   incident-response ownership.
+1. Complete Local Guard publisher identity, Web Store review and signing,
+   extension-ID-bound native transport, installation lifecycle, and
+   incident-response ownership. Store graphics are complete and reproducibly
+   verified; that does not imply store approval.
 2. Complete first-time human acceptance of the five-lesson end-to-end path
    against the exact signed candidate.
 3. Verify keyboard, screen-reader, 200% zoom, and 360 px popup journeys with

@@ -105,7 +105,7 @@ pretending that a green badge or a reassuring annotation is enforcement.
 
 ## Verification
 
-The current local candidate passed 447 automated tests across 55 files on
+The current local candidate passed 450 automated tests across 56 files on
 Node.js 24, typecheck, the Local Guard release-readiness assessment, lint,
 production build, deterministic Local Guard packaging, and a live non-invoking
 walkthrough/accessibility regression. Earlier bounded browser

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="280" viewBox="0 0 440 280">
+  <defs>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M28 0H0v28" fill="none" stroke="#25333e" stroke-width="1"/>
+    </pattern>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#d7ff28" stop-opacity=".2"/>
+      <stop offset="1" stop-color="#d7ff28" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="440" height="280" fill="#101722"/>
+  <rect width="440" height="280" fill="url(#grid)" opacity=".7"/>
+  <circle cx="220" cy="140" r="132" fill="url(#glow)"/>
+  <circle cx="220" cy="140" r="104" fill="none" stroke="#587078" stroke-width="2" stroke-dasharray="3 9"/>
+  <circle cx="220" cy="140" r="82" fill="none" stroke="#8bd3ae" stroke-width="3"/>
+  <circle cx="220" cy="140" r="65" fill="#172129" stroke="#d7ff28" stroke-width="2"/>
+  <path d="M220 83 259 98v31c0 27-16.3 44.7-39 55.7-22.7-11-39-28.7-39-55.7V98l39-15Z" fill="#d7ff28" stroke="#f8f3e8" stroke-width="4"/>
+  <path d="M202 130h36M220 112v36" stroke="#101722" stroke-width="8" stroke-linecap="square"/>
+  <circle cx="220" cy="130" r="11" fill="#f8f3e8" stroke="#101722" stroke-width="6"/>
+  <g fill="#f8f3e8" stroke="#101722" stroke-width="3">
+    <circle cx="116" cy="140" r="8"/>
+    <circle cx="324" cy="140" r="8"/>
+    <circle cx="220" cy="36" r="8"/>
+    <circle cx="220" cy="244" r="8"/>
+  </g>
+  <g stroke="#8bd3ae" stroke-width="3">
+    <path d="M124 140h31M285 140h31M220 44v31M220 205v31"/>
+  </g>
+</svg>
