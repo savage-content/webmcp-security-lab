@@ -63,4 +63,4 @@ gate ledger. Only independently inspectable evidence may move a gate to
 attested ZIP is not Web Store signing; an unpacked browser run is not acceptance
 of the exact signed candidate.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

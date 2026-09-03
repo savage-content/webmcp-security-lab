@@ -83,4 +83,4 @@ boundary.
 > See what the site offered. Approve less. Verify what happened. Trust the
 > effect, not the label.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

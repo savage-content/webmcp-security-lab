@@ -268,4 +268,4 @@ multi-client, server-atomic, or universal-client replay resistance;
 executable-byte attestation; browser-level network isolation; or durable
 independently attested receipts.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import {
   ISSUE_DRAFT_ASSURANCE_LIMITATION,
   createPrivacySafeIssueDraft,
+  isIssueDraftAssuranceLimitation,
   type PrivacySafeIssueDraft,
 } from './issue-draft';
 
@@ -199,13 +200,18 @@ function parseReceipt(value: unknown, responseStatus: number) {
     body.state !== 'quarantined' ||
     body.revision !== 1 ||
     !exactIsoTime(body.receivedAt) ||
-    body.assuranceLimitation !== ISSUE_DRAFT_ASSURANCE_LIMITATION ||
+    !isIssueDraftAssuranceLimitation(body.assuranceLimitation) ||
     (body.disposition === 'created' && responseStatus !== 201) ||
     (body.disposition === 'existing' && responseStatus !== 200)
   ) {
     throw new Error('Reporting service returned an invalid receipt.');
   }
-  return Object.freeze(body as unknown as ReportingRelayReceipt);
+  return Object.freeze({
+    ...body,
+    // A rolling schema-v1 service may return the old brand literal. It is not
+    // signed here, so normalize the client-visible receipt after validation.
+    assuranceLimitation: ISSUE_DRAFT_ASSURANCE_LIMITATION,
+  }) as unknown as Readonly<ReportingRelayReceipt>;
 }
 
 async function readBoundedResponse(response: Response) {

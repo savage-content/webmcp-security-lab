@@ -270,7 +270,7 @@ class OneUseCapabilityEngine(
                 receipt.succeeded != (receipt.failureType == null) ||
                 !hashesMatchOutcome ||
                 receipt.observedBindingSha256 != expectedObservedBindingSha256 ||
-                receipt.disclaimer != RECEIPT_DISCLAIMER
+                receipt.disclaimer !in setOf(RECEIPT_DISCLAIMER, LEGACY_RECEIPT_DISCLAIMER)
             ) return false
 
             receipt.outputSha256?.let {
@@ -293,6 +293,7 @@ class OneUseCapabilityEngine(
                 outputSha256 = receipt.outputSha256,
                 effectsSha256 = receipt.effectsSha256,
                 failureType = receipt.failureType,
+                disclaimer = receipt.disclaimer,
             )
             return receipt.receiptSha256 == expectedHash &&
                 receipt.receiptId == "receipt_${expectedHash.take(24)}"
@@ -309,6 +310,7 @@ class OneUseCapabilityEngine(
             outputSha256 = receipt.outputSha256,
             effectsSha256 = receipt.effectsSha256,
             failureType = receipt.failureType,
+            disclaimer = receipt.disclaimer,
         )
 
         private fun grantHash(grantId: String, request: GrantRequest): String = Hashing.sha256Hex(
@@ -326,6 +328,7 @@ class OneUseCapabilityEngine(
             outputSha256: String?,
             effectsSha256: String?,
             failureType: String?,
+            disclaimer: String,
         ): String = Hashing.sha256Hex(
             Hashing.canonical(
                 "protocol" to RECEIPT_PROTOCOL,
@@ -339,7 +342,7 @@ class OneUseCapabilityEngine(
                 "effectsSha256" to effectsSha256,
                 "succeeded" to (failureType == null),
                 "failureType" to failureType,
-                "disclaimer" to RECEIPT_DISCLAIMER,
+                "disclaimer" to disclaimer,
             ),
         )
 
@@ -361,6 +364,7 @@ class OneUseCapabilityEngine(
                 outputSha256,
                 effectsSha256,
                 failureType,
+                RECEIPT_DISCLAIMER,
             )
             return CapabilityReceipt(
                 protocol = RECEIPT_PROTOCOL,

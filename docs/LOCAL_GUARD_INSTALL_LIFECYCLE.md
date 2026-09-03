@@ -74,4 +74,4 @@ The test vectors cover verification ordering, exact registry binding, retained
 rollback state, fail-closed removal, receipt preservation, path separation,
 identity rejection, and no automatic retry.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

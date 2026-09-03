@@ -82,4 +82,4 @@ Run the focused source checks on Node.js 24:
 npm test -- tests/reporting-reviewer-access.test.ts tests/reporting-reviewer-client.test.ts tests/reporting-reviewer-workbench.test.ts tests/reporting-reviewer-server.test.ts
 ```
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

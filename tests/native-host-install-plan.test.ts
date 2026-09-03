@@ -18,7 +18,7 @@ describe('Windows native host installation plan', () => {
     });
     expect(plan.manifest).toEqual({
       name: 'com.leftout.security.local_guard',
-      description: 'LeftOut Local Guard identity-bound native messaging host',
+      description: 'Left Out Local Guard identity-bound native messaging host',
       path: 'C:\\Program Files\\LeftOut Local Guard\\leftout-local-guard-native-host.exe',
       type: 'stdio',
       allowed_origins: [`chrome-extension://${EXTENSION_ID}/`],

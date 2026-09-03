@@ -1,5 +1,9 @@
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+
 import { describe, expect, it } from 'vitest';
 
+import { LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION } from '../lib/legacy-contracts';
 import {
   createReportingLedgerIntake,
   parseReportingLedgerBundle,
@@ -281,5 +285,63 @@ describe('reporting moderation ledger', () => {
     expect(() =>
       parseReportingLedgerBundle(serializedRecord, serializedEvents),
     ).toThrow('event hash is invalid');
+  });
+
+  it('rehydrates frozen d0c ledgers byte-for-byte and appends a current transition', async () => {
+    const bytes = await readFile(
+      new URL('./fixtures/legacy/reporting-v1.json', import.meta.url),
+      'utf8',
+    );
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe(
+      '7ad772b797b6a9bd937e87a78413559d413fdbf7a3247b67e6d224257c74203e',
+    );
+    const fixture = JSON.parse(bytes) as {
+      intake: { record: unknown; events: unknown[] };
+      published: { record: unknown; events: unknown[] };
+    };
+    const restored = parseReportingLedgerBundle(
+      fixture.intake.record,
+      fixture.intake.events,
+    );
+    const published = parseReportingLedgerBundle(
+      fixture.published.record,
+      fixture.published.events,
+    );
+
+    expect(JSON.stringify(restored.record)).toBe(
+      JSON.stringify(fixture.intake.record),
+    );
+    expect(JSON.stringify(published.record)).toBe(
+      JSON.stringify(fixture.published.record),
+    );
+    expect(restored.record.moderation.draft.assuranceLimitation).toBe(
+      LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION,
+    );
+    expect(verifyReportingLedgerChain(restored.record, restored.events)).toBe(
+      true,
+    );
+    expect(verifyReportingLedgerChain(published.record, published.events)).toBe(
+      true,
+    );
+
+    const successor = transitionReportingLedger(
+      restored.record,
+      { at: '2026-09-02T18:01:00.000Z', to: 'under_review' },
+      {
+        actor: { id: 'reviewer-upgrade', role: 'reviewer' },
+        expectedRevision: 1,
+        requestId: 'a23e4567-e89b-42d3-a456-426614174010',
+      },
+      { eventId: () => 'b23e4567-e89b-42d3-a456-426614174011' },
+    );
+    expect(successor.record.moderation.draft.assuranceLimitation).toBe(
+      LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION,
+    );
+    expect(
+      verifyReportingLedgerChain(successor.record, [
+        ...restored.events,
+        successor.event,
+      ]),
+    ).toBe(true);
   });
 });

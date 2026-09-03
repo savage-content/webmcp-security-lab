@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION } from '../lib/legacy-contracts';
 import {
   ISSUE_MODERATION_STATES,
+  parsePublicIssueFeedRecord,
   projectPublicIssueFeed,
   projectPublicIssueRecord,
 } from '../products/connector/issue-publication';
@@ -67,6 +69,29 @@ describe('moderated public issue projection', () => {
     expect(Object.isFrozen(feed)).toBe(true);
     const ndjson = feed.map((record) => JSON.stringify(record)).join('\n');
     expect(JSON.parse(ndjson)).toEqual(projection);
+  });
+
+  it('validates a frozen d0c publication without changing its hashed bytes', async () => {
+    const fixtureBytes = await readFile(
+      new URL('./fixtures/legacy/reporting-v1.json', import.meta.url),
+      'utf8',
+    );
+    const fixture = JSON.parse(fixtureBytes) as {
+      publication: { record: unknown; recordSha256: string };
+    };
+    const storedBytes = JSON.stringify(fixture.publication.record);
+    expect(createHash('sha256').update(storedBytes).digest('hex')).toBe(
+      fixture.publication.recordSha256,
+    );
+    expect(fixture.publication.recordSha256).toBe(
+      'a989ba5ecfcdc500ddd18ba55acabafba1fbf1da0ab984ab97b88cd74b4e7448',
+    );
+    const restored = parsePublicIssueFeedRecord(fixture.publication.record);
+
+    expect(JSON.stringify(restored)).toBe(storedBytes);
+    expect(restored.assuranceLimitation).toBe(
+      LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION,
+    );
   });
 
   it.each(['human_reproduced', 'equivalent_evidence'] as const)(
@@ -180,3 +205,5 @@ describe('moderated public issue projection', () => {
     }
   });
 });
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';

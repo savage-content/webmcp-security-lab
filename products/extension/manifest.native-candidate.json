@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "LeftOut WebMCP Safety",
+  "name": "Left Out WebMCP Safety",
   "version": "0.4.0",
   "description": "Shows WebMCP activity and guards one exact, document-bound action through the identity-bound Local Guard host.",
   "icons": {

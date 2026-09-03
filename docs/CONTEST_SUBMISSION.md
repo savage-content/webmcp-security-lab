@@ -1,8 +1,10 @@
 # Contest submission copy
 
-> **CURRENT CANDIDATE — NOT YET SUBMITTED.** The public application is live,
-> and its source is public. Submission remains blocked until entrant attestations,
-> the final public YouTube video, and authenticated form rehearsal pass
+> **CURRENT CANDIDATE — NOT YET SUBMITTED.** Sites version 12 from `d0c1676`
+> and its matching source are public. The final truth-and-brand candidate below
+> still requires reviewed merge and deployment. Submission remains blocked
+> until entrant attestations, the final public YouTube video, and authenticated
+> form rehearsal pass
 > [CONTEST_READINESS.md](CONTEST_READINESS.md).
 > This copy makes no novelty, patentability, universal-compatibility, or
 > production-security claim.
@@ -115,15 +117,18 @@ pretending that a green badge or a reassuring annotation is enforcement.
 
 ## Verification
 
-On September 3, the final truth/brand candidate passed 534 automated tests
-with two intentional Windows-only skips across 75 files on Node.js 24. The complete gate also passes
+On September 3, the final truth/brand candidate passed 542 automated tests
+with two intentional Windows-only skips across 75 files on Node.js 24. The exact
+candidate's automated gate also passes
 typecheck, the Local Guard and reporting release-readiness
 assessments, the standalone reporting-Worker dry run, lint, production build,
 fail-closed public-`dist/` allowlist verification, deterministic Local Guard
 packaging, retention-preserving idempotency replay and deletion-race checks,
-and a live non-invoking walkthrough/accessibility regression. Earlier bounded browser
-runs produced passing receipts for all five synthetic lessons through the
-local extension/connector path.
+and the automated walkthrough/accessibility contracts. A separate live,
+non-invoking acceptance run passed on the historically tested version 11
+release. Earlier bounded browser runs produced passing receipts for all five
+synthetic lessons through the local extension/connector path; those historical
+runs are not relabeled as exact-candidate evidence.
 
 The automated checks do not replace a first-time human study, screen-reader
 operator, entrant attestation, authenticated form rehearsal, or final recorded

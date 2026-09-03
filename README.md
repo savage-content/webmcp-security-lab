@@ -308,7 +308,8 @@ npm run desktop:alpha:stop
 ```
 
 The non-secret state and PID metadata are written atomically beneath
-`%LOCALAPPDATA%\LeftOut Security\WebMCP Alpha`. The operator log in that same
+`%LOCALAPPDATA%\LeftOut Security\WebMCP Alpha` (the preserved legacy on-disk
+path). The operator log in that same
 directory is private local operator material because it contains a legacy
 recovery pairing code, authenticated MCP URL, and one-use report links; it is truncated
 on each fresh start. Those values are never placed in `status.json`, the
@@ -366,7 +367,7 @@ The automated suite covers:
 
 `npm run verify` does not claim live connector success and does not run the
 separate Android conformance script. The final truth/brand candidate passes
-534 passing tests plus two Windows-only skips across 75 files, typecheck, the Local Guard and reporting
+542 passing tests plus two Windows-only skips across 75 files, typecheck, the Local Guard and reporting
 release-readiness assessments, a disabled standalone reporting-Worker dry run,
 lint, and a production build plus its public-artifact boundary check on Node.js 24.
 Source-ready native transport, a

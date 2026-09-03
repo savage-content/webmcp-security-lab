@@ -2,7 +2,7 @@
 
 Status: implemented as an advanced, session-scoped local test surface at
 `/conformance`. It is intentionally separate from the five beginner lessons and
-from the LeftOut Local Guard.
+from the Left Out Local Guard.
 
 ## Why this is a separate surface
 
@@ -19,7 +19,7 @@ Chrome, Edge, Brave, Opera, and Vivaldi. It must not be counted as Site Tools
 discovery or invocation. See the
 [official browser extension documentation](https://learn.chatgpt.com/docs/chrome-extension).
 
-The LeftOut Local Guard is a third, independent surface: an unpacked local
+The Left Out Local Guard is a third, independent surface: an unpacked local
 prototype that monitors one selected Chromium tab, validates one-use permits,
 relays an approved action, and stores linked local evidence. Its success cannot
 be generalized to either of the OpenAI surfaces.
@@ -60,7 +60,7 @@ reflect rollout, model selection, workspace availability, registration failure,
 or client discovery state and therefore remains `INCONCLUSIVE`.
 
 Enterprise/Edu produces `SKIP_UNSUPPORTED_WORKSPACE`. External browser or
-LeftOut Membrane runs produce `NOT_APPLICABLE` for this family.
+Left Out Membrane runs produce `NOT_APPLICABLE` for this family.
 
 ## Trust rules
 
@@ -77,4 +77,4 @@ LeftOut Membrane runs produce `NOT_APPLICABLE` for this family.
 - Regular browser navigation, clicking, form interaction, or computer use does
   not upgrade a Site Tools stage.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

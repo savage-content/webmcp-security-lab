@@ -10,12 +10,16 @@ through the reconciled version 12 checkpoint `d0c1676` have author dates
 between 2026-08-31 and 2026-09-03, inside the challenge's August 25–September 3
 development period.
 
-The authoritative remote reconciliation on 2026-09-03 found public
-`origin/main` at `d0c167651b463deb047b7490eec2779e3c7ab3f2`, matching Sites source
+The authoritative remote reconciliation on 2026-09-03 found public GitHub
+`main` at `d0c167651b463deb047b7490eec2779e3c7ab3f2`, matching Sites source
 and Git tree `e2ed77cef1677d539941d6804e88de404cb49ae3`. All 37 commits after the
 former `93b4c78` checkpoint are public. Live routes and normalized bundles
 strongly match version 12, although the Sites API does not expose a
 cryptographic live-version identifier.
+
+The reviewed final patch and resulting merge SHA must be added to this
+checkpoint after merge; this pre-merge log does not yet attest that later
+candidate history.
 
 The now-public contest-period delta adds or materially extends:
 
@@ -36,10 +40,10 @@ are not trusted timestamps, proof of authorship, novelty, non-infringement,
 freedom-to-operate clearance, or cryptographic proof that the complete source tree is live.
 The entrant must make the required ownership and eligibility attestations.
 
-> This historical log describes the frozen version 1 work. It is not a
-> publish-readiness record for the local capability negotiator, connector,
-> unpacked extension, or Android conformance prototype, and it does not claim
-> that the current MVP was publicly deployed. See
+> This historical log is not a publish-readiness record for the local
+> capability negotiator, connector, unpacked extension, or Android conformance
+> prototype. The public learning application is deployed; those optional local
+> prototypes remain separately gated. See
 > [GO_NO_GO.md](GO_NO_GO.md).
 
 ## Added for this submission

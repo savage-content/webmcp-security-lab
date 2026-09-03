@@ -83,7 +83,7 @@ function documentShell(title: string, body: string, allowsForms: boolean) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${escapeHtml(title)} · LeftOut Security</title>
+  <title>${escapeHtml(title)} · Left Out Security</title>
   <style>${styles()}</style>
 </head>
 <body>${body}</body>
@@ -124,7 +124,7 @@ export function createReviewerListDocument(input: {
     'Private report review queue',
     `<main>
       <header>
-        <p class="eyebrow">LeftOut Security · local reviewer workbench</p>
+        <p class="eyebrow">Left Out Security · local reviewer workbench</p>
         <h1>Review quarantined WebMCP reports.</h1>
         <p class="lede">This loopback-only page retrieves private queue data through a separately configured reviewer credential. It cannot publish.</p>
         <span class="status">Reviewer role · no publication authority</span>
@@ -171,7 +171,7 @@ export function createReviewerDetailDocument(input: {
     'Review one private report',
     `<main>
       <header>
-        <p class="eyebrow">LeftOut Security · exact report review</p>
+        <p class="eyebrow">Left Out Security · exact report review</p>
         <h1>Decide the next private state.</h1>
         <p class="lede">Every button below changes this report exactly once at revision ${escapeHtml(input.detail.record.revision)}. A stale or repeated action is rejected. No reviewer action can publish.</p>
         <span class="status">${escapeHtml(STATE_LABELS[moderation.state])}</span>
@@ -210,7 +210,7 @@ export function createReviewerTransitionReceiptDocument(
     'Private report state changed',
     `<main>
       <header aria-live="polite">
-        <p class="eyebrow">LeftOut Security · reviewer receipt</p>
+        <p class="eyebrow">Left Out Security · reviewer receipt</p>
         <h1>The private state changed once.</h1>
         <p class="lede">The reporting service committed the reviewer decision. Nothing was published and nothing will retry automatically.</p>
         <span class="status">${escapeHtml(STATE_LABELS[receipt.state])}</span>
@@ -236,7 +236,7 @@ export function createReviewerFailureDocument(message: string) {
     'Reviewer action stopped',
     `<main>
       <header>
-        <p class="eyebrow">LeftOut Security · reviewer action stopped</p>
+        <p class="eyebrow">Left Out Security · reviewer action stopped</p>
         <h1>No automatic retry occurred.</h1>
         <p class="lede">Reload the current queue before making a new decision. The previous one-use local action cannot be replayed.</p>
         <span class="status">Stopped safely</span>

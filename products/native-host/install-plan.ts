@@ -45,7 +45,7 @@ export function createWindowsNativeHostInstallPlan(
   );
   const manifest = Object.freeze({
     name: NATIVE_HOST_NAME,
-    description: 'LeftOut Local Guard identity-bound native messaging host',
+    description: 'Left Out Local Guard identity-bound native messaging host',
     path: executablePath,
     type: 'stdio' as const,
     allowed_origins: Object.freeze([expectedExtensionOrigin(extensionId)]),

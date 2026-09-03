@@ -359,7 +359,7 @@ export async function startDesktopAlpha(
     await writeStatus(statusPath, status('ready'));
     const reportLaunch = connector.issueReportLaunchTicket();
     const setupLaunch = connector.issueSetupLaunchTicket();
-    log('LeftOut WebMCP desktop alpha is ready.');
+    log('Left Out WebMCP desktop alpha is ready.');
     log(`Learning range: ${siteUrl}`);
     log(`Unpacked extension: ${extensionPath}`);
     log(`One-time browser pairing code: ${connector.pairCode}`);

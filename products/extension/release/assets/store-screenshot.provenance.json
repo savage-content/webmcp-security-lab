@@ -1,6 +1,8 @@
 {
   "schemaVersion": "leftout.local-guard-store-capture/1",
   "capturedAt": "2026-09-03T02:47:16.1342515Z",
+  "recaptureRequired": true,
+  "supersededReason": "The capture predates the spaced public brand correction and is not a current Store asset.",
   "siteToolInvocation": false,
   "sources": {
     "lab": {
@@ -8,13 +10,13 @@
       "sha256": "4a5893275e4b9ca654953591162d918ea8db3d1f0cba1771580e8ab6253d8758",
       "kind": "real-controlled-browser-capture",
       "url": "http://127.0.0.1:3001/",
-      "description": "Current local release-candidate lab rendered in the controlled Chrome profile."
+      "description": "Historical local release-candidate lab rendered in the controlled Chrome profile; superseded for Store use."
     },
     "popup": {
       "path": "products/extension/release/assets-src/captures/popup-protected.png",
       "sha256": "ab57e1a7fff77ac1af3dd9680b01b2487719657d701c818d2d9ba5be4895f44d",
       "kind": "controlled-render-of-shipping-popup-code",
-      "description": "Current popup HTML, CSS, JavaScript, validation, policy, and HUD modules rendered with a read-only Chrome API fixture.",
+      "description": "Historical popup render made with a read-only Chrome API fixture; superseded for Store use.",
       "fixtureState": {
         "observedActions": 1,
         "protectedActions": 1,
@@ -25,7 +27,7 @@
   },
   "composition": {
     "script": "scripts/render-local-guard-store-assets.mts",
-    "description": "The real popup surface is placed over the real lab view without changing product copy or inserting feature claims."
+    "description": "Historical composition retained for provenance only; recapture from corrected shipping code is required."
   },
   "output": {
     "path": "products/extension/release/assets/store-screenshot-1280x800.png",

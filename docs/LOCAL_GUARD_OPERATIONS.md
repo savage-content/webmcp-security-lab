@@ -64,4 +64,4 @@ Before either operations gate can become verified:
 6. repeat novice, keyboard, screen-reader, zoom, and hostile-input acceptance
    against the exact recovered candidate.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

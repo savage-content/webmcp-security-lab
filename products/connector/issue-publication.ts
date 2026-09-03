@@ -6,6 +6,8 @@ import {
   ISSUE_DRAFT_CONTEXTS,
   ISSUE_DRAFT_SEVERITIES,
   ISSUE_DRAFT_STAGES,
+  isIssueDraftAssuranceLimitation,
+  type IssueDraftAssuranceLimitation,
   type IssueDraftCategory,
   type IssueDraftContext,
   type IssueDraftSeverity,
@@ -57,7 +59,7 @@ export interface ModeratedIssueCandidate {
 }
 
 export interface PublicIssueFeedRecord {
-  assuranceLimitation: typeof ISSUE_DRAFT_ASSURANCE_LIMITATION;
+  assuranceLimitation: IssueDraftAssuranceLimitation;
   category: IssueDraftCategory;
   evidenceBasis: PublicationEvidenceBasis;
   hostname?: string;
@@ -311,7 +313,7 @@ export function parsePublicIssueFeedRecord(
   if (
     value.schemaVersion !== ISSUE_PUBLICATION_SCHEMA_VERSION ||
     value.moderationState !== 'published' ||
-    value.assuranceLimitation !== ISSUE_DRAFT_ASSURANCE_LIMITATION
+    !isIssueDraftAssuranceLimitation(value.assuranceLimitation)
   ) {
     throw new Error('Stored public issue record contract is invalid.');
   }
@@ -329,8 +331,17 @@ export function parsePublicIssueFeedRecord(
       ...(Object.hasOwn(value, 'hostname') ? { hostname: value.hostname } : {}),
     },
   });
-  if (!projected || JSON.stringify(projected) !== JSON.stringify(value)) {
+  const preserved = projected
+    ? Object.freeze({
+        ...projected,
+        // Publication rows are immutable and hash the serialized schema-v1
+        // record. Preserve old bytes after validating the rest of the shape.
+        assuranceLimitation:
+          value.assuranceLimitation as IssueDraftAssuranceLimitation,
+      })
+    : undefined;
+  if (!preserved || JSON.stringify(preserved) !== JSON.stringify(value)) {
     throw new Error('Stored public issue record is not canonical.');
   }
-  return projected;
+  return preserved;
 }

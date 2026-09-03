@@ -41,7 +41,7 @@ const MAX_CONSUMED_PERMIT_TOMBSTONES = 256;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const PERMIT_DOCUMENT_BINDING_SCHEMA =
   'leftout.extension-capability-permit-document-binding/1';
-const CLIENT_LABEL = 'LeftOut Chrome capability bridge';
+const CLIENT_LABEL = 'Left Out Chrome capability bridge';
 const NATIVE_TRANSPORT = 'native-messaging';
 const LOOPBACK_TRANSPORT = 'developer-loopback-http';
 const FETCH_TIMEOUT_MS = 10_000;
@@ -970,7 +970,7 @@ async function setBadge(tabId, state) {
                   : {
                       text: '',
                       color: '#000000',
-                      title: 'LeftOut WebMCP safety',
+                      title: 'Left Out WebMCP safety',
                     };
   await chrome.action.setBadgeBackgroundColor({
     tabId,

@@ -6,7 +6,7 @@
   "gates": [
     {
       "id": "store_graphic_assets",
-      "status": "verified",
+      "status": "source_ready",
       "evidence": [
         "products/extension/release/assets-src/local-guard-icon.svg",
         "products/extension/release/assets-src/small-promo-440x280.svg",

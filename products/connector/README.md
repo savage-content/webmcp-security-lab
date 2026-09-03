@@ -1,4 +1,4 @@
-# LeftOut WebMCP capability connector
+# Left Out WebMCP capability connector
 
 This local MVP connects the beginner-first product journey:
 
@@ -158,7 +158,7 @@ including its `access_token` query parameter. The beginner sequence is:
 1. Complete the exact approval in the browser page.
 2. Wait for the page's automatic one-way permit offer and confirm that the
    extension HUD says one exact action is protected
-3. Tell the connected agent: “Use the LeftOut connector to run the one approved
+3. Tell the connected agent: “Use the Left Out connector to run the one approved
    practice action. Run it once; do not retry.” The zero-input
    `run_one_approved_practice_action` helper discovers the sole connected page
    and sole approved action. The human never copies a session ID, generated
@@ -221,4 +221,4 @@ retained local file. It is not signed, externally timestamped, independently
 anchored, server-atomic across hosts, or protected from wholesale deletion and
 replacement by an administrator of the same machine.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

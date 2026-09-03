@@ -320,4 +320,4 @@ has passed independent security, privacy, and accessibility review.
 relabelled as production configuration: it has neither a real database nor a
 route, and it intentionally cannot accept a report.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

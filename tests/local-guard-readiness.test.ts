@@ -11,10 +11,11 @@ describe('Local Guard ordinary-user release gate', () => {
     const { report } = await assessLocalGuardRelease({ outputPath: null });
 
     expect(report.sourceDisclosureReady).toBe(true);
-    expect(report.storeAssetsReady).toBe(true);
+    expect(report.storeAssetsReady).toBe(false);
     expect(report.ordinaryUserReleaseReady).toBe(false);
     expect(report.releaseChannel).toBe('developer_preview');
     expect(report.blockers).toEqual([
+      'store_graphic_assets',
       'publisher_identity',
       'chrome_web_store_review_and_signing',
       'native_messaging_identity_channel',
@@ -89,7 +90,7 @@ describe('Local Guard ordinary-user release gate', () => {
     ]);
 
     expect(html).toContain('id="data-consent"');
-    expect(html).toContain('not to LeftOut Security');
+    expect(html).toContain('not to Left Out Security');
     expect(html).toContain('/local-guard/privacy');
     expect(script).toContain(
       "const CONSENT_VERSION = 'leftout.local-guard-data-handling/1'",

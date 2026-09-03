@@ -106,4 +106,4 @@ installer must require action-time authorization before writing files or the
 registry and must independently verify the signed executable and extension
 identity.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

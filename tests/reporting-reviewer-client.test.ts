@@ -1,5 +1,8 @@
+import { readFile } from 'node:fs/promises';
+
 import { describe, expect, it, vi } from 'vitest';
 
+import { LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION } from '../lib/legacy-contracts';
 import { ISSUE_DRAFT_ASSURANCE_LIMITATION } from '../products/connector/issue-draft';
 import { createReportingLedgerIntake } from '../products/reporting-service/ledger';
 import { REPORTING_REVIEW_RESPONSE_SCHEMA_VERSION } from '../products/reporting-service/review';
@@ -144,6 +147,92 @@ describe('server-side reporting reviewer client', () => {
       }),
     );
     await expect(client.detail(reportId)).rejects.toThrow('invalid');
+  });
+
+  it('reads old schema-v1 wire data while normalizing reviewer-visible copy', async () => {
+    const fixture = JSON.parse(
+      await readFile(
+        new URL('./fixtures/legacy/reporting-v1.json', import.meta.url),
+        'utf8',
+      ),
+    ) as {
+      intake: {
+        record: {
+          revision: number;
+          moderation: {
+            id: string;
+            state: string;
+            receivedAt: string;
+            updatedAt: string;
+            draft: unknown;
+          };
+        };
+        events: unknown[];
+      };
+    };
+    const frozenId = fixture.intake.record.moderation.id;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json({
+          schemaVersion: REPORTING_REVIEW_RESPONSE_SCHEMA_VERSION,
+          reports: [
+            {
+              reportId: frozenId,
+              state: fixture.intake.record.moderation.state,
+              revision: fixture.intake.record.revision,
+              receivedAt: fixture.intake.record.moderation.receivedAt,
+              updatedAt: fixture.intake.record.moderation.updatedAt,
+              draft: fixture.intake.record.moderation.draft,
+            },
+          ],
+          nextCursor: null,
+          assuranceLimitation: LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION,
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          schemaVersion: REPORTING_REVIEW_RESPONSE_SCHEMA_VERSION,
+          ledger: fixture.intake,
+          assuranceLimitation: LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION,
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          schemaVersion: REPORTING_REVIEW_RESPONSE_SCHEMA_VERSION,
+          disposition: 'updated',
+          reportId: frozenId,
+          state: 'under_review',
+          revision: 2,
+          updatedAt: '2026-09-03T02:01:00.000Z',
+          assuranceLimitation: LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION,
+        }),
+      );
+    const client = new ReportingReviewerClient({
+      environment: environment(),
+      fetch: fetchMock as typeof fetch,
+      requestId: () => 'b89f29ff-3764-418a-b839-5430dccac8dd',
+    });
+
+    const page = await client.list();
+    expect(page.assuranceLimitation).toBe(ISSUE_DRAFT_ASSURANCE_LIMITATION);
+    expect(page.reports[0]?.draft.assuranceLimitation).toBe(
+      ISSUE_DRAFT_ASSURANCE_LIMITATION,
+    );
+    const detail = await client.detail(frozenId);
+    expect(detail.assuranceLimitation).toBe(ISSUE_DRAFT_ASSURANCE_LIMITATION);
+    expect(detail.record.moderation.draft.assuranceLimitation).toBe(
+      LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION,
+    );
+    const transition = await client.transition({
+      reportId: frozenId,
+      expectedRevision: 1,
+      to: 'under_review',
+    });
+    expect(transition.assuranceLimitation).toBe(
+      ISSUE_DRAFT_ASSURANCE_LIMITATION,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it('sends one exact reviewer transition and never retries a failed request', async () => {

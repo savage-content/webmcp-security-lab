@@ -20,7 +20,7 @@
     'error',
   ]);
   const host = document.createElement('aside');
-  host.setAttribute('aria-label', 'LeftOut WebMCP extension status');
+  host.setAttribute('aria-label', 'Left Out WebMCP extension status');
   const shadow = host.attachShadow({ mode: 'closed' });
   const style = document.createElement('style');
   style.textContent = `
@@ -51,7 +51,7 @@
   panel.dataset.state = 'checking';
   panel.innerHTML = `
     <div class="bar">
-      <span class="brand"><span class="dot"></span>LeftOut extension HUD</span>
+      <span class="brand"><span class="dot"></span>Left Out extension HUD</span>
       <button type="button" aria-expanded="true">Hide</button>
     </div>
     <div class="body">
