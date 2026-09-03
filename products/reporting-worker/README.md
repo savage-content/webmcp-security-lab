@@ -37,6 +37,20 @@ rollback evidence, and begin with a tiny invited cohort. Raw bearer values and
 private feed keys must be configured as Cloudflare secrets, never `vars` or
 repository files.
 
+The source-only handoff builder can compile real infrastructure identifiers
+into a routable **but still disabled** candidate without contacting Cloudflare:
+
+```powershell
+npm run reporting:candidate -- --input C:\secure-handoff\reporting.json
+```
+
+The input contains only a candidate date, Worker name, separate service and
+learning-site hostnames, and D1 name/UUID. It accepts no gates, credentials, or
+secrets. Output is written once under the ignored `outputs/` tree, pins source
+and migration digests, disables `workers.dev` and preview URLs, and keeps
+`LEFTOUT_REPORTING_MODE=disabled`. Building that candidate neither deploys nor
+approves it; Wrangler deployment remains a separate human-authorized action.
+
 The learning-site deployment remains separate and reporting remains off. A
 successful source check does not approve privacy, operations, identity,
 retention, publication, feed, support, or incident readiness.

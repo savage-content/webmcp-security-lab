@@ -22,6 +22,7 @@
     "reporting:readiness": "tsx scripts/assess-reporting-release.mts",
     "reporting:release-gate": "tsx scripts/assess-reporting-release.mts --require-operational-release",
     "reporting:worker:check": "tsx scripts/check-reporting-worker.mts",
+    "reporting:candidate": "tsx scripts/build-reporting-disabled-candidate.mts",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",

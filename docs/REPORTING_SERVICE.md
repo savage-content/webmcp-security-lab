@@ -109,6 +109,15 @@ The second performs an offline Wrangler dry-run bundle from the deliberately
 disabled template. `npm run reporting:release-gate` is the strict operational
 gate and must fail until every external gate is independently verified.
 
+Once an owner has selected a real, separate hostname and D1 database, the
+nonsecret infrastructure handoff can be compiled locally with
+`npm run reporting:candidate -- --input <handoff.json>`. The strict input has no
+field for enabling a gate or supplying a credential. Its one-time output
+remains in `disabled` mode, disables `workers.dev` and preview URLs, binds the
+exact custom domain and D1 identifiers, and records source and migration
+digests. It does not contact Cloudflare or satisfy the privacy, identity,
+operations, rehearsal, or deployment gates.
+
 | Setting                                                   | Required value or boundary                                                                |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `LEFTOUT_REPORTING_MODE`                                  | `invited`                                                                                 |

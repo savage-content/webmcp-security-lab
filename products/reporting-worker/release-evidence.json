@@ -8,8 +8,11 @@
       "status": "source_ready",
       "evidence": [
         "products/reporting-worker/worker.ts",
+        "products/reporting-worker/candidate.ts",
         "scripts/check-reporting-worker.mts",
-        "tests/reporting-worker.test.ts"
+        "scripts/build-reporting-disabled-candidate.mts",
+        "tests/reporting-worker.test.ts",
+        "tests/reporting-worker-candidate.test.ts"
       ]
     },
     {

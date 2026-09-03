@@ -7,8 +7,8 @@ preparing this review. The target tree was clean at `5ba6e97`; the added files
 are implementation evidence, not evidence that a signed extension or hosted
 intake exists.
 
-Current collection: 117 artifacts at
-`sha256:cdd200ab6c76a211ff545aa3e276979ad8a357634ef35b849677f09633bc87f0`.
+Current collection: 120 artifacts at
+`sha256:215b607ca66f1a127571c448f0359d78ff3b74a3221b012a31c6e150e371bf45`.
 
 The digest is SHA-256 over newline-terminated, repository-relative
 `path<TAB>sha256` records in the exact order enforced by
