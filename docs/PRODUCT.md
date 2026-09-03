@@ -190,8 +190,9 @@ An agent using this product should:
 1. Complete Local Guard publisher identity, Web Store review and signing,
    extension-ID-bound native transport, the privileged installation-lifecycle
    executor, and incident-response ownership. Store graphics are complete and
-   reproducibly verified, and lifecycle planning is source-ready; neither
-   implies store approval or installed-product verification.
+   reproducibly verified; lifecycle planning, the scoped platform matrix, and
+   the unowned incident runbook are source-ready. None implies store approval
+   or installed-product verification.
 2. Complete first-time human acceptance of the five-lesson end-to-end path
    against the exact signed candidate.
 3. Verify keyboard, screen-reader, 200% zoom, and 360 px popup journeys with

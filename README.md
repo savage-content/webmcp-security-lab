@@ -358,11 +358,12 @@ The automated suite covers:
   behavior, revocation, and failure handling.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The current automated suite passes 455/455
-tests across 57 files, typecheck, the Local Guard release-readiness assessment,
-lint, and a production build on Node.js 24. The source-ready native transport
-checkpoint is included in those tests but is not installed, signed, or wired
-into the shipping preview.
+separate Android conformance script. The current automated suite passes 459/459
+tests across 58 files, typecheck, the Local Guard release-readiness assessment,
+lint, and a production build on Node.js 24. Source-ready native transport,
+lifecycle, platform-matrix, and incident-response checkpoints are included in
+those tests but are not installed, signed, rehearsed, or wired into the
+shipping preview.
 Live connector evidence is recorded separately: the
 September 1 target-client run satisfied the bounded end-to-end checks in
 [docs/GO_NO_GO.md](docs/GO_NO_GO.md).

@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "leftout.local-guard-incident-response/1",
+  "status": "draft_unowned",
+  "productionActivated": false,
+  "rehearsalCompleted": false,
+  "requiredOwners": {
+    "releaseOwner": null,
+    "securityResponder": null,
+    "privacyResponder": null,
+    "storePublisher": null,
+    "signingKeyCustodian": null,
+    "supportContact": null
+  },
+  "defaultContainment": {
+    "reportingMode": "disabled_when_unconfigured",
+    "reportingGates": [
+      "intake",
+      "moderation",
+      "publication",
+      "feed",
+      "lifecycle",
+      "correction"
+    ],
+    "nativeHostRegistration": "absent",
+    "chromeWebStoreItem": "not_created",
+    "automaticRetry": false,
+    "automaticPublicDisclosure": false
+  },
+  "incidentClasses": [
+    {
+      "id": "extension_integrity_or_authority_drift",
+      "severity": "critical",
+      "containment": [
+        "disable_store_distribution_and_updates",
+        "remove_native_host_registration",
+        "revoke_active_local_sessions",
+        "preserve_minimized_release_and_receipt_evidence"
+      ],
+      "recoveryGate": "new_signed_candidate_full_regression_and_owner_approval"
+    },
+    {
+      "id": "native_host_identity_or_channel_compromise",
+      "severity": "critical",
+      "containment": [
+        "remove_native_host_registration",
+        "revoke_active_local_sessions",
+        "rotate_release_identity_if_implicated",
+        "preserve_minimized_host_and_receipt_evidence"
+      ],
+      "recoveryGate": "signed_host_rebuild_clean_install_and_channel_retest"
+    },
+    {
+      "id": "signing_key_or_publisher_account_compromise",
+      "severity": "critical",
+      "containment": [
+        "stop_distribution_and_signing",
+        "revoke_or_rotate_compromised_identity",
+        "publish_trust_metadata_correction_through_independent_channel",
+        "preserve_minimized_audit_evidence"
+      ],
+      "recoveryGate": "new_independently_verified_identity_and_rehearsed_rotation"
+    },
+    {
+      "id": "private_reporting_data_or_operator_credential_exposure",
+      "severity": "critical",
+      "containment": [
+        "disable_all_reporting_gates",
+        "revoke_invitation_and_operator_credentials",
+        "preserve_database_and_access_evidence_without_copying_report_content",
+        "begin_privacy_and_legal_scope_assessment"
+      ],
+      "recoveryGate": "privacy_owner_approval_rotated_credentials_and_isolated_restore_test"
+    },
+    {
+      "id": "erroneous_or_tampered_public_feed_record",
+      "severity": "high",
+      "containment": [
+        "disable_feed_gate",
+        "preserve_signed_response_and_public_event_identity",
+        "append_authorized_withdrawal_without_rewriting_history",
+        "rotate_feed_identity_if_signature_trust_is_implicated"
+      ],
+      "recoveryGate": "custodian_publisher_and_key_owner_rehearsal_with_consumer_verification"
+    }
+  ],
+  "evidenceBoundary": {
+    "collect": [
+      "release_version_and_hash",
+      "extension_and_native_host_identity",
+      "bounded_timestamps_and_state_transitions",
+      "minimized_receipt_and_public_event_identifiers"
+    ],
+    "exclude": [
+      "credentials",
+      "raw_private_reports",
+      "full_page_content",
+      "browser_history",
+      "customer_records",
+      "source_code_from_affected_users"
+    ],
+    "requiredReportStatement": "This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system."
+  },
+  "claims": {
+    "sourceRunbookReady": true,
+    "namedOwnersAssigned": false,
+    "operatorRehearsalVerified": false,
+    "responseTimeCommitmentPublished": false,
+    "ordinaryUserReleaseReady": false
+  }
+}

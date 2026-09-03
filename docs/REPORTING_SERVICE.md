@@ -48,10 +48,12 @@ The local implementation currently provides:
   correction/publication mismatch, or correction mutation.
 
 No backup purge, browser submission UI, production identity integration,
-production signing-key custodian, independent fingerprint publication, or
-production operations runbook exists yet. The correction operation is
-source-tested only and has not passed an operator rehearsal. Source code for a
-route is not evidence that the service is enabled.
+production signing-key custodian, or independent fingerprint publication
+exists yet. A source-only incident runbook now records fail-closed containment,
+but every accountable owner is null and no operator rehearsal or response-time
+commitment exists. The correction operation is source-tested only and has not
+passed an operator rehearsal. Source code for a route is not evidence that the
+service is enabled.
 
 ## Configuration contract
 

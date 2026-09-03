@@ -156,6 +156,9 @@ The release-gate sources are:
   data-use, remote-code, and current distribution disclosures;
 - `products/extension/release/release-evidence.json` — explicit external gate
   status and inspectable evidence paths; and
+- `products/extension/release/platform-matrix.json` and
+  `incident-response.json` — explicit unsupported combinations, default-off
+  controls, owner gaps, and recovery gates; and
 - `docs/LOCAL_GUARD_PRIVACY_REVIEW.md` — reviewed privacy and store rationale.
 
 Until those gates pass, distribute the ZIP only to controlled testers and call

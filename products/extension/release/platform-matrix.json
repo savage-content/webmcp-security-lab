@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "leftout.local-guard-platform-matrix/1",
+  "evidenceDate": "2026-09-02",
+  "ordinaryUserSupportApproved": false,
+  "productionApprovedCombinationCount": 0,
+  "entries": [
+    {
+      "id": "windows11-x64-chrome152-loopback-preview",
+      "operatingSystem": "Windows 11",
+      "architecture": "x64",
+      "client": "Google Chrome",
+      "clientVersion": "152",
+      "surface": "chrome_extension",
+      "evidenceLevel": "observed_controlled_preview",
+      "distribution": "unpacked_developer_preview",
+      "transport": "loopback_http",
+      "productStatus": "developer_preview_only",
+      "limitations": [
+        "One dated machine, browser profile, connector, and session only.",
+        "Unsigned extension and unsigned local host.",
+        "No ordinary-user support or security-boundary claim."
+      ]
+    },
+    {
+      "id": "windows11-x64-chrome153plus-native-candidate",
+      "operatingSystem": "Windows 11",
+      "architecture": "x64",
+      "client": "Google Chrome",
+      "clientVersion": "153+",
+      "surface": "chrome_extension",
+      "evidenceLevel": "not_tested",
+      "distribution": "not_built",
+      "transport": "native_messaging_source_only",
+      "productStatus": "unsupported",
+      "limitations": [
+        "No signed extension or native-host candidate exists.",
+        "Chrome 153 lifecycle behavior requires exact-build regression testing."
+      ]
+    },
+    {
+      "id": "windows11-x64-edge-native-candidate",
+      "operatingSystem": "Windows 11",
+      "architecture": "x64",
+      "client": "Microsoft Edge",
+      "clientVersion": "unselected",
+      "surface": "browser_extension",
+      "evidenceLevel": "not_tested",
+      "distribution": "not_built",
+      "transport": "not_integrated",
+      "productStatus": "unsupported",
+      "limitations": [
+        "No Edge store identity, manifest registration, policy review, or test evidence."
+      ]
+    },
+    {
+      "id": "macos-chrome-native-candidate",
+      "operatingSystem": "macOS",
+      "architecture": "unselected",
+      "client": "Google Chrome",
+      "clientVersion": "unselected",
+      "surface": "chrome_extension",
+      "evidenceLevel": "not_tested",
+      "distribution": "not_built",
+      "transport": "not_implemented",
+      "productStatus": "unsupported",
+      "limitations": [
+        "No macOS native host, signing identity, installer, or device evidence."
+      ]
+    },
+    {
+      "id": "linux-chrome-native-candidate",
+      "operatingSystem": "Linux",
+      "architecture": "unselected",
+      "client": "Google Chrome",
+      "clientVersion": "unselected",
+      "surface": "chrome_extension",
+      "evidenceLevel": "not_tested",
+      "distribution": "not_built",
+      "transport": "not_implemented",
+      "productStatus": "unsupported",
+      "limitations": [
+        "No Linux native host, package, installer, or device evidence."
+      ]
+    },
+    {
+      "id": "android-appfunctions-conformance",
+      "operatingSystem": "Android",
+      "architecture": "unselected",
+      "client": "AppFunctions prototype",
+      "clientVersion": "not_created",
+      "surface": "native_appfunction",
+      "evidenceLevel": "jvm_conformance_only",
+      "distribution": "not_built",
+      "transport": "not_implemented",
+      "productStatus": "unsupported",
+      "limitations": [
+        "No Android application, generated metadata, device discovery, policy allowance, or invocation evidence.",
+        "Existing JVM vectors validate shared policy semantics only."
+      ]
+    }
+  ],
+  "claimBoundary": "The matrix records scoped observations and explicit absences. It makes no universal browser, client, operating-system, WebMCP, or AppFunctions support claim."
+}

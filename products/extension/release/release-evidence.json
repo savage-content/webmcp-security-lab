@@ -80,13 +80,21 @@
     },
     {
       "id": "supported_platform_matrix",
-      "status": "missing",
-      "evidence": []
+      "status": "source_ready",
+      "evidence": [
+        "products/extension/release/platform-matrix.json",
+        "docs/LOCAL_GUARD_OPERATIONS.md",
+        "tests/local-guard-operations.test.ts"
+      ]
     },
     {
       "id": "release_incident_response",
-      "status": "missing",
-      "evidence": []
+      "status": "source_ready",
+      "evidence": [
+        "products/extension/release/incident-response.json",
+        "docs/LOCAL_GUARD_OPERATIONS.md",
+        "tests/local-guard-operations.test.ts"
+      ]
     }
   ]
 }
