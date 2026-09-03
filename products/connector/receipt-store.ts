@@ -9,7 +9,7 @@ import type { PairedPageSummary } from './bridge-coordinator';
 import { validateConnectorCapabilityReceipt } from './lesson-capability-policy';
 
 export const REPORT_LIMITATION =
-  'This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.';
+  'This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.';
 
 export class ReceiptValidationError extends Error {
   constructor(message: string) {
