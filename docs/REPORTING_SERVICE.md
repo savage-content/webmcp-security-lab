@@ -8,6 +8,13 @@ public lab continues to work when every reporting setting is absent; in that
 state intake, review, publication, feed, lifecycle, and correction routes return
 the same `404` response as unavailable routes.
 
+A separate standalone Worker entry now routes only those reporting endpoints
+and serves no learning-site assets, health page, or generic application route.
+Its checked-in Wrangler template is intentionally non-routable, uses a
+placeholder D1 identity, and fixes reporting to `disabled`; Wrangler dry-run
+bundling and an explicit reporting-readiness assessor are part of the normal
+verification gate. This is deployability evidence, not an enabled service.
+
 The local implementation currently provides:
 
 - a scriptless loopback composer that derives one paired public HTTPS origin
@@ -70,6 +77,12 @@ reviewer workbench, correction operation, and full submission path are
 source-tested only and have not passed an operator rehearsal. Source code for a
 route or interface is not evidence that the service is enabled.
 
+The pending privacy and publication review is recorded in
+`docs/REPORTING_PRIVACY_REVIEW.md`. It identifies application fields, provider
+metadata, disclosure stages, reputational risk, and the accountable decisions
+that must be approved before the `privacy_approval` gate can move from
+`missing`.
+
 ## Configuration contract
 
 All reporting settings are deployment controls and must be supplied through
@@ -82,6 +95,19 @@ With no `LEFTOUT_REPORTING_*` settings, the service is fully disabled. An
 invited-intake deployment requires the applicable explicit values below. The
 correction gate safely defaults to `false` only to permit an existing disabled
 deployment to upgrade; an operator must set it explicitly before enablement.
+
+The standalone source checkpoint can be checked without creating or modifying
+Cloudflare resources:
+
+```powershell
+npm run reporting:readiness
+npm run reporting:worker:check
+```
+
+The first command validates the complete gate ledger and writes a local report.
+The second performs an offline Wrangler dry-run bundle from the deliberately
+disabled template. `npm run reporting:release-gate` is the strict operational
+gate and must fail until every external gate is independently verified.
 
 | Setting                                                   | Required value or boundary                                                                |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
@@ -116,11 +142,11 @@ values below are supplied to the connector process. Partial or disabled
 configuration containing a destination or credential is rejected. These are
 operator secrets and controls, not browser or public-site settings.
 
-| Setting                                         | Required value or boundary                                      |
-| ----------------------------------------------- | --------------------------------------------------------------- |
-| `LEFTOUT_CONNECTOR_REPORTING_MODE`              | `invited`; otherwise absent or `disabled`                       |
-| `LEFTOUT_CONNECTOR_REPORTING_ENDPOINT`          | Exact public HTTPS URL ending in `/api/reports/intake`          |
-| `LEFTOUT_CONNECTOR_REPORTING_INVITATION_TOKEN`  | Header-safe 32–512 character invitation bearer held server-side |
+| Setting                                        | Required value or boundary                                      |
+| ---------------------------------------------- | --------------------------------------------------------------- |
+| `LEFTOUT_CONNECTOR_REPORTING_MODE`             | `invited`; otherwise absent or `disabled`                       |
+| `LEFTOUT_CONNECTOR_REPORTING_ENDPOINT`         | Exact public HTTPS URL ending in `/api/reports/intake`          |
+| `LEFTOUT_CONNECTOR_REPORTING_INVITATION_TOKEN` | Header-safe 32–512 character invitation bearer held server-side |
 
 The composer is offered only for an exact paired public HTTPS origin. The
 synthetic public lab, local/private names, IP literals, non-HTTPS pages, full
@@ -279,5 +305,10 @@ and retained rehearsal evidence:
 The first enabled deployment should use a separate service hostname and tiny
 invited cohort. The learning-site reporting UI remains off until that service
 has passed independent security, privacy, and accessibility review.
+
+`products/reporting-worker/release-evidence.json` is the current gate ledger.
+`products/reporting-worker/wrangler.disabled.example.json` must never be
+relabelled as production configuration: it has neither a real database nor a
+route, and it intentionally cannot accept a report.
 
 This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.

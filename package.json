@@ -19,6 +19,9 @@
     "local-guard:attest": "tsx scripts/attest-local-guard-release.mts",
     "local-guard:readiness": "tsx scripts/assess-local-guard-release.mts",
     "local-guard:release-gate": "tsx scripts/assess-local-guard-release.mts --require-product-release",
+    "reporting:readiness": "tsx scripts/assess-reporting-release.mts",
+    "reporting:release-gate": "tsx scripts/assess-reporting-release.mts --require-operational-release",
+    "reporting:worker:check": "tsx scripts/check-reporting-worker.mts",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",
@@ -31,7 +34,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify": "npm run typecheck && npm run local-guard:readiness && npm test && npm run lint && npm run build"
+    "verify": "npm run typecheck && npm run local-guard:readiness && npm run reporting:readiness && npm run reporting:worker:check && npm test && npm run lint && npm run build"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

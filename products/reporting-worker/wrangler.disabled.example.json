@@ -1,0 +1,23 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "leftout-reporting-disabled-preview",
+  "main": "worker.ts",
+  "compatibility_date": "2026-09-02",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "vars": {
+    "LEFTOUT_REPORTING_MODE": "disabled"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "leftout-reporting-placeholder",
+      "database_id": "00000000-0000-4000-8000-000000000000",
+      "migrations_dir": "../../drizzle"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "send_metrics": false
+}

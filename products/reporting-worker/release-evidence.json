@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "leftout.reporting-release-evidence/1",
+  "evidenceDate": "2026-09-02",
+  "releaseChannel": "disabled_source_preview",
+  "gates": [
+    {
+      "id": "standalone_route_isolation",
+      "status": "source_ready",
+      "evidence": [
+        "products/reporting-worker/worker.ts",
+        "scripts/check-reporting-worker.mts",
+        "tests/reporting-worker.test.ts"
+      ]
+    },
+    {
+      "id": "d1_binding_and_migration_rehearsal",
+      "status": "source_ready",
+      "evidence": [
+        "products/reporting-worker/wrangler.disabled.example.json",
+        "drizzle/0002_furry_miss_america.sql",
+        "drizzle/0003_mixed_nightmare.sql",
+        "drizzle/0004_colossal_tenebrous.sql",
+        "drizzle/0005_fine_toad.sql",
+        "drizzle/0006_silly_talkback.sql",
+        "drizzle/0007_swift_hitman.sql",
+        "tests/reporting-migration.test.ts"
+      ]
+    },
+    {
+      "id": "privacy_approval",
+      "status": "missing",
+      "evidence": []
+    },
+    {
+      "id": "production_identity_role_separation",
+      "status": "source_ready",
+      "evidence": [
+        "products/reporting-service/auth.ts",
+        "products/reporting-service/config.ts",
+        "tests/reporting-service-config.test.ts"
+      ]
+    },
+    {
+      "id": "abuse_monitoring_and_support",
+      "status": "missing",
+      "evidence": []
+    },
+    {
+      "id": "retention_backup_and_deletion_operations",
+      "status": "source_ready",
+      "evidence": [
+        "products/reporting-service/retention-core.ts",
+        "products/reporting-service/deletion-core.ts",
+        "docs/REPORTING_SERVICE.md"
+      ]
+    },
+    {
+      "id": "feed_key_custody_and_trust_distribution",
+      "status": "source_ready",
+      "evidence": [
+        "products/reporting-service/feed-signing.ts",
+        "products/reporting-service/feed.ts",
+        "tests/reporting-feed.test.ts"
+      ]
+    },
+    {
+      "id": "incident_ownership_and_rehearsal",
+      "status": "missing",
+      "evidence": []
+    },
+    {
+      "id": "separate_service_hostname",
+      "status": "missing",
+      "evidence": []
+    },
+    {
+      "id": "operator_novice_and_accessibility",
+      "status": "missing",
+      "evidence": []
+    },
+    {
+      "id": "invited_cohort_enablement",
+      "status": "missing",
+      "evidence": []
+    }
+  ]
+}

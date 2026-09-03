@@ -168,6 +168,13 @@ opaque one-use local links, and can move an exact current revision only through
 the reviewer state graph. It cannot publish and has not passed production
 identity or human-operator rehearsal.
 
+A standalone reporting Worker source now isolates the API from the public
+learning application and passes an offline Wrangler bundle check under an
+explicitly disabled, non-routable placeholder configuration. Its gate ledger
+keeps privacy approval, service hostname, production database, identity,
+operations, support, incident rehearsal, and invited-cohort enablement open.
+The source privacy review is a decision packet, not approval.
+
 ## Agent behavior
 
 An agent using this product should:

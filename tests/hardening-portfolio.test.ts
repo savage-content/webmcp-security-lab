@@ -87,6 +87,14 @@ const evidencePaths = [
   'tests/reporting-reviewer-client.test.ts',
   'tests/reporting-reviewer-server.test.ts',
   'tests/reporting-reviewer-workbench.test.ts',
+  'products/reporting-worker/worker.ts',
+  'products/reporting-worker/wrangler.disabled.example.json',
+  'products/reporting-worker/release-evidence.json',
+  'products/reporting-worker/README.md',
+  'scripts/assess-reporting-release.mts',
+  'scripts/check-reporting-worker.mts',
+  'tests/reporting-worker.test.ts',
+  'tests/reporting-release-readiness.test.ts',
   'products/reporting-service/config.ts',
   'products/reporting-service/auth.ts',
   'products/reporting-service/ledger.ts',
@@ -128,6 +136,7 @@ const evidencePaths = [
   'docs/LOCAL_GUARD_OPERATIONS.md',
   'docs/LOCAL_GUARD_PRIVACY_REVIEW.md',
   'docs/REPORTING_SERVICE.md',
+  'docs/REPORTING_PRIVACY_REVIEW.md',
 ];
 
 describe('Local Guard and reporting hardening portfolio', () => {

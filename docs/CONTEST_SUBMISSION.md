@@ -105,12 +105,17 @@ pretending that a green badge or a reassuring annotation is enforcement.
   the private queue through a loopback browser surface without exposing its
   bearer or gaining publication authority; it has not passed production
   identity or human-operator rehearsal.
+- A standalone, API-only reporting Worker entry point with an inert configuration
+  template, strict route allowlist, D1 binding, source-level privacy review, and
+  a release assessor that keeps every operational gate explicitly open until
+  accountable evidence is recorded.
 
 ## Verification
 
-The current local candidate passed 513 automated tests across 70 files on
-Node.js 24, typecheck, the Local Guard release-readiness assessment, lint,
-production build, deterministic Local Guard packaging, and a live non-invoking
+The current local candidate passed 522 automated tests across 72 files on
+Node.js 24, typecheck, the Local Guard and reporting release-readiness
+assessments, the standalone reporting-Worker dry run, lint, production build,
+deterministic Local Guard packaging, and a live non-invoking
 walkthrough/accessibility regression. Earlier bounded browser
 runs produced passing receipts for all five synthetic lessons through the
 local extension/connector path.

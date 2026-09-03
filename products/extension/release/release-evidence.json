@@ -122,13 +122,21 @@
         "products/reporting-service/review.ts",
         "products/reporting-service/publish.ts",
         "products/reporting-service/feed.ts",
+        "products/reporting-worker/worker.ts",
+        "products/reporting-worker/wrangler.disabled.example.json",
+        "products/reporting-worker/release-evidence.json",
+        "scripts/assess-reporting-release.mts",
+        "scripts/check-reporting-worker.mts",
         "tests/connector-external-report.test.ts",
         "tests/reporting-relay-client.test.ts",
         "tests/reporting-reviewer-access.test.ts",
         "tests/reporting-reviewer-client.test.ts",
         "tests/reporting-reviewer-server.test.ts",
         "tests/reporting-reviewer-workbench.test.ts",
-        "docs/REPORTING_SERVICE.md"
+        "tests/reporting-worker.test.ts",
+        "tests/reporting-release-readiness.test.ts",
+        "docs/REPORTING_SERVICE.md",
+        "docs/REPORTING_PRIVACY_REVIEW.md"
       ]
     },
     {

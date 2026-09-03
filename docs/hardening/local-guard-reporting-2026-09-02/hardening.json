@@ -5,8 +5,8 @@
   "sourceEvidence": {
     "kind": "source_document_collection",
     "label": "Local Guard and reporting source evidence",
-    "collectionSha256": "b27ab13f748592716c3afe26d1a858fa7cc83c956ebfc28356df979809647408",
-    "artifactCount": 108,
+    "collectionSha256": "cdd200ab6c76a211ff545aa3e276979ad8a357634ef35b849677f09633bc87f0",
+    "artifactCount": 117,
     "targetRevision": "5ba6e97095918d8877e1e12c98faabb3b81a869f",
     "sourceDrift": "present"
   },

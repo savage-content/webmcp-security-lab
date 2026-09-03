@@ -28,12 +28,12 @@
       "client": "Google Chrome",
       "clientVersion": "153+",
       "surface": "chrome_extension",
-      "evidenceLevel": "not_tested",
-      "distribution": "not_built",
+      "evidenceLevel": "source_package_only",
+      "distribution": "deterministic_unsigned_extension_candidate",
       "transport": "native_messaging_source_only",
       "productStatus": "unsupported",
       "limitations": [
-        "No signed extension or native-host candidate exists.",
+        "A deterministic unsigned extension ZIP exists, but no signed extension, native-host executable, installed native manifest, or device acceptance exists.",
         "Chrome 153 lifecycle behavior requires exact-build regression testing."
       ]
     },
