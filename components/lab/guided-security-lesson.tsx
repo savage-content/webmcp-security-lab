@@ -52,28 +52,28 @@ export function FirstRunGuide({ mode }: { mode: ExperienceMode }) {
     mode === 'site-tools'
       ? ([
           {
-            label: 'Open',
-            title: 'Stay in the built-in browser',
+            label: 'Review task',
+            title: 'See exactly what the website proposes',
             detail:
-              'Use this page inside ChatGPT Work or Codex. Site Tools run from the page that registered them and stop being available when you leave it.',
+              'Review the target, inputs, and possible effect on this page. Nothing is approved or called yet.',
           },
           {
-            label: 'Check',
-            title: 'Use this detected session',
+            label: 'Approve once',
+            title: 'Allow one limited call',
             detail:
-              'The setup check found the Site Tools page API here. Model, workspace, policy, registration, and session are still separate facts; this observation is not a universal-support claim.',
+              'Approval registers one limited Site Tool for this page and session. Approval does not call it.',
           },
           {
-            label: 'Practice',
-            title: 'Approve one exact action',
+            label: 'Ask agent',
+            title: 'Send one exact request',
             detail:
-              'The page replaces a broad practice action with one zero-input, one-use action. Approval prepares it but does not run it.',
+              'Paste the request shown by the lesson into the chat that owns this browser. Send it once and do not retry.',
           },
           {
-            label: 'Verify',
-            title: 'Ask the same agent once',
+            label: 'Check result',
+            title: 'Return to the page receipt',
             detail:
-              'Tell the agent in this browser to run the one approved action once, without retrying. Return here to compare the effect and page evidence.',
+              'Compare the answer, before and after state, other changes, remaining permission, and receipt ID.',
           },
         ] as const)
       : mode === 'local-guard'
@@ -327,16 +327,16 @@ export function GuidedSecurityLesson({
   const requestKey = `${scenario.id}:${experienceMode}`;
   const visibleCapabilityMessage =
     capability.status === 'ready' && experienceMode === 'site-tools'
-      ? 'Approved. The exact one-use Site Tool is registered on this page. Nothing has run.'
+      ? 'Approved. This page registered one call for the exact Site Tool. Nothing has run.'
       : capability.message;
   const canRequestAgent = capability.status === 'ready';
   const handoffTitle =
     capability.status === 'ready'
-      ? 'Approved, not run — ask this agent once.'
+      ? 'Approved, not run — ask your agent once.'
       : capability.status === 'claimed'
-        ? 'The one-use authority is consumed. Verifying now.'
+        ? 'The single permission is used. Checking the result now.'
         : capability.status === 'failed'
-          ? 'The one-use action stopped. Do not retry it.'
+          ? 'The action stopped. Do not try it again.'
           : capability.status === 'offering'
             ? experienceMode === 'local-guard'
               ? 'Finishing Local Guard protection.'
@@ -611,7 +611,7 @@ export function GuidedSecurityLesson({
           {currentStage === 3 ? (
             <LessonCard
               icon={<ShieldCheck />}
-              eyebrow="Third: let the connected agent use the one-use action"
+              eyebrow="Third: ask your agent once"
               title={handoffTitle}
             >
               <p
@@ -625,16 +625,16 @@ export function GuidedSecurityLesson({
                   {experienceMode === 'site-tools' ? (
                     <>
                       <Fact
-                        label="1. Keep this page open"
-                        value="Stay in ChatGPT or Codex’s built-in browser. The action belongs to this page and session."
+                        label="1. Stay here"
+                        value="Keep this page open in the same built-in browser."
                       />
                       <Fact
-                        label="2. Ask the same agent"
+                        label="2. Send this once"
                         value={approvalUi.siteToolsAgentRequest}
                       />
                       <Fact
-                        label="3. Return here"
-                        value="The page evidence appears after the registered callback completes."
+                        label="3. Check the receipt"
+                        value="Wait for the page to show the answer and observed changes."
                       />
                     </>
                   ) : experienceMode === 'local-guard' ? (
@@ -673,15 +673,21 @@ export function GuidedSecurityLesson({
               {canRequestAgent ? (
                 <div className="mt-4 rounded-md border border-sky-300/20 bg-sky-300/8 p-3">
                   <p className="text-xs font-semibold text-sky-200">
-                    No tool IDs or hashes needed
+                    No technical names needed
                   </p>
                   <p className="mt-1 text-xs leading-5 text-slate-300">
                     {experienceMode === 'site-tools'
-                      ? 'The agent uses the one approved, zero-input action registered by this page. If the client cannot identify that exact action, it should stop without invoking anything.'
+                      ? 'The agent should use the only approved action on this page. If it cannot find exactly one, it should stop without calling anything.'
                       : experienceMode === 'local-guard'
                         ? 'The local relay finds the one protected practice page and its sole approved, zero-input action. If the page or action is ambiguous, it stops without invoking anything.'
                         : 'No client action is requested on this path. The technical identifiers remain available only for inspection.'}
                   </p>
+                  {experienceMode === 'site-tools' ? (
+                    <p className="mt-2 text-xs font-semibold leading-5 text-sky-50">
+                      Do not trust a chat-only PASS or receipt ID. Trust the
+                      result only when this page shows the matching receipt.
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
               {canRequestAgent && experienceMode !== 'read-only' ? (
@@ -1018,7 +1024,7 @@ export function GuidedSecurityLesson({
 }
 
 function LessonStages({ current }: { current: LessonStage }) {
-  const labels = ['Understand', 'Approve', 'Ask agent', 'Verify'];
+  const labels = ['Review task', 'Approve once', 'Ask agent', 'Check result'];
   return (
     <ol className="mb-4 grid grid-cols-4 gap-1.5" aria-label="Lesson progress">
       {labels.map((label, index) => {

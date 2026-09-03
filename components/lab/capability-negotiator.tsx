@@ -223,7 +223,7 @@ export function CapabilityNegotiator({
   const [guidedAdvance, setGuidedAdvance] = useState(false);
   const agentRequest =
     experienceMode === 'site-tools'
-      ? 'Run the one approved eligibility check for TRAINING-1042 once. Do not invoke another Site Tool and do not retry.'
+      ? 'Run my approved TRAINING-1042 eligibility check once. Do not retry or use another Site Tool.'
       : 'Using the Left Out local relay, run the one protected eligibility check for TRAINING-1042 once. Do not retry.';
   const agentRequestCopyState =
     agentRequestCopyResult?.request === agentRequest
@@ -1187,10 +1187,10 @@ export function CapabilityNegotiator({
       canonicalJson(receipt.effective.after)
     : false;
   const lessonSteps = [
-    ['1', 'Understand'],
-    ['2', 'Approve'],
+    ['1', 'Review task'],
+    ['2', 'Approve once'],
     ['3', 'Ask agent'],
-    ['4', 'Verify'],
+    ['4', 'Check result'],
   ] as const;
   const expiryLabel = contract
     ? new Date(contract.compiled.expiresAt).toLocaleTimeString([], {
@@ -1227,12 +1227,13 @@ export function CapabilityNegotiator({
             Learn by doing · about five minutes
           </div>
           <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-            Try one safe WebMCP action
+            Check one account with your agent
           </h2>
           <p className="mt-3 text-base leading-7 text-slate-300">
-            WebMCP lets a website offer actions to an AI. You will inspect one
-            offer, limit it to an exact task, approve it, run it once, and
-            verify what actually happened.
+            WebMCP lets a website register a WebMCP Site Tool: a structured
+            action an AI client may discover and call. Here you will review one
+            fake eligibility check, approve one call, ask your agent to make it,
+            and check what changed.
           </p>
         </div>
 
@@ -1309,35 +1310,35 @@ export function CapabilityNegotiator({
             <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
               <div className="p-5 sm:p-7">
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-lime-300">
-                  First: understand the offer
+                  First: review the task
                 </p>
                 <h3
                   ref={lessonStageHeadingRef}
                   tabIndex={-1}
                   className="mt-2 text-2xl font-semibold"
                 >
-                  The page offers your AI a read action.
+                  The website declares an eligibility-check action.
                 </h3>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-                  An offered action is not permission and is not proof of
-                  safety. Its name may sound harmless while its inputs or code
-                  grant more authority than you expect.
+                  Declaring an action does not approve or run it. The name may
+                  sound harmless, so first check the target, inputs, and
+                  possible effect.
                 </p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
                   <LessonFact
                     icon={<Eye />}
-                    label="Page offers"
-                    value="Check eligibility"
+                    label="Website declares"
+                    value="One eligibility check"
                   />
                   <LessonFact
                     icon={<LockKeyhole />}
-                    label="You limit"
-                    value="One fake account"
+                    label="You approve"
+                    value="One fake account, once"
                   />
                   <LessonFact
                     icon={<ShieldCheck />}
-                    label="Receipt proves"
-                    value="What changed"
+                    label="Page verifies"
+                    value="Result and changes"
                   />
                 </div>
               </div>
@@ -1371,11 +1372,12 @@ export function CapabilityNegotiator({
                   <ShieldCheck data-icon="inline-start" />
                   {lessonBusy
                     ? 'Preparing a safe review…'
-                    : 'Prepare one-task approval'}
+                    : 'Review one eligibility check'}
                   {!lessonBusy ? <ArrowRight data-icon="inline-end" /> : null}
                 </Button>
                 <p className="mt-3 text-center text-xs leading-5 text-slate-400">
-                  This inspects and limits the action. It does not run it.
+                  This prepares an approval screen. It does not approve or run
+                  anything.
                 </p>
               </div>
             </div>
@@ -1387,15 +1389,15 @@ export function CapabilityNegotiator({
                 </div>
                 <div className="max-w-2xl">
                   <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-lime-300">
-                    Review before anything runs
+                    Second: approve one call
                   </p>
                   <h3 className="mt-2 text-2xl font-semibold">
-                    Ready for your decision.
+                    Decide whether to allow this exact check.
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-slate-300">
-                    The general site action has been narrowed to one read of
-                    TRAINING-1042. The AI cannot choose another account, add
-                    instructions, or use the permission twice.
+                    The website has limited the action to TRAINING-1042. Your
+                    agent cannot choose another account, add instructions, or
+                    call it twice.
                   </p>
                   {experienceMode === 'read-only' ? (
                     <div className="mt-5 rounded-lg border border-sky-300/25 bg-sky-300/8 p-4 text-sm leading-6 text-sky-100">
@@ -1426,11 +1428,11 @@ export function CapabilityNegotiator({
                         disabled={workflowPhase !== 'review'}
                       >
                         <ShieldCheck data-icon="inline-start" />
-                        Review the exact approval
+                        Review and approve one check
                       </Button>
                       <p className="mt-3 text-xs text-slate-400">
-                        Approval creates a five-minute, one-use permission. It
-                        does not run the check.
+                        The next dialog asks for approval. Approval still does
+                        not run the check.
                       </p>
                     </>
                   )}
@@ -1441,47 +1443,45 @@ export function CapabilityNegotiator({
             <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
               <div className="p-5 sm:p-7">
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-lime-300">
-                  Approved and ready
+                  Ready for your agent
                 </p>
                 <h3 className="mt-2 text-2xl font-semibold">
-                  The check has not run yet.
+                  Now ask your agent to run the check once.
                 </h3>
                 <p className="mt-3 text-sm leading-6 text-slate-300">
-                  Your approval created a zero-input capability for this page,
-                  this exact synthetic account, and one use. The broader site
-                  action has been withdrawn while it is active.
+                  You approved one call for TRAINING-1042. You have not run it.
+                  The general practice tool is unavailable while this exact
+                  action is active.
                 </p>
                 <p className="mt-3 text-xs leading-5 text-slate-400">
                   {experienceMode === 'site-tools'
-                    ? 'The action is registered on this page for the agent in the same built-in browser. Page registration does not by itself prove that the client discovered it.'
+                    ? 'This page registered the approved Site Tool. That does not prove the client discovered it; the client must still select and call it.'
                     : experienceMode === 'local-guard'
                       ? 'If the Local Guard is connected, the page offered it the exact narrowing rule. Its browser-owned status is authoritative only for calls routed through that local path.'
                       : 'This read-only path does not claim that any client discovered or invoked the action.'}
                 </p>
                 <div className="mt-5 rounded-lg border border-lime-300/20 bg-lime-300/5 p-4 text-sm text-slate-200">
-                  <strong className="text-white">What this run means:</strong>{' '}
+                  <strong className="text-white">Who does what:</strong>{' '}
                   {experienceMode === 'site-tools'
-                    ? 'the agent in this built-in browser invokes the registered Site Tool directly.'
+                    ? 'you approve one call, the agent invokes the registered Site Tool, and this page verifies the returned result and before/after state.'
                     : experienceMode === 'local-guard'
                       ? 'the connected local agent invokes the registered action through the Local Guard and relay.'
                       : 'no agent-driven invocation is claimed until you choose a live setup.'}{' '}
-                  The capability consumes its authority before the handler
-                  executes.
                 </div>
               </div>
               <div className="border-t border-white/10 bg-slate-900/70 p-5 sm:p-7 lg:border-l lg:border-t-0">
                 <p className="text-sm font-semibold">
                   {experienceMode === 'read-only'
                     ? 'The protected action is prepared, not run'
-                    : 'Hand one action to your agent'}
+                    : 'Send one instruction to your agent'}
                 </p>
                 <p className="mt-2 text-xs leading-5 text-slate-400">
-                  Expected: Eligible. Before and after state must be identical.
+                  Expected answer: Eligible. The fake account must not change.
                 </p>
                 <div className="mt-5 rounded-lg border border-sky-300/25 bg-sky-300/8 p-4">
                   <p className="text-sm font-semibold text-sky-100">
                     {experienceMode === 'site-tools'
-                      ? 'Your agent in this built-in browser runs this step'
+                      ? 'Copy this message into the chat that owns this browser'
                       : experienceMode === 'local-guard'
                         ? 'Your connected local agent runs this step'
                         : 'No invocation on the read-only path'}
@@ -1490,25 +1490,23 @@ export function CapabilityNegotiator({
                     {experienceMode === 'site-tools' ? (
                       <>
                         <li>
-                          1. Keep this page open in ChatGPT or Codex&apos;s
-                          built-in browser.
+                          1. Keep this page open in the same built-in browser.
                         </li>
                         <li>
-                          2. Continue in the same compatible session detected
-                          above; that one observation is not proof of universal
-                          support.
-                        </li>
-                        <li>
-                          3. Send this exact request to the same agent: “
+                          2. In the chat that opened this browser, send: “
                           {agentRequest}”
+                        </li>
+                        <li>
+                          3. Wait for the result. Do not send a second run
+                          command.
                         </li>
                       </>
                     ) : experienceMode === 'local-guard' ? (
                       <>
                         <li>1. Leave this lesson open.</li>
                         <li>
-                          2. In Left Out Local Guard, confirm “Protected: 1 exact
-                          action.”
+                          2. In Left Out Local Guard, confirm “Protected: 1
+                          exact action.”
                         </li>
                         <li>
                           3. Send this exact request to your connected local
@@ -1560,8 +1558,13 @@ export function CapabilityNegotiator({
                     </>
                   ) : null}
                   <p className="mt-3 text-xs leading-5 text-sky-100">
-                    The receipt will appear here automatically. The page has not
-                    run anything itself.
+                    If the agent calls the Site Tool, its receipt appears here.
+                    This page does not call its own tool.
+                  </p>
+                  <p className="mt-2 text-xs font-semibold leading-5 text-sky-50">
+                    Proof rule: do not trust a chat-only PASS or receipt ID.
+                    Trust the result only when this page shows the matching
+                    receipt.
                   </p>
                 </div>
               </div>
@@ -1585,7 +1588,7 @@ export function CapabilityNegotiator({
                   </div>
                   <div className="max-w-2xl">
                     <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-lime-300">
-                      Evidence receipt
+                      Checked result
                     </p>
                     <h3 className="mt-2 text-2xl font-semibold">
                       {receipt?.verdict} — the action{' '}
@@ -1595,9 +1598,9 @@ export function CapabilityNegotiator({
                       your approval
                     </h3>
                     <p className="mt-2 text-sm leading-6 text-slate-300">
-                      A receipt compares the task you approved with the result
-                      and observable effects. This synthetic run is evidence for
-                      this one action, not proof that every WebMCP tool is safe.
+                      The page compared your approved task with the returned
+                      answer and observed changes. This receipt covers only this
+                      fake check; it does not prove every WebMCP tool is safe.
                     </p>
                   </div>
                 </div>
@@ -1620,9 +1623,12 @@ export function CapabilityNegotiator({
                 ) : null}
               </div>
               <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <ReceiptFact label="Approved" value="Read TRAINING-1042 once" />
                 <ReceiptFact
-                  label="Returned"
+                  label="Approved task"
+                  value="Read TRAINING-1042 once"
+                />
+                <ReceiptFact
+                  label="Answer"
                   value={
                     receipt?.verdict === 'PASS'
                       ? 'Eligible'
@@ -1630,20 +1636,23 @@ export function CapabilityNegotiator({
                   }
                 />
                 <ReceiptFact
-                  label="Before and after"
-                  value={stateStayedIdentical ? 'Identical' : 'Different'}
+                  label="Account data changed?"
+                  value={stateStayedIdentical ? 'No' : 'Yes'}
                   good={stateStayedIdentical}
                 />
                 <ReceiptFact
-                  label="Side effects"
+                  label="Other observed effects?"
                   value={
                     receipt?.effective.sideEffects.length
                       ? receipt.effective.sideEffects.join(', ')
-                      : 'None detected'
+                      : 'None'
                   }
                   good={!receipt?.effective.sideEffects.length}
                 />
-                <ReceiptFact label="One-use permission" value="Closed" />
+                <ReceiptFact
+                  label="Permission remaining?"
+                  value="None — used and closed"
+                />
                 <ReceiptFact
                   label="Receipt ID"
                   value={receipt?.id ?? 'Unavailable'}
@@ -1657,7 +1666,7 @@ export function CapabilityNegotiator({
           <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-lime-300">
             <span className="flex items-center gap-2">
               <Info className="size-4 text-lime-300" />
-              How the Membrane limits this action
+              Why this is safer (WebMCP details)
             </span>
           </summary>
           <div className="grid gap-3 border-t border-white/10 p-4 text-xs leading-5 text-slate-300 sm:grid-cols-2 lg:grid-cols-4">
@@ -1666,16 +1675,16 @@ export function CapabilityNegotiator({
               TRAINING-1042.
             </p>
             <p>
-              <strong className="block text-white">No late inputs</strong>The
-              capability accepts zero fields.
+              <strong className="block text-white">No new agent inputs</strong>
+              The Site Tool accepts zero fields.
             </p>
             <p>
-              <strong className="block text-white">One use</strong>Authority
-              closes before execution.
+              <strong className="block text-white">One try</strong>The
+              permission closes before execution.
             </p>
             <p>
-              <strong className="block text-white">Fail closed</strong>Drift,
-              expiry, or mismatch stops the run.
+              <strong className="block text-white">Stops safely</strong>Drift,
+              expiry, or mismatch prevents the call.
             </p>
           </div>
         </details>
@@ -1978,10 +1987,10 @@ export function CapabilityNegotiator({
             <AlertDialogMedia className="bg-amber-100 text-amber-900">
               <AlertTriangle />
             </AlertDialogMedia>
-            <AlertDialogTitle>Approve one read-only check?</AlertDialogTitle>
+            <AlertDialogTitle>Approve one eligibility check?</AlertDialogTitle>
             <AlertDialogDescription className="max-w-none text-left leading-6 [overflow-wrap:anywhere]">
-              Review exactly what will happen before deciding. Approving creates
-              a one-use permission; it does not run the check.
+              If you approve, this page registers one Site Tool for
+              TRAINING-1042. Your agent must still call it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {proposal ? (
@@ -1991,23 +2000,24 @@ export function CapabilityNegotiator({
                   label="Target"
                   value={contract?.intent.accountId ?? 'Not created'}
                 />
-                <ApprovalFact label="Allowed" value="Read eligibility once" />
+                <ApprovalFact label="It may" value="Return eligibility once" />
                 <ApprovalFact
-                  label="Not allowed"
+                  label="It may not"
                   value="Change data, access another account, or run twice"
                 />
                 <ApprovalFact
-                  label="Inputs"
-                  value="None — the target cannot be changed later"
+                  label="What the agent supplies"
+                  value="Nothing — the target is already fixed"
                 />
                 <ApprovalFact
-                  label="Use limit"
-                  value="One attempt; no automatic retry"
+                  label="Attempts allowed"
+                  value="One — a failure is not retried"
                 />
                 <ApprovalFact label="Expires" value={expiryLabel} />
               </div>
               <p className="mt-3 rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm font-medium leading-5 text-amber-950">
-                Approval registers this capability. It does not invoke it.
+                Approval registers one website action on this page. The agent
+                still has to discover and call it.
               </p>
               <details className="mt-4 overflow-hidden rounded-lg border border-border">
                 <summary className="cursor-pointer px-4 py-3 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">
@@ -2091,7 +2101,7 @@ export function CapabilityNegotiator({
               className="h-auto min-h-11 w-full whitespace-normal px-4 py-2.5 text-center sm:w-auto"
               onClick={() => void approveAndRegister()}
             >
-              Approve one read-only check
+              Approve one check — does not run
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -73,9 +73,9 @@ describe('beginner WebMCP lesson path', () => {
     const normalizedGuide = guidedLessonSource.replace(/\s+/gu, ' ');
     expect(guidedLessonSource).toContain('First time here?');
     expect(guidedLessonSource).toContain('Use Site Tools directly');
-    expect(guidedLessonSource).toContain('Use this detected session');
-    expect(guidedLessonSource).toContain(
-      'this observation is not a universal-support claim',
+    expect(guidedLessonSource).toContain('Allow one limited call');
+    expect(normalizedGuide).toContain(
+      'Client availability still depends on the exact model, workspace, rollout, page registration, and session',
     );
     expect(guidedLessonSource).toContain('Left Out Local Guard');
     expect(guidedLessonSource).toContain('Use the local relay');
@@ -92,18 +92,20 @@ describe('beginner WebMCP lesson path', () => {
 
   it('keeps the guided route on the connected agent and the direct self-test in advanced controls', () => {
     expect(capabilityLessonSource).toContain(
-      'Your agent in this built-in browser',
+      'Copy this message into the chat that owns this browser',
     );
     expect(capabilityLessonSource).toContain('Your connected local agent');
     expect(capabilityLessonSource).toContain(
-      'The receipt will appear here automatically',
+      'If the agent calls the Site Tool, its receipt appears here',
     );
     expect(capabilityLessonSource).not.toContain(
       'Run the approved WebMCP action once',
     );
     expect(capabilityLessonSource).toContain('Invoke through WebMCP');
     expect(capabilityLessonSource).toContain('Continue to Lesson 2');
-    expect(capabilityLessonSource).toContain('In Left Out Local Guard, confirm');
+    expect(capabilityLessonSource).toContain(
+      'In Left Out Local Guard, confirm',
+    );
     expect(capabilityLessonSource).not.toContain(
       'Run local practice check once',
     );
@@ -112,12 +114,15 @@ describe('beginner WebMCP lesson path', () => {
   it('gives Lesson 1 a copyable exact agent handoff instead of a dead-end instruction', () => {
     const normalizedCapability = capabilityLessonSource.replace(/\s+/gu, ' ');
     expect(normalizedCapability).toContain(
-      'Run the one approved eligibility check for TRAINING-1042 once. Do not invoke another Site Tool and do not retry.',
+      'Run my approved TRAINING-1042 eligibility check once. Do not retry or use another Site Tool.',
     );
     expect(normalizedCapability).toContain(
       'Using the Left Out local relay, run the one protected eligibility check for TRAINING-1042 once. Do not retry.',
     );
     expect(capabilityLessonSource).toContain('Copy request for my agent');
+    expect(capabilityLessonSource).toContain(
+      'do not trust a chat-only PASS or receipt ID',
+    );
     expect(capabilityLessonSource).toContain("['3', 'Ask agent']");
     expect(capabilityLessonSource).toContain(
       'Copied — return to this browser’s chat and send it.',
@@ -258,7 +263,10 @@ describe('beginner WebMCP lesson path', () => {
     expect(guidedLessonSource).toContain(
       'Copy was blocked — select the exact request above',
     );
-    expect(guidedLessonSource).toContain('No tool IDs or hashes needed');
+    expect(guidedLessonSource).toContain('No technical names needed');
+    expect(guidedLessonSource).toContain(
+      'Do not trust a chat-only PASS or receipt ID',
+    );
     expect(normalizedGuide).toContain(
       'If the page or action is ambiguous, it stops without invoking anything.',
     );

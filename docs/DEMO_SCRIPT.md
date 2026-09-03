@@ -1,86 +1,93 @@
-# Three-minute demo script
+# Recorded demo: exact clicks, shots, and narration
 
-**Target runtime:** 2:40–2:55
-
+**Target runtime:** 1:45–2:15
 **Status:** recording candidate; no final video has been recorded
 
-Use a fresh eligible Sol or Terra built-in-browser session. Keep one live lab
-tab open throughout. Invoke only the exact generated synthetic capability and
-do not retry. If discovery or invocation is unavailable, record that limitation
-instead of substituting ordinary browser automation and calling it WebMCP.
+The recording has one human approval and one agent request. Do not give the
+agent a setup preamble, ask it to navigate, type “proceed,” use a fallback
+harness, or send a second run command.
 
-## 0:00–0:25 — A website just offered the agent an action
+## Before recording
 
-> WebMCP lets this page offer an action directly to my AI in the same browser
-> session. An offer is not approval, and a read-only label is not proof. This
-> lab teaches a person and their agent to inspect the authority and verify the
-> effect together.
+1. Use a fresh compatible ChatGPT or Codex built-in-browser session.
+2. Open the live lab and select the detected **Built-in Site Tools** path.
+3. Open Lesson 1. Stop before **Review one eligibility check**.
+4. Confirm that no receipt exists and no action has run.
 
-Show the first viewport, “Observed · not run,” and the separate facts for page
-offer, client discovery, invocation, and receipt.
+If the approval expires or the client cannot discover the action, stop the
+take and start fresh. Do not retry during the take.
 
-## 0:25–0:45 — Choose only a path this client supports
+## 0:00–0:12 — Show the product working
 
-> The setup gate checks the actual page API. It recommends built-in Site Tools
-> only when detected, keeps the separate Local Guard path explicit, and always
-> offers a no-invocation learning path. One observation never becomes a
-> universal-support claim.
+**Shot:** Lesson 1 and the fake `TRAINING-1042` task.
 
-Choose the detected built-in path. Briefly show the six-step tour and finish at
-Lesson 1.
+**Say:**
 
-## 0:45–1:20 — Inspect and reduce authority
+> This website gives my AI a structured WebMCP action. I can see exactly what
+> it may do before either of us uses it.
 
-> The page offers a broad eligibility tool. We compare the human task with the
-> declared schema and handler effect, then reduce it to one read of synthetic
-> account TRAINING-1042. The generated capability accepts no inputs, expires,
-> permits one attempt, forbids mutation and cross-account access, and cannot be
-> retried automatically.
+## 0:12–0:35 — Review the task
 
-Open the exact approval. Point to target, allowed effect, prohibited effects,
-empty inputs, use limit, expiry, and “approval does not invoke.” Approve once.
+**Click:** **Review one eligibility check**.
 
-## 1:20–1:45 — Ask the agent once
+**Shot:** The fixed target, one-call limit, no account changes, and no retry.
 
-Say to the same agent:
+**Say:**
 
-> Run the one approved practice action once. Do not retry or invoke another
-> Site Tool.
+> The original website action is reduced to one eligibility check for one fake
+> account. My agent cannot change the target, add inputs, or call it twice.
 
-Show the agent selecting the uniquely named generated action. Do not run the
-broad source tool, a fallback harness, or a second action.
+## 0:35–0:55 — Approve, but do not run
 
-## 1:45–2:10 — Verify what actually happened
+**Click:** **Review and approve one check**, then **Approve one check — does not
+run**.
 
-> The receipt compares the required result with before and after state, checks
-> side effects, and proves whether the one-use authority closed. We trust this
-> observed evidence—not the original name or annotation.
+**Shot:** **Now ask your agent to run the check once.**
 
-Show PASS or FAIL, byte-identical state, zero side effects, closed authority,
-and the receipt ID. A failure is still a valid demo result if reported honestly.
+**Say:**
 
-## 2:10–2:35 — Teach the wider security model
+> I approved one call. Approval did not run anything. The page registered the
+> limited Site Tool; the agent still has to discover and call it.
 
-> Four more synthetic lessons cover over-broad inputs, instruction-shaped
-> results, misleading confirmation, and client-support overclaims. The optional
-> Local Guard explores browser monitoring and one-use enforcement, but it is a
-> separate local preview—not part of OpenAI’s built-in Site Tools gate.
+## 0:55–1:20 — One agent request
 
-Show the five lesson cards and the Local Guard explanation without claiming a
-signed release or invoking another action.
+**Switch to the chat that owns the built-in browser. Paste exactly once:**
 
-## 2:35–2:50 — Evidence without automatic reporting
+> Run my approved TRAINING-1042 eligibility check once. Do not retry or use
+> another Site Tool.
 
-> A receipt is private evidence. A report is a separate, minimized lead for
-> human review. Synthetic exercises are never feed eligible, and nothing is
-> published automatically.
+**Shot:** The agent's real Site Tool call and result. Do not show or claim a
+browser-automation call.
 
-Show the safe-report explanation and the explicit zero-automatic-publication
-boundary.
+## 1:20–1:45 — Verify the evidence
 
-## 2:50–2:55 — Close
+**Return to the page. Shot:** PASS or FAIL, answer, **Account data changed?**,
+**Other observed effects?**, **Permission remaining?**, and the receipt ID.
 
-> See what the site offered. Approve less. Verify what happened. Trust the
-> effect, not the label.
+**Say:**
+
+> The page checks the returned answer, compares before and after state, and
+> confirms whether anything else changed. The one-call permission is now gone.
+> This receipt is evidence for this synthetic action only.
+
+Only report success when the page displays a receipt that matches the agent's
+actual call. If no matching receipt appears, say the demo stopped safely; do
+not invent an outcome or receipt ID.
+
+## 1:45–2:05 — Show the broader product
+
+**Shot:** The five lesson cards, then the Local Guard and private reporting
+sections without running another action.
+
+**Say:**
+
+> Four more lessons teach over-broad inputs, untrusted result text, misleading
+> confirmations, and support overclaims. The optional Local Guard explores
+> browser warnings and one-use enforcement. Reports remain private drafts
+> unless a person explicitly exports them.
+
+## Close
+
+> Review the task. Approve one call. Ask the agent once. Check what changed.
 
 This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.
