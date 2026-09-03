@@ -13,6 +13,30 @@ overview/privacy/support routes, conservative Web Store disclosure copy, and a
 machine-readable release-gate ledger. These are submission prerequisites, not
 evidence that the routes are deployed or the store approved the extension.
 
+An additional source checkpoint now implements exact extension-origin binding,
+strict native-message schemas and framing, a no-retry browser client, and a
+non-mutating Windows installation plan. It is not connected to the shipping
+service worker or connector, has no signed executable, and performs no host or
+registry installation. Accordingly, the native identity and secure-transport
+gates are `source_ready`, not `verified`; the preview still uses loopback HTTP.
+
+## Native-host migration checkpoint
+
+The source under `products/native-host` follows Chrome's current native
+messaging contract: an exact non-wildcard `allowed_origins` extension identity,
+caller-origin verification, standard-input/standard-output message framing,
+native-endian 32-bit lengths, and a one-MiB host-to-Chrome response limit. The
+browser client exposes only `pair`, `poll`, `result`, `revoke`, and
+`report-link`, correlates every response to one UUID, and never retries a native
+request.
+
+This is only the owned-boundary core. Product integration still requires an
+authenticated OS-owned connector IPC adapter, a separately packaged extension
+with `nativeMessaging` and no browser bridge host permissions, a signed native
+binary, exact store ID, privileged installer/updater/uninstaller, crash and
+rollback handling, and signed-candidate acceptance. See
+`products/native-host/README.md`.
+
 ## Package the reviewed bytes
 
 Use Node.js 24 from a clean checkout:

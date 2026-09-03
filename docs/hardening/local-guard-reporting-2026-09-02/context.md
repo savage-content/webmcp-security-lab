@@ -7,7 +7,7 @@ preparing this review. The target tree was clean at `5ba6e97`; the added files
 are implementation evidence, not evidence that a signed extension or hosted
 intake exists.
 
-Collection digest: `sha256:86607efb77c72cf33cce81251f9d648b10a3a7e2f047f7c9d85b18907a12e781`
+Collection digest: `sha256:3c866509b708c84036de8a5000004874b03f09bf0cfe19afac0cc6c5e74980dd`
 
 The digest is SHA-256 over newline-terminated, repository-relative
 `path<TAB>sha256` records in the order below. Every inventoried source artifact
@@ -18,11 +18,20 @@ so an equivalent Windows checkout does not create false source drift.
 | --------- | ------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------ |
 | `E-LG-1`  | Exact MV3 authority                         | `products/extension/manifest.json`                     | `1229ecaa390627e59f8eb5d411e6e2da3381db89f07037cfda94b0f89425363f` |
 | `E-LG-2`  | Browser-side enforcement                    | `products/extension/background.js`                     | `fc20b9654a18f7c2ba3f896b5ea3c6a507188eb50e740ac63286767fde71dae9` |
+| `E-LG-14` | Closed native browser transport             | `products/extension/native-transport.js`               | `98a56c625defa1596d7f36f8ad097131030d68905b9bad0a5d983069de415c12` |
+| `E-LG-15` | Identity-bound native protocol              | `products/native-host/native-messaging.ts`             | `8460fbc6067ccf452cadf92f977fe2fd269e20818c28053332f0797b56740adf` |
+| `E-LG-16` | Sequential native-host runtime              | `products/native-host/runtime.ts`                      | `8fc6002deae83e3f54b75c0e58c92cf0c459e3f7f7dd736822dafa313c53fc63` |
+| `E-LG-17` | Non-mutating Windows installation plan      | `products/native-host/install-plan.ts`                 | `709a415d83a3671fb1d0453be80c4c6e0663eda439d4146aa319b1ac7e4c00a9` |
+| `E-LG-18` | Exact native-host manifest template         | `products/native-host/manifest.template.json`          | `291d0cba78aa00662078c4cd17a52a4498d4f3aa81086620b396e21f9021f2a7` |
+| `E-LG-19` | Native-host release boundary                | `products/native-host/README.md`                       | `23edbfc618e05d0ade76b28ae6c39f62597a5c6e554f1c3099d86fdf86c71b9f` |
+| `E-LG-20` | Native framing and runtime tests            | `tests/native-messaging.test.ts`                       | `d3669c73e6b5327cbfd18b40859f316624a1410f744ee946aa19321740b860af` |
+| `E-LG-21` | Native browser transport tests              | `tests/native-transport.test.ts`                       | `4b18f94749258c9a5b37cac25c58bcd42bee92dd21e42f4272715187b13640db` |
+| `E-LG-22` | Windows installation-plan tests             | `tests/native-host-install-plan.test.ts`               | `638613756255b3dc45962ef14f5f631c0da07fd91e0ff68945c697c8e6d62190` |
 | `E-LG-3`  | Local Guard novice and consent surface      | `products/extension/popup.html`                        | `23d5ec17a041dbc058d1e6c0b2ea280627917b7388c574604496c70276ad00c7` |
 | `E-LG-4`  | Local Guard responsive/focus styles         | `products/extension/popup.css`                         | `63e41e93a4726a024309f9e97b7cfb674631487f4d0071301a827ef35fac34cc` |
 | `E-LG-7`  | Consent-before-inspection runtime           | `products/extension/popup.js`                          | `b0e0a2bc8e10c2e4ab9313d2c896a1d5614a8cfac86c320c45cc96cc5b61e2a3` |
 | `E-LG-8`  | Chrome Web Store disclosure contract        | `products/extension/release/store-submission.json`     | `0db0f7b6c72f61217192dc75022595172fdb58a9ca33f00424753092971fcd82` |
-| `E-LG-9`  | Explicit external release-gate ledger       | `products/extension/release/release-evidence.json`     | `e2786b565077dfbaf855296834b0951023c027c18d65277f560f6da53a4e5372` |
+| `E-LG-9`  | Explicit external release-gate ledger       | `products/extension/release/release-evidence.json`     | `3457ff22fed73585bf7601ff19f27194624a244141b07218de6db2508242fa86` |
 | `E-LG-11` | Public Local Guard overview source          | `app/local-guard/page.tsx`                             | `6e224a2a7e20ba94c1287e28276d2f07306ad8ce2646b3bbceb231e876a6790a` |
 | `E-LG-12` | Public Local Guard privacy source           | `app/local-guard/privacy/page.tsx`                     | `783761f805a2d520b2168a2e09a706ed438a53610d6af75febe9a0504161521c` |
 | `E-LG-13` | Public Local Guard support source           | `app/local-guard/support/page.tsx`                     | `e2e74d93561021f92b4aaaa65fded63a066cda5ddb873f945a3ceb1c0f0e30cb` |
@@ -56,7 +65,7 @@ so an equivalent Windows checkout does not create false source drift.
 | `E-RP-34` | Disabled-first public-correction route      | `app/api/reports/corrections/[publicId]/route.ts`      | `4ff9e07834d9741968215ecdd281a9f0a3a110f485eb5ab55ff141fe79110e5d` |
 | `E-LG-5`  | Reproducible package gate                   | `scripts/package-local-guard.mts`                      | `49fd9f1eb6614d92bfc3327b48f07fcd8ac21ae96b46cfc1236eb30c4cf123a0` |
 | `E-LG-6`  | Detached release attestation gate           | `scripts/attest-local-guard-release.mts`               | `cd791821cd7ea10e5fde05ff9042f9d5df518990a389477c82a89c4d050987c8` |
-| `E-LG-10` | Fail-closed product-release assessor        | `scripts/assess-local-guard-release.mts`               | `acf0a29bafc4fb284029c0a94c26b72d4a3bed749532302e76d0181ae7988e01` |
+| `E-LG-10` | Fail-closed product-release assessor        | `scripts/assess-local-guard-release.mts`               | `61def63cc6f9fb8ec1d197cb897ccb420de354fe4cb082bda96f23e878a2d04d` |
 | `E-RP-10` | Durable reporting schema                    | `db/schema.ts`                                         | `6f30399a4bac27fbd0ab52eebeaf8c300f500113c52c66d9c4f58e9b73e6349c` |
 | `E-RP-11` | Fail-closed reporting migration             | `drizzle/0002_furry_miss_america.sql`                  | `4aeb9dc74a5a2d55670c1a3849cc30586f59e6e212c9070178386fdb286ca0e4` |
 | `E-RP-14` | Quota enforcement migration                 | `drizzle/0003_mixed_nightmare.sql`                     | `e3b272c7f2397a04b8305ee692bf56ef1b270f69e15335aadb7c0e408efafebe` |
@@ -65,13 +74,13 @@ so an equivalent Windows checkout does not create false source drift.
 | `E-RP-31` | Private/public split and deletion migration | `drizzle/0006_silly_talkback.sql`                      | `1226a992ad207257d8b72825ad3f51b8deead7763746cd8c2795002adaf5f8ef` |
 | `E-RP-35` | Immutable public-correction migration       | `drizzle/0007_swift_hitman.sql`                        | `262c90fa840624af7c82ba8f2f1eaf159c37b75e00bc7be290fb6dd3cbc88634` |
 | `E-DOC-1` | Product acceptance and privacy boundary     | `docs/PRODUCT.md`                                      | `c5f6747dbf6163674cfc821ceb38aa010f79c6524eb17642b25642c769a7964d` |
-| `E-DOC-2` | Current threat model                        | `docs/THREAT_MODEL.md`                                 | `72c6337b5d5248f8453e92deddf2d0ccb2177ba61a78a7d051a0aa460e9e3d28` |
-| `E-DOC-3` | Local Guard release boundary                | `docs/LOCAL_GUARD_RELEASE.md`                          | `de27bfc4514fa295ab621c539f56cae1e423824fad71d5c4bd8b430bcbcdcf6f` |
+| `E-DOC-2` | Current threat model                        | `docs/THREAT_MODEL.md`                                 | `be95a2f7e3cab8952aaeab3086ec8a29aae8438dd68278bc9967934ad040d585` |
+| `E-DOC-3` | Local Guard release boundary                | `docs/LOCAL_GUARD_RELEASE.md`                          | `dd41f03e85d322e4868dc79f9848a6b05a1102aee04d03dd2b5e9c5ca510e131` |
 | `E-DOC-4` | Reporting service release boundary          | `docs/REPORTING_SERVICE.md`                            | `ec868d21a90e781fc7453530ba51844c9f7699c705657bd697369e2df6b2b681` |
 | `E-DOC-5` | Local Guard privacy and store review        | `docs/LOCAL_GUARD_PRIVACY_REVIEW.md`                   | `9c1281eaed86215c71145f0367b2bf76cb06c0219c253a10460e2a4ab8b7897a` |
 
 Evidence limitations: no store graphic assets, signed extension identity,
-native-messaging host, secure production local transport, deployed public
+installed or signed native-messaging host, integrated secure production local transport, deployed public
 privacy/support capture, installation lifecycle evidence, production identity
 provider, enabled external reporting service, production data, production feed
 key or separately published trust fingerprint, provider-backup purge,

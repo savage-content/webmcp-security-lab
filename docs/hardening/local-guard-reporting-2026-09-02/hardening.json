@@ -5,8 +5,8 @@
   "sourceEvidence": {
     "kind": "source_document_collection",
     "label": "Local Guard and reporting source evidence",
-    "collectionSha256": "86607efb77c72cf33cce81251f9d648b10a3a7e2f047f7c9d85b18907a12e781",
-    "artifactCount": 53,
+    "collectionSha256": "3c866509b708c84036de8a5000004874b03f09bf0cfe19afac0cc6c5e74980dd",
+    "artifactCount": 62,
     "targetRevision": "5ba6e97095918d8877e1e12c98faabb3b81a869f",
     "sourceDrift": "present"
   },
@@ -54,6 +54,27 @@
           "evidenceId": "E-DOC-2",
           "path": "docs/THREAT_MODEL.md",
           "claim": "A general desktop release needs publisher identity and a stronger local channel; packaging alone cannot remove compromised-host risk."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E-LG-14",
+          "path": "products/extension/native-transport.js",
+          "claim": "The source-ready browser client exposes a closed, bounded, request-correlated native-message action set with no retry."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E-LG-15",
+          "path": "products/native-host/native-messaging.ts",
+          "claim": "The source-ready protocol binds one exact extension origin and rejects cross-origin pair requests, hidden fields, malformed frames, and oversized messages."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E-LG-17",
+          "path": "products/native-host/install-plan.ts",
+          "claim": "The non-mutating Windows plan binds one signed executable and exact store extension ID to an HKCU native-host manifest."
         }
       ],
       "desiredInvariants": [

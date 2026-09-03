@@ -21,13 +21,28 @@
     },
     {
       "id": "native_messaging_identity_channel",
-      "status": "missing",
-      "evidence": []
+      "status": "source_ready",
+      "evidence": [
+        "products/native-host/native-messaging.ts",
+        "products/native-host/runtime.ts",
+        "products/native-host/install-plan.ts",
+        "products/native-host/manifest.template.json",
+        "products/extension/native-transport.js",
+        "products/native-host/README.md",
+        "tests/native-messaging.test.ts",
+        "tests/native-transport.test.ts",
+        "tests/native-host-install-plan.test.ts"
+      ]
     },
     {
       "id": "secure_local_transport",
-      "status": "missing",
-      "evidence": []
+      "status": "source_ready",
+      "evidence": [
+        "products/native-host/native-messaging.ts",
+        "products/native-host/runtime.ts",
+        "products/extension/native-transport.js",
+        "products/native-host/README.md"
+      ]
     },
     {
       "id": "install_update_rollback_removal",

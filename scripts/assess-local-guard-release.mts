@@ -464,13 +464,18 @@ export async function assessLocalGuardRelease(
     store.dataUse.transport === 'chrome_native_messaging';
 
   const sourcePaths = [
-    manifestPath,
-    storeSubmissionPath,
-    releaseEvidencePath,
-    resolve('products/extension/popup.html'),
-    resolve('products/extension/popup.js'),
-    resolve('products/extension/background.js'),
-    ...publicRoutePaths.map((path) => resolve(path)),
+    ...new Set([
+      manifestPath,
+      storeSubmissionPath,
+      releaseEvidencePath,
+      resolve('products/extension/popup.html'),
+      resolve('products/extension/popup.js'),
+      resolve('products/extension/background.js'),
+      ...publicRoutePaths.map((path) => resolve(path)),
+      ...evidence.gates.flatMap((gate) =>
+        gate.evidence.map((path) => repositoryPath(path)),
+      ),
+    ]),
   ];
   const sourceDigests = await Promise.all(
     sourcePaths.map(async (path) => ({

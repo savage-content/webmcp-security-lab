@@ -114,6 +114,11 @@ The fixture mismatches are intentional application-design failures. The lab does
 - The deterministic ZIP proves repeatable reviewed bytes, not publisher
   identity, installation safety, Chrome Web Store approval, or a protected
   native browser-to-host channel.
+- The source-ready native-messaging checkpoint binds one exact extension
+  origin, closes and bounds its message schemas, and models an HKCU install
+  plan. It is not wired into the shipping extension or connector, has no
+  signed executable or installed manifest, and therefore does not mitigate
+  the current loopback runtime risk.
 - The reporting modules provide role-separated credential checks, atomic
   intake quotas, a durable hash-chained moderation ledger, authenticated
   reviewer transitions, and a separately authorized immutable publication
