@@ -2,6 +2,38 @@
 
 The GitHub repository `savage-content/webmcp-security-lab` was confirmed public and empty before implementation began on 2026-08-31.
 
+## Current provenance checkpoint
+
+The repository history currently begins at commit `2c03916`, authored on
+2026-08-31 at 06:58 CDT. Every project commit through the tested application
+checkpoint `fd30afa` has an author date between 2026-08-31 and 2026-09-03,
+inside the challenge's August 25–September 3 development period.
+
+The authoritative read-only remote check on 2026-09-03 found public
+`origin/main` at `93b4c7801c5b5a10e721f4305e79800fd00fdf44`. The local branch then
+contained 30 later commits through documentation checkpoint `a2093cc`. Those
+later commits are not public provenance until the intended branch is pushed,
+fetched again, and matched to the deployed release.
+
+The unpublished delta adds or materially extends:
+
+- the complete novice Site Tools vertical slice and first-visit walkthrough;
+- exact zero-input, one-use capability negotiation and receipt verification;
+- technical accessibility and reduced-motion behavior;
+- the optional Local Guard HUD, deterministic package, release-attestation,
+  native-message transport, IPC, lifecycle, store assets, and operations gates;
+- the default-off reporting relay, reviewer workbench, standalone API-only
+  Worker candidate, D1 moderation history, role-separated review/publication,
+  minimized signed feed, retention, correction, and deletion controls;
+- current contest submission, rules, verification, privacy, threat-model, and
+  product-boundary evidence; and
+- a fail-closed post-build public-artifact allowlist.
+
+This history and content inventory support the contest-period work account but
+are not trusted timestamps, proof of authorship, novelty, non-infringement,
+freedom-to-operate clearance, or evidence that the unpublished delta is live.
+The entrant must make the required ownership and eligibility attestations.
+
 > This historical log describes the frozen version 1 work. It is not a
 > publish-readiness record for the local capability negotiator, connector,
 > unpacked extension, or Android conformance prototype, and it does not claim

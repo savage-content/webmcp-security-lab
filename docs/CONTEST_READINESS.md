@@ -17,7 +17,7 @@ a completed submission.
 | Last recorded deployed source             | commit `8568a5f`, Sites version 11; the public URL returned HTTP 200 on September 3, but exact candidate deployment remains required                                                                  |
 | Latest clean-install checkpoint           | commit `fd30afa`; clean `npm ci` followed by 530/530 tests passed                                                                                                                                     |
 | Public GitHub repository                  | <https://github.com/savage-content/webmcp-security-lab>                                                                                                                                               |
-| Public `origin/main`, queried September 3 | `93b4c7801c5b5a10e721f4305e79800fd00fdf44`; after this evidence refresh, the local branch is 28 commits ahead and remains unpublished                                                                 |
+| Public `origin/main`, queried September 3 | `93b4c7801c5b5a10e721f4305e79800fd00fdf44`; after this provenance update, the local branch is 31 commits ahead and remains unpublished                                                                |
 | Automated release gate                    | Node.js 24: current candidate passes 530/530 tests across 74 files; complete gate adds typecheck, both readiness assessments, Worker dry run, lint, production build, and public-`dist/` verification |
 | Demo video                                | Not recorded                                                                                                                                                                                          |
 
