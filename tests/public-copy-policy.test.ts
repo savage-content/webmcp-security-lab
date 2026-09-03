@@ -8,6 +8,7 @@ const presentationRoots = [
   'lib/capability-core',
   'lib/lab',
   'lib/site-tools',
+  'products/connector',
 ];
 const publicSource = /\.(?:ts|tsx|js|jsx)$/;
 const joinedBrand = /\bLeftOut\b/;
@@ -18,8 +19,9 @@ function renderedTextProjection(source: string): string {
     // JSX discards indentation-only newlines at structural seams. Collapse those
     // seams before removing tags so formatted adjacent nodes cannot hide joined
     // public copy such as <span>Left</span>\n<span>Out</span>.
-    .replace(/>\s*[\r\n]\s*(?=<|\{)/g, '>')
-    .replace(/}\s*[\r\n]\s*(?=<|\{)/g, '}')
+    .replace(/>\s*[\r\n]\s*/g, '>')
+    .replace(/}\s*[\r\n]\s*/g, '}')
+    .replace(/[\r\n]\s*(?=<|\{)/g, '')
     .replace(/<[^>]*>/g, '')
     .replace(/\{\s*(['"])([\s\S]*?)\1\s*\}/g, '$2')
     .replace(/\s+/g, ' ');
@@ -44,6 +46,10 @@ describe('public copy policy', () => {
     expect(renderedTextProjection("<span>Left</span>\n  {'Out'}")).toMatch(joinedBrand);
     expect(renderedTextProjection("{'Left'}\n  <span>Out</span>")).toMatch(joinedBrand);
     expect(renderedTextProjection("{'Left'}\n  {'Out'}")).toMatch(joinedBrand);
+    expect(renderedTextProjection('<span>Left</span>\n  Out')).toMatch(joinedBrand);
+    expect(renderedTextProjection("{'Left'}\n  Out")).toMatch(joinedBrand);
+    expect(renderedTextProjection('Left\n  <span>Out</span>')).toMatch(joinedBrand);
+    expect(renderedTextProjection("Left\n  {'Out'}")).toMatch(joinedBrand);
     expect(renderedTextProjection('<span>$</span><strong>5,000</strong>')).toMatch(numericPrice);
     expect(renderedTextProjection('<span>5,000</span><strong> USD</strong>')).toMatch(numericPrice);
     expect(renderedTextProjection('<span>10</span><strong>€</strong>')).toMatch(numericPrice);
