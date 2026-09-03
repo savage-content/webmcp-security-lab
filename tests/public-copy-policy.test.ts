@@ -2,7 +2,12 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const roots = ['app', 'components'];
+const presentationRoots = [
+  'app',
+  'components',
+  'lib/lab',
+  'lib/site-tools',
+];
 const publicSource = /\.(?:ts|tsx|js|jsx)$/;
 const joinedBrand = /\bLeftOut\b/;
 const numericPrice = /\$\s*\d|€\s*\d|£\s*\d|\b(?:USD|EUR|GBP)\s*\d|\b\d+(?:\.\d{1,2})?\s*dollars?\b|\bper\s+(?:month|year)\b/i;
@@ -20,7 +25,7 @@ async function filesUnder(directory: string): Promise<string[]> {
 
 describe('public copy policy', () => {
   it('uses the exact public brand and publishes no numeric prices', async () => {
-    for (const root of roots) {
+    for (const root of presentationRoots) {
       for (const file of await filesUnder(root)) {
         const source = await readFile(file, 'utf8');
         expect(source, `${file} contains joined public brand copy`).not.toMatch(joinedBrand);

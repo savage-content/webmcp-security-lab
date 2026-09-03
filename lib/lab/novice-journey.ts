@@ -13,7 +13,7 @@ export const experienceOptions = [
   },
   {
     id: 'local-guard',
-    title: 'LeftOut Local Guard',
+    title: 'Left Out Local Guard',
     detail:
       'Use the separate unpacked extension and local relay to test monitoring, drift alerts, one-use enforcement, and local reporting.',
   },
