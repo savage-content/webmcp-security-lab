@@ -34,12 +34,20 @@
       "evidence": [
         "products/native-host/native-messaging.ts",
         "products/native-host/runtime.ts",
+        "products/native-host/ipc-protocol.ts",
+        "products/native-host/ipc-client.ts",
         "products/native-host/install-plan.ts",
         "products/native-host/manifest.template.json",
         "products/extension/native-transport.js",
+        "products/connector/ipc-server.ts",
+        "products/connector/native-adapter.ts",
         "products/native-host/README.md",
         "tests/native-messaging.test.ts",
         "tests/native-transport.test.ts",
+        "tests/native-ipc-protocol.test.ts",
+        "tests/native-ipc-transport.test.ts",
+        "tests/native-adapter.test.ts",
+        "tests/connector-native-ipc.test.ts",
         "tests/native-host-install-plan.test.ts"
       ]
     },
@@ -49,8 +57,15 @@
       "evidence": [
         "products/native-host/native-messaging.ts",
         "products/native-host/runtime.ts",
+        "products/native-host/ipc-protocol.ts",
+        "products/native-host/ipc-client.ts",
+        "products/connector/ipc-server.ts",
+        "products/connector/native-adapter.ts",
         "products/extension/native-transport.js",
-        "products/native-host/README.md"
+        "products/native-host/README.md",
+        "tests/native-ipc-protocol.test.ts",
+        "tests/native-ipc-transport.test.ts",
+        "tests/connector-native-ipc.test.ts"
       ]
     },
     {

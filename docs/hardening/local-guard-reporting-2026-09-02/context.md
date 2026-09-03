@@ -7,12 +7,21 @@ preparing this review. The target tree was clean at `5ba6e97`; the added files
 are implementation evidence, not evidence that a signed extension or hosted
 intake exists.
 
-Collection digest: `sha256:3c866509b708c84036de8a5000004874b03f09bf0cfe19afac0cc6c5e74980dd`
+Current collection: 102 artifacts at
+`sha256:b5036c70200d568c70d12bb3b7d8c3764f52388d4fa0e1c4c47aac48a74a8ea7`.
 
 The digest is SHA-256 over newline-terminated, repository-relative
-`path<TAB>sha256` records in the order below. Every inventoried source artifact
-is decoded as UTF-8 and normalized to LF before its per-file hash is computed,
-so an equivalent Windows checkout does not create false source drift.
+`path<TAB>sha256` records in the exact order enforced by
+`tests/hardening-portfolio.test.ts`. Every inventoried source artifact is
+decoded as UTF-8 and normalized to LF before its per-file hash is computed, so
+an equivalent Windows checkout does not create false source drift. The table
+below preserves the original review's core evidence snapshot; the executable
+102-artifact list and `hardening.json` are the current collection authority.
+
+The current collection additionally binds the lifecycle, store-asset,
+platform/incident, explicit external-report relay, private reviewer workbench,
+and authenticated native IPC implementation and tests added during the same
+hardening run.
 
 | Evidence  | Reader-facing title                         | Path                                                   | SHA-256                                                            |
 | --------- | ------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------ |

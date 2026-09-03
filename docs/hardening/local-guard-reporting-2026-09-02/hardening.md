@@ -5,8 +5,10 @@
 I inspected the extension authority, service-worker enforcement, loopback
 connector, consent surface, store/privacy disclosure contract, release gate,
 privacy-safe issue model, local review list, feed projection, product
-requirements, and threat model. The exact inventory and hashes are in
-[context.md](context.md). This is source-backed design evidence; it is not a
+requirements, and threat model. The normalized 102-artifact inventory is
+executable in `tests/hardening-portfolio.test.ts`; its bound digest and review
+metadata are in `hardening.json`, with context in [context.md](context.md).
+This is source-backed design evidence; it is not a
 claim that the proposed production boundaries exist.
 
 ## Constraints

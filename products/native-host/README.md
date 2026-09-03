@@ -4,7 +4,9 @@
 
 This directory is a **source-ready transport checkpoint**, not an installed or
 signed Local Guard host. The shipping `0.3.0` extension still uses the exact
-loopback developer-preview transport. Nothing in this directory changes the
+loopback developer-preview transport. A separately selectable connector mode
+now accepts the native host over authenticated Windows named-pipe IPC and does
+not listen on the browser HTTP bridge. Nothing in this directory changes the
 operating system, Chrome registry, installed extension, or public site.
 
 The checkpoint implements the security-critical pieces that can be proven
@@ -18,6 +20,17 @@ before publisher and installer authority exists:
 - a 512 KiB Local Guard request ceiling and Chrome's 1 MiB host-response
   ceiling;
 - sequential request handling and exactly one correlated response per frame;
+- a strict HMAC-SHA-256 IPC envelope with an install-scoped 32-byte secret,
+  request identity, nonce, timestamp, bounded replay cache, and explicit
+  big-endian framing;
+- a Windows named-pipe namespace restricted in source to
+  `\\.\pipe\leftout-local-guard-*`, one request per connection, bounded I/O,
+  no automatic retry, and authenticated response binding;
+- a connector adapter that retains bridge tokens server-side and maps only the
+  five native actions to the existing coordinator, reporting ticket, and
+  revocation boundaries;
+- an integrated native-only connector mode that refuses to disable the HTTP
+  browser bridge unless authenticated IPC is configured;
 - a browser-side `sendNativeMessage()` client that rejects unknown fields,
   mismatched request IDs, host errors, oversized responses, and retries; and
 - a non-mutating Windows installation plan that produces one exact host
@@ -53,12 +66,14 @@ Current Chrome contract:
 This checkpoint does **not** yet satisfy the ordinary-user release gate. The
 following work remains:
 
-1. Connect the native host runtime to the long-running connector through an
-   authenticated OS-owned IPC boundary and remove the browser HTTP bridge.
-2. Wire the service worker to `native-transport.js` only in a separately
+1. Wire the service worker to `native-transport.js` only in a separately
    packaged native candidate with no loopback host permissions.
-3. Build and sign the native executable; publish and pin the exact store
+2. Build and sign the native executable; publish and pin the exact store
    extension ID; generate the host manifest from those identities.
+3. Provision the install-scoped IPC secret outside browser state and apply and
+   verify an exact current-user named-pipe ACL in the signed host and connector
+   processes. The source HMAC boundary does not itself prove operating-system
+   peer identity or secret protection.
 4. Implement the privileged Windows executor for the source-ready lifecycle
    plan, including crash-safe journaling, repair, and action-time human
    authorization, without deleting retained receipts.
@@ -76,6 +91,7 @@ Run on Node.js 24:
 
 ```powershell
 npm test -- tests/native-messaging.test.ts tests/native-transport.test.ts tests/native-host-install-plan.test.ts tests/native-host-lifecycle-plan.test.ts
+npm test -- tests/native-ipc-protocol.test.ts tests/native-ipc-transport.test.ts tests/native-adapter.test.ts tests/connector-native-ipc.test.ts
 ```
 
 The Windows install-plan function returns data only. A future privileged

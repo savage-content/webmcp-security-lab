@@ -14,11 +14,14 @@ machine-readable release-gate ledger. These are submission prerequisites, not
 evidence that the routes are deployed or the store approved the extension.
 
 An additional source checkpoint now implements exact extension-origin binding,
-strict native-message schemas and framing, a no-retry browser client, and a
-non-mutating Windows installation plan. It is not connected to the shipping
-service worker or connector, has no signed executable, and performs no host or
-registry installation. Accordingly, the native identity and secure-transport
-gates are `source_ready`, not `verified`; the preview still uses loopback HTTP.
+strict native-message schemas and framing, a no-retry browser client, an
+authenticated replay-resistant named-pipe channel, a connector adapter that
+keeps bridge credentials server-side, a connector mode with no browser HTTP
+bridge, and a non-mutating Windows installation plan. It is not connected to
+the shipping service worker, has no signed executable or protected installed
+secret, and performs no host or registry installation. Accordingly, the native
+identity and secure-transport gates are `source_ready`, not `verified`; the
+shipping preview still uses loopback HTTP.
 
 The loopback connector also contains a scriptless four-field public-report
 review flow and a disabled-by-default invited server-to-server relay. It keeps
@@ -37,11 +40,14 @@ browser client exposes only `pair`, `poll`, `result`, `revoke`, and
 `report-link`, correlates every response to one UUID, and never retries a native
 request.
 
-This is only the owned-boundary core. Product integration still requires an
-authenticated OS-owned connector IPC adapter, a separately packaged extension
-with `nativeMessaging` and no browser bridge host permissions, a signed native
-binary, exact store ID, privileged installer/updater/uninstaller, crash and
-rollback handling, and signed-candidate acceptance. See
+The connector-side source boundary now uses an HMAC-authenticated,
+timestamped, nonce-bound, replay-limited Windows named-pipe protocol. Its
+native-only mode will not listen on the browser HTTP bridge. Product integration
+still requires a separately packaged extension with `nativeMessaging` and no
+browser bridge host permissions, a signed native binary, protected
+install-scoped secret and verified pipe ACL, exact store ID, privileged
+installer/updater/uninstaller, crash and rollback handling, and signed-candidate
+acceptance. See
 `products/native-host/README.md`.
 
 ## Package the reviewed bytes

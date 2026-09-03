@@ -16,6 +16,7 @@ export interface SetupDocumentInput {
   siteUrl: string;
   extensionPath: string;
   bridgeUrl: string;
+  transport?: 'developer-loopback' | 'native-ipc';
   pages: PairedPageSummary[];
 }
 
@@ -29,6 +30,7 @@ export function createSetupDocument(input: SetupDocumentInput) {
     throw new Error('The setup learning-range URL must be HTTP(S).');
   }
   const normalizedSiteUrl = siteUrl.toString();
+  const nativeTransport = input.transport === 'native-ipc';
   const connected = input.pages.filter((page) => page.connected).length;
   const pageRows = input.pages.length
     ? input.pages
@@ -49,7 +51,11 @@ export function createSetupDocument(input: SetupDocumentInput) {
 <p class="lede">One local run starts the learning range and connector, then prepares the browser guard and validated receipt viewer. Begin on the learning page. Connecting the extension does not approve or run a site action.</p>
 <div class="grid"><section class="card"><h2>1 · Start the lesson</h2><p>Learn what WebMCP offers, what approval means, and how to verify the effect using fake data.</p><a class="button" href="${escapeHtml(normalizedSiteUrl)}">Open the five-minute lesson</a></section>
 <section class="card"><h2>2 · Install the browser guard once</h2><p>In the disposable Chrome profile, use <strong>Extensions → Developer mode → Load unpacked</strong> and choose:</p><p class="mono">${escapeHtml(input.extensionPath)}</p></section>
-<section class="card"><h2>3 · Connect this practice tab</h2><p>Open the extension while the learning page is active, then choose <strong>Connect this practice tab</strong>. A short-lived, one-use challenge binds the exact extension and page automatically—there is no code to copy.</p><p class="mono">Local helper: ${escapeHtml(input.bridgeUrl)}</p><p>${connected} connected of ${input.pages.length} paired tab${input.pages.length === 1 ? '' : 's'}.</p></section>
+<section class="card"><h2>3 · Connect this practice tab</h2><p>${
+    nativeTransport
+      ? 'Open the signed Local Guard extension while the learning page is active, then choose <strong>Connect this practice tab</strong>. Chrome starts the identity-bound native host; no browser-accessible HTTP bridge or code is used.'
+      : 'Open the extension while the learning page is active, then choose <strong>Connect this practice tab</strong>. A short-lived, one-use challenge binds the exact extension and page automatically—there is no code to copy.'
+  }</p><p class="mono">Local helper: ${escapeHtml(input.bridgeUrl)}</p><p>${connected} connected of ${input.pages.length} paired tab${input.pages.length === 1 ? '' : 's'}.</p></section>
 <section class="card"><h2>4 · Connect a local agent</h2><p>Add the authenticated MCP connector URL printed by the desktop alpha launcher to your local MCP-capable agent. This is separate from pairing the browser extension.</p><p>This alpha does not include the hosted HTTPS and OAuth connection required by cloud-only clients such as ChatGPT Work.</p></section>
 <section class="card"><h2>5 · Evidence</h2><p>Connector-validated JSONL receipts remain separate from learning-range evidence.</p><a class="button secondary" href="/receipts">Open verified receipts</a></section></div>
 <h2>Paired browser pages</h2><table><thead><tr><th>Origin</th><th>Path</th><th>Status</th></tr></thead><tbody>${pageRows}</tbody></table>

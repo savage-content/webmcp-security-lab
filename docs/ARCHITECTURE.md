@@ -53,7 +53,9 @@ flowchart LR
 ```
 
 That diagram is the frozen version 1 web/D1 boundary. The local MVP adds a
-separate path:
+separate path. The solid route is the shipping developer preview; the dashed
+route is a source-ready native candidate that disables the browser HTTP bridge
+when selected:
 
 ```mermaid
 flowchart LR
@@ -61,6 +63,8 @@ flowchart LR
   M[Local MCP client] --> C[Loopback connector]
   C --> B[Loopback browser bridge]
   B --> X[Unpacked MV3 extension and HUD]
+  C -. authenticated named-pipe IPC .-> N[Chrome native host]
+  N -. native messaging .-> X
   X -->|invoke exact protected action once| P
   P -. untrusted one-way permit offer .-> X
   X --> B

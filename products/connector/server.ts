@@ -30,6 +30,7 @@ import {
   createIssueReviewListDocument,
 } from './issue-dashboard';
 import { IssueSaveActionManager, LocalIssueReviewStore } from './issue-review';
+import { startConnectorIpcServer } from './ipc-server';
 import {
   commitApprovedInvocationResult,
   createCapabilityConnectorServer,
@@ -50,6 +51,7 @@ import {
   createExternalReportReceiptDocument,
 } from './reporting-workbench';
 import { createSetupDocument } from './setup';
+import { NativeBridgeAdapter } from './native-adapter';
 
 const MCP_PATH = '/mcp';
 const REQUEST_URL_BASE = 'http://connector.invalid';
@@ -360,6 +362,11 @@ export interface CapabilityConnectorOptions {
   mcpPort?: number;
   bridgePort?: number;
   bridgeHost?: string;
+  browserBridgeEnabled?: boolean;
+  nativeIpc?: {
+    pipePath: string;
+    secret: Uint8Array;
+  };
   publicHost?: string;
   ledgerPath?: string;
   allowedOrigins?: string[];
@@ -386,6 +393,12 @@ export async function startCapabilityConnector(
     process.env.BRIDGE_HOST,
     'Browser bridge',
   );
+  const browserBridgeEnabled = options.browserBridgeEnabled ?? true;
+  if (!browserBridgeEnabled && !options.nativeIpc) {
+    throw new Error(
+      'Disabling the browser HTTP bridge requires the native IPC transport.',
+    );
+  }
   const publicHost = resolveLoopbackHost(
     options.publicHost,
     process.env.MCP_HOST,
@@ -537,10 +550,13 @@ export async function startCapabilityConnector(
         siteUrl: options.setup?.siteUrl ?? allowedOrigins[0],
         extensionPath:
           options.setup?.extensionPath ?? resolve('products/extension'),
-        bridgeUrl: `http://${urlHost(bridgeHost)}:${
-          (bridgeServer.address() as { port?: number } | null)?.port ??
-          bridgePort
-        }`,
+        bridgeUrl: browserBridgeEnabled
+          ? `http://${urlHost(bridgeHost)}:${
+              (bridgeServer.address() as { port?: number } | null)?.port ??
+              bridgePort
+            }`
+          : 'Chrome native messaging → authenticated install-owned IPC',
+        transport: browserBridgeEnabled ? 'developer-loopback' : 'native-ipc',
         pages: coordinator.listPairedPages(),
       });
       response.writeHead(200, {
@@ -1001,18 +1017,47 @@ export async function startCapabilityConnector(
     }
   });
 
+  let nativeAdapter: NativeBridgeAdapter | undefined;
+  let nativeIpcServer:
+    | Awaited<ReturnType<typeof startConnectorIpcServer>>
+    | undefined;
   try {
     await listen(publicServer, mcpPort, publicHost);
-    await listen(bridgeServer, bridgePort, bridgeHost);
+    if (browserBridgeEnabled) {
+      await listen(bridgeServer, bridgePort, bridgeHost);
+    }
+    const boundMcpPort = (publicServer.address() as { port: number }).port;
+    publicBaseUrl = `http://${urlHost(publicHost)}:${boundMcpPort}`;
+    if (options.nativeIpc) {
+      nativeAdapter = new NativeBridgeAdapter({
+        coordinator,
+        createReportLaunch: (sessionId) =>
+          createLaunchUrl('/receipts', sessionId),
+        revokeSessionResources: (sessionId) => {
+          reportAccess.revokeBinding(sessionId);
+          issueSaveActions.revokeScope(`pairing:${sessionId}`);
+          issueReviews.revokeScope(`pairing:${sessionId}`);
+          externalReportActions.revokeScope(`pairing:${sessionId}`);
+        },
+      });
+      nativeIpcServer = await startConnectorIpcServer({
+        pipePath: options.nativeIpc.pipePath,
+        secret: options.nativeIpc.secret,
+        handle: (request) => nativeAdapter!.handle(request),
+      });
+    }
   } catch (error) {
+    nativeAdapter?.revokeAll();
     coordinator.dispose();
+    await nativeIpcServer?.close().catch(() => undefined);
     await Promise.allSettled([close(publicServer), close(bridgeServer)]);
     throw error;
   }
 
   const actualMcpPort = (publicServer.address() as { port: number }).port;
-  const actualBridgePort = (bridgeServer.address() as { port: number }).port;
-  publicBaseUrl = `http://${urlHost(publicHost)}:${actualMcpPort}`;
+  const actualBridgePort = browserBridgeEnabled
+    ? (bridgeServer.address() as { port: number }).port
+    : 0;
   log(
     `MCP connector: http://${urlHost(publicHost)}:${actualMcpPort}${MCP_PATH}?access_token=${accessToken}`,
   );
@@ -1020,10 +1065,15 @@ export async function startCapabilityConnector(
   const initialSetupLaunch = createLaunchUrl('/setup');
   log(`Receipt dashboard: ${initialReportLaunch.url}`);
   log(`Local setup center: ${initialSetupLaunch.url}`);
-  log(
-    `Local browser bridge: http://${urlHost(bridgeHost)}:${actualBridgePort}`,
-  );
-  log(`One-time browser pairing code: ${coordinator.pairCode}`);
+  if (browserBridgeEnabled) {
+    log(
+      `Local browser bridge: http://${urlHost(bridgeHost)}:${actualBridgePort}`,
+    );
+    log(`One-time browser pairing code: ${coordinator.pairCode}`);
+  }
+  if (nativeIpcServer) {
+    log(`Local Guard native IPC: ${nativeIpcServer.pipePath}`);
+  }
 
   return {
     accessToken,
@@ -1031,18 +1081,25 @@ export async function startCapabilityConnector(
     mcpPort: actualMcpPort,
     bridgePort: actualBridgePort,
     bridgeHost,
+    browserBridgeEnabled,
+    nativeIpcPath: nativeIpcServer?.pipePath,
     coordinator,
     receipts,
     issueReviews,
     issueReportLaunchTicket: () => createLaunchUrl('/receipts'),
     issueSetupLaunchTicket: () => createLaunchUrl('/setup'),
     async close() {
+      nativeAdapter?.revokeAll();
       coordinator.dispose();
       reportAccess.dispose();
       issueSaveActions.dispose();
       issueReviews.dispose();
       externalReportActions.dispose();
-      await Promise.all([close(publicServer), close(bridgeServer)]);
+      await Promise.all([
+        close(publicServer),
+        close(bridgeServer),
+        nativeIpcServer?.close() ?? Promise.resolve(),
+      ]);
     },
   };
 }
