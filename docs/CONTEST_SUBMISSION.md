@@ -112,8 +112,9 @@ pretending that a green badge or a reassuring annotation is enforcement.
 
 ## Verification
 
-The current local candidate passed 525 automated tests across 73 files on
-Node.js 24, typecheck, the Local Guard and reporting release-readiness
+After a clean `npm ci` on September 3, the current local candidate passed 525
+automated tests across 73 files on Node.js 24. The complete gate also passes
+typecheck, the Local Guard and reporting release-readiness
 assessments, the standalone reporting-Worker dry run, lint, production build,
 deterministic Local Guard packaging, and a live non-invoking
 walkthrough/accessibility regression. Earlier bounded browser
