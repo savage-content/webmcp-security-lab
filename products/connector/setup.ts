@@ -1,7 +1,7 @@
 import type { PairedPageSummary } from './bridge-coordinator';
 
 const REPORT_LIMITATION =
-  'This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.';
+  'This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.';
 
 function escapeHtml(value: string) {
   return value
@@ -47,7 +47,7 @@ export function createSetupDocument(input: SetupDocumentInput) {
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WebMCP desktop alpha setup</title><style>
 :root{font-family:Inter,system-ui,sans-serif;color:#121817;background:#f5f1e8}*{box-sizing:border-box}body{margin:0}main{max-width:920px;margin:auto;padding:48px 24px}.eyebrow{font:700 11px ui-monospace,monospace;letter-spacing:.15em;text-transform:uppercase;color:#176b4b}h1{font-size:42px;letter-spacing:-.04em;margin:.35rem 0 1rem}.lede{max-width:660px;line-height:1.6;color:#45504c}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:28px 0}.card{border:1px solid #bac1bb;border-radius:12px;padding:18px;background:#fffaf1}.card h2{font-size:14px;margin:0 0 10px}.mono{font:12px ui-monospace,monospace;overflow-wrap:anywhere}.button{display:inline-block;border-radius:8px;padding:11px 15px;background:#121817;color:white;text-decoration:none;font-weight:700}.secondary{background:#e9eee9;color:#121817;border:1px solid #bac1bb}table{width:100%;border-collapse:collapse;background:#fffaf1;border:1px solid #bac1bb}th,td{text-align:left;padding:11px;border-bottom:1px solid #d9ddd9;font-size:13px}th{font:700 10px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.08em}.notice{margin-top:26px;padding:14px;border-left:4px solid #176b4b;background:#e9f2ec;font-size:13px;line-height:1.5}
-</style></head><body><main><p class="eyebrow">LeftOut Security · local only</p><h1>Desktop alpha setup</h1>
+</style></head><body><main><p class="eyebrow">Left Out Security · local only</p><h1>Desktop alpha setup</h1>
 <p class="lede">One local run starts the learning range and connector, then prepares the browser guard and validated receipt viewer. Begin on the learning page. Connecting the extension does not approve or run a site action.</p>
 <div class="grid"><section class="card"><h2>1 · Start the lesson</h2><p>Learn what WebMCP offers, what approval means, and how to verify the effect using fake data.</p><a class="button" href="${escapeHtml(normalizedSiteUrl)}">Open the five-minute lesson</a></section>
 <section class="card"><h2>2 · Install the browser guard once</h2><p>In the disposable Chrome profile, use <strong>Extensions → Developer mode → Load unpacked</strong> and choose:</p><p class="mono">${escapeHtml(input.extensionPath)}</p></section>
