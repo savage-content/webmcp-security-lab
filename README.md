@@ -365,7 +365,7 @@ The automated suite covers:
   credential forms, unreviewed deployment inputs, and extra Worker authority.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The tree committed as `73634a8` passes
+separate Android conformance script. The final truth/brand candidate passes
 534 passing tests plus two Windows-only skips across 75 files, typecheck, the Local Guard and reporting
 release-readiness assessments, a disabled standalone reporting-Worker dry run,
 lint, and a production build plus its public-artifact boundary check on Node.js 24.
