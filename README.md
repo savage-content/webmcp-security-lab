@@ -358,8 +358,8 @@ The automated suite covers:
   behavior, revocation, and failure handling.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The current automated suite passes 450/450
-tests across 56 files, typecheck, the Local Guard release-readiness assessment,
+separate Android conformance script. The current automated suite passes 455/455
+tests across 57 files, typecheck, the Local Guard release-readiness assessment,
 lint, and a production build on Node.js 24. The source-ready native transport
 checkpoint is included in those tests but is not installed, signed, or wired
 into the shipping preview.

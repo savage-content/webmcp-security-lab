@@ -116,9 +116,12 @@ The fixture mismatches are intentional application-design failures. The lab does
   native browser-to-host channel.
 - The source-ready native-messaging checkpoint binds one exact extension
   origin, closes and bounds its message schemas, and models an HKCU install
-  plan. It is not wired into the shipping extension or connector, has no
-  signed executable or installed manifest, and therefore does not mitigate
-  the current loopback runtime risk.
+  plan. Its lifecycle planner verifies expected registration, digest, and
+  signing-certificate identity before staging; retains exactly one rollback
+  release; unregisters before removal; and excludes the separate receipt tree.
+  No privileged executor, crash journal, signed executable, or installed
+  manifest exists, so this source-ready plan does not mitigate the current
+  loopback runtime risk.
 - The reporting modules provide role-separated credential checks, atomic
   intake quotas, a durable hash-chained moderation ledger, authenticated
   reviewer transitions, and a separately authorized immutable publication

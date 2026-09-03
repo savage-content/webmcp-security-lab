@@ -55,8 +55,14 @@
     },
     {
       "id": "install_update_rollback_removal",
-      "status": "missing",
-      "evidence": []
+      "status": "source_ready",
+      "evidence": [
+        "products/native-host/install-plan.ts",
+        "products/native-host/lifecycle-plan.ts",
+        "tests/native-host-install-plan.test.ts",
+        "tests/native-host-lifecycle-plan.test.ts",
+        "docs/LOCAL_GUARD_INSTALL_LIFECYCLE.md"
+      ]
     },
     {
       "id": "signed_candidate_novice_accessibility",

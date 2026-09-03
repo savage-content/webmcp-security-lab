@@ -22,7 +22,10 @@ before publisher and installer authority exists:
   mismatched request IDs, host errors, oversized responses, and retries; and
 - a non-mutating Windows installation plan that produces one exact host
   manifest and HKCU registry binding for a signed `.exe` and store extension
-  ID.
+  ID; and
+- a non-mutating Windows lifecycle planner for verified install, newer-version
+  update, exact retained rollback, fail-closed removal, and receipt
+  preservation.
 
 The host name is fixed as `com.leftout.security.local_guard`. The checked-in
 `manifest.template.json` uses an obvious placeholder extension ID and must
@@ -56,8 +59,9 @@ following work remains:
    packaged native candidate with no loopback host permissions.
 3. Build and sign the native executable; publish and pin the exact store
    extension ID; generate the host manifest from those identities.
-4. Implement installer, upgrade, rollback, disablement, crash recovery, and
-   uninstall operations without deleting retained receipts.
+4. Implement the privileged Windows executor for the source-ready lifecycle
+   plan, including crash-safe journaling, repair, and action-time human
+   authorization, without deleting retained receipts.
 5. Verify the exact signed candidate in supported Chrome/Windows versions,
    including hostile local requests, navigation, expiry, declaration drift,
    host loss, and no-retry delivery.
@@ -71,7 +75,7 @@ and `native_messaging_identity_channel` and `secure_local_transport` remain
 Run on Node.js 24:
 
 ```powershell
-npm test -- tests/native-messaging.test.ts tests/native-transport.test.ts tests/native-host-install-plan.test.ts
+npm test -- tests/native-messaging.test.ts tests/native-transport.test.ts tests/native-host-install-plan.test.ts tests/native-host-lifecycle-plan.test.ts
 ```
 
 The Windows install-plan function returns data only. A future privileged
