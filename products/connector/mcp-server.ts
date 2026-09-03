@@ -324,7 +324,7 @@ export function createCapabilityConnectorServer({
     {
       title: 'List paired browser pages',
       description:
-        'Use this when the user needs to identify a browser page already paired with the local LeftOut connector. This does not inspect or invoke page tools.',
+        'Use this when the user needs to identify a browser page already paired with the local Left Out connector. This does not inspect or invoke page tools.',
       inputSchema: {},
       annotations: {
         readOnlyHint: true,
@@ -403,7 +403,7 @@ export function createCapabilityConnectorServer({
     {
       title: 'Run the one approved practice action',
       description:
-        'Use this when the human asks to run the one approved LeftOut practice action. It needs no IDs or protocol data from the human. It proceeds only when exactly one browser page is connected and that page declares exactly one allowlisted, closed, zero-input generated lesson action. It issues one invocation with no automatic retry; the browser extension must independently validate and consume the exact permit first.',
+        'Use this when the human asks to run the one approved Left Out practice action. It needs no IDs or protocol data from the human. It proceeds only when exactly one browser page is connected and that page declares exactly one allowlisted, closed, zero-input generated lesson action. It issues one invocation with no automatic retry; the browser extension must independently validate and consume the exact permit first.',
       inputSchema: z.strictObject({}),
       annotations: {
         readOnlyHint: false,
