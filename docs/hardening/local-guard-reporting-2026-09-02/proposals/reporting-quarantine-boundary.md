@@ -87,7 +87,7 @@ must own that claim at service level.
 ## Constraints And Non-Goals
 
 The public site cannot collect client evidence, source, production payloads,
-credentials, contracts, or private methodology. LeftOut assesses and validates;
+credentials, contracts, or private methodology. Left Out Security assesses and validates;
 this pipeline is not a remediation service or certification. No price,
 transaction infrastructure, tracker, third-party form, or automatic site
 testing is introduced. The exact assurance limitation remains mandatory.
@@ -121,7 +121,7 @@ makes the local lifecycle explicit and keeps feed eligibility at zero.
 | State model  | Preview and memory list | Explicit local-only lifecycle | Clearer claims; no new external risk | Documentation/tests         |
 | Publication  | Pure unused projector   | Still disconnected            | No accidental feed                   | No external reporting value |
 | Retention    | Process memory          | Process/session memory        | Automatic local erasure              | No durable review           |
-| Human review | None                    | Local user only               | No false reviewer claim              | No LeftOut triage           |
+| Human review | None                    | Local user only               | No false reviewer claim              | No Left Out Security triage |
 
 ### Option 2: Quarantined reviewed service
 

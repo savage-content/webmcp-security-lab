@@ -122,4 +122,4 @@ This record does not authorize public deployment, store publication, Android
 integration claims, universal compatibility claims, pricing, transaction
 infrastructure, new public offers, or novelty/patent/freedom-to-operate claims.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

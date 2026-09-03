@@ -5,6 +5,7 @@ import { canonicalJson } from '../../lib/capability-core';
 import {
   ISSUE_DRAFT_ASSURANCE_LIMITATION,
   createPrivacySafeIssueDraft,
+  isIssueDraftAssuranceLimitation,
   type PrivacySafeIssueDraft,
 } from '../connector/issue-draft';
 import {
@@ -255,9 +256,14 @@ function canonicalDraft(value: unknown) {
     siteOrigin: value.siteOrigin,
     stage: value.stage,
   });
+  const normalized = {
+    ...value,
+    assuranceLimitation: ISSUE_DRAFT_ASSURANCE_LIMITATION,
+  };
   if (
     draft.context !== 'public-web' ||
-    canonicalJson(draft) !== canonicalJson(value)
+    !isIssueDraftAssuranceLimitation(value.assuranceLimitation) ||
+    canonicalJson(draft) !== canonicalJson(normalized)
   ) {
     throw new Error('Remote report draft is not canonical.');
   }
@@ -317,7 +323,7 @@ function parseListResponse(value: unknown): Readonly<ReportingReviewListPage> {
       'schemaVersion',
     ]) ||
     value.schemaVersion !== REPORTING_REVIEW_RESPONSE_SCHEMA_VERSION ||
-    value.assuranceLimitation !== ISSUE_DRAFT_ASSURANCE_LIMITATION ||
+    !isIssueDraftAssuranceLimitation(value.assuranceLimitation) ||
     !Array.isArray(value.reports) ||
     value.reports.length > 20
   ) {
@@ -338,7 +344,7 @@ function parseDetailResponse(
     !isRecord(value) ||
     !exactKeys(value, ['assuranceLimitation', 'ledger', 'schemaVersion']) ||
     value.schemaVersion !== REPORTING_REVIEW_RESPONSE_SCHEMA_VERSION ||
-    value.assuranceLimitation !== ISSUE_DRAFT_ASSURANCE_LIMITATION ||
+    !isIssueDraftAssuranceLimitation(value.assuranceLimitation) ||
     !isRecord(value.ledger) ||
     !exactKeys(value.ledger, ['events', 'record'])
   ) {
@@ -375,7 +381,7 @@ function parseTransitionResponse(
       'updatedAt',
     ]) ||
     value.schemaVersion !== REPORTING_REVIEW_RESPONSE_SCHEMA_VERSION ||
-    value.assuranceLimitation !== ISSUE_DRAFT_ASSURANCE_LIMITATION ||
+    !isIssueDraftAssuranceLimitation(value.assuranceLimitation) ||
     !['existing', 'updated'].includes(String(value.disposition)) ||
     reportId(value.reportId) !== expectedReportId ||
     !Number.isSafeInteger(value.revision) ||

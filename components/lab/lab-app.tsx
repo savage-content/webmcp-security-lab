@@ -1334,7 +1334,7 @@ export function LabApp() {
             </h1>
             <p className="mt-7 max-w-2xl text-pretty text-base leading-7 text-muted-foreground lg:text-lg">
               ChatGPT calls these Site Tools, an implementation of WebMCP.
-              Practice safely with five synthetic lessons. The optional LeftOut
+              Practice safely with five synthetic lessons. The optional Left Out
               Local Guard is a separate desktop prototype for monitoring and
               one-use enforcement.
             </p>

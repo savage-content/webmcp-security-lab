@@ -8,7 +8,7 @@ import { ReportingRelayClient } from '../products/connector/reporting-relay';
 import { startCapabilityConnector } from '../products/connector/server';
 
 const assuranceLimitation =
-  'This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.';
+  'This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.';
 const invitationToken = 'invitation-token-with-more-than-thirty-two-characters';
 const cleanups: Array<() => Promise<void>> = [];
 

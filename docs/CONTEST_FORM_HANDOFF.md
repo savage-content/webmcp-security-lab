@@ -1,8 +1,12 @@
 # Devpost form handoff
 
 **Status:** ready to paste after the entrant signs in and joins the challenge.
-Do not submit until the video URL, public-source SHA, live run, and personal
-attestations at the end of this file are complete.
+Do not submit until the video URL, final public-source SHA, working public URL,
+and personal attestations at the end of this file are complete. The official
+submission requirements do not create a separate exact-candidate native-
+invocation attestation; do not mislabel historical invocation evidence, and
+make the public app function exactly as the final video and testing instructions
+describe.
 
 ## Identity and links
 
@@ -11,8 +15,9 @@ attestations at the end of this file are complete.
 - **Live application:** <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>
 - **Public source:** <https://github.com/savage-content/webmcp-security-lab>
 - **Public YouTube demo:** **BLOCKING — add the final sub-three-minute URL**
-- **Final public source SHA:** **BLOCKING — record after the approved push**
-- **Final deployed release:** **BLOCKING — record after exact-candidate verification**
+- **Reconciled source checkpoint:** `d0c1676` in both public GitHub and Sites source
+- **Final public source SHA:** record immediately after the reviewed final merge
+- **Current live release:** Sites version 12 strongly content-matches `d0c1676`; the hosting API exposes no cryptographic live-version binding
 
 ## Paste-ready project story
 
@@ -140,4 +145,4 @@ The entrant must personally confirm before submission:
 Do not infer any attestation from repository ownership or account state. Stop at
 Devpost's final submission action for explicit human approval.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

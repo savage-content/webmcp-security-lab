@@ -4,18 +4,24 @@ The GitHub repository `savage-content/webmcp-security-lab` was confirmed public 
 
 ## Current provenance checkpoint
 
-The repository history currently begins at commit `2c03916`, authored on
-2026-08-31 at 06:58 CDT. Every project commit through the tested application
-checkpoint `fd30afa` has an author date between 2026-08-31 and 2026-09-03,
-inside the challenge's August 25–September 3 development period.
+The repository history contains two contest-period roots, `78d2f33` and
+`2c03916`, joined by merge `4adea05`. Both roots and every project commit
+through the reconciled version 12 checkpoint `d0c1676` have author dates
+between 2026-08-31 and 2026-09-03, inside the challenge's August 25–September 3
+development period.
 
-The authoritative read-only remote check on 2026-09-03 found public
-`origin/main` at `93b4c7801c5b5a10e721f4305e79800fd00fdf44`. The local branch then
-contained 30 later commits through documentation checkpoint `a2093cc`. Those
-later commits are not public provenance until the intended branch is pushed,
-fetched again, and matched to the deployed release.
+The authoritative remote reconciliation on 2026-09-03 found public GitHub
+`main` at `d0c167651b463deb047b7490eec2779e3c7ab3f2`, matching Sites source
+and Git tree `e2ed77cef1677d539941d6804e88de404cb49ae3`. All 37 commits after the
+former `93b4c78` checkpoint are public. Live routes and normalized bundles
+strongly match version 12, although the Sites API does not expose a
+cryptographic live-version identifier.
 
-The unpublished delta adds or materially extends:
+The reviewed final patch and resulting merge SHA must be added to this
+checkpoint after merge; this pre-merge log does not yet attest that later
+candidate history.
+
+The now-public contest-period delta adds or materially extends:
 
 - the complete novice Site Tools vertical slice and first-visit walkthrough;
 - exact zero-input, one-use capability negotiation and receipt verification;
@@ -31,13 +37,13 @@ The unpublished delta adds or materially extends:
 
 This history and content inventory support the contest-period work account but
 are not trusted timestamps, proof of authorship, novelty, non-infringement,
-freedom-to-operate clearance, or evidence that the unpublished delta is live.
+freedom-to-operate clearance, or cryptographic proof that the complete source tree is live.
 The entrant must make the required ownership and eligibility attestations.
 
-> This historical log describes the frozen version 1 work. It is not a
-> publish-readiness record for the local capability negotiator, connector,
-> unpacked extension, or Android conformance prototype, and it does not claim
-> that the current MVP was publicly deployed. See
+> This historical log is not a publish-readiness record for the local
+> capability negotiator, connector, unpacked extension, or Android conformance
+> prototype. The public learning application is deployed; those optional local
+> prototypes remain separately gated. See
 > [GO_NO_GO.md](GO_NO_GO.md).
 
 ## Added for this submission

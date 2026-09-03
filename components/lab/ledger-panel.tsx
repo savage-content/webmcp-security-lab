@@ -183,7 +183,7 @@ export function LedgerPanel({
                 review approves the intake destination.
               </p>
               <p className="text-muted-foreground">
-                This report reflects self-reported evidence readiness. LeftOut
+                This report reflects self-reported evidence readiness. Left Out
                 Security has not inspected, tested, or independently validated
                 the described system.
               </p>

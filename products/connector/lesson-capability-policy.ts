@@ -1,4 +1,5 @@
 import { canonicalJson, sha256Hex } from '../../lib/capability-core';
+import { LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION } from '../../lib/legacy-contracts';
 import { SELF_REPORTED_LIMITATION } from '../../lib/lab/constants';
 import { parseCapabilityEvidenceReceipt } from '../../lib/lab/schemas';
 import { scenarioById } from '../../lib/lab/scenarios';
@@ -512,7 +513,10 @@ async function validateGuidedCapabilityReceipt(receiptValue: unknown) {
   if (receipt.schemaVersion !== '1.0') {
     throw new Error('Capability receipt schema version is unsupported.');
   }
-  if (receipt.limitation !== SELF_REPORTED_LIMITATION) {
+  if (
+    receipt.limitation !== SELF_REPORTED_LIMITATION &&
+    receipt.limitation !== LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION
+  ) {
     throw new Error('Capability receipt limitation is missing or changed.');
   }
 

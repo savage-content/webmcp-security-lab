@@ -98,7 +98,7 @@
       "customer_records",
       "source_code_from_affected_users"
     ],
-    "requiredReportStatement": "This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system."
+    "requiredReportStatement": "This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system."
   },
   "claims": {
     "sourceRunbookReady": true,

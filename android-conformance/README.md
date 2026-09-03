@@ -52,11 +52,16 @@ The script uses an installed Kotlin compiler and Java runtime. If Android API 36
 is installed, it also compiles the boundary adapter against `android.jar` and
 validates its manifest with `aapt2`.
 
-The latest local run on 2026-09-03 passed all eight Kotlin/JVM conformance
+The latest full local run on 2026-09-03 passed all eight Kotlin/JVM conformance
 groups and the Android API-36 adapter compile/manifest check. Immediately before
 that run, `adb devices -l` started the local ADB daemon and returned an empty
-device list. This proves repeatable source conformance in this workstation, not
-device registration, discovery, invocation, or receipt behavior.
+device list. A later source-only compatibility patch changed the current
+disclaimer writer while preserving verification of the historical hashed
+disclaimer; this Linux release executor did not contain the Kotlin compiler or
+Android SDK needed to repeat the separate Android gate against that exact patch.
+This proves an earlier repeatable source-conformance checkpoint, not exact final-
+candidate Android verification, device registration, discovery, invocation, or
+receipt behavior.
 
 ## Android adapter boundary
 
@@ -114,4 +119,4 @@ on-device `adb shell cmd app_function` discovery and single-invocation proof. No
 universal Android, Gemini, browser, or WebMCP support claim follows from this
 prototype.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

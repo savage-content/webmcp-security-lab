@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION } from '../lib/legacy-contracts';
+import { ISSUE_DRAFT_ASSURANCE_LIMITATION } from '../products/connector/issue-draft';
 import { createPrivacySafeIssueDraft } from '../products/connector/issue-draft';
 import {
   REPORTING_RELAY_ENVIRONMENT,
@@ -10,7 +12,7 @@ const token = 'invitation-token-with-more-than-thirty-two-characters';
 const idempotencyKey = '123e4567-e89b-42d3-a456-426614174000';
 const reportId = '923e4567-e89b-42d3-a456-426614174000';
 const assuranceLimitation =
-  'This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.';
+  'This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.';
 
 function environment(overrides: Record<string, string> = {}) {
   return {
@@ -128,6 +130,26 @@ describe('privacy-bounded reporting relay client', () => {
       destinationOrigin: 'https://reports.example.com',
     });
     expect(JSON.stringify(client.status())).not.toContain(token);
+  });
+
+  it('accepts a rolling schema-v1 legacy receipt and normalizes visible copy', async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json(
+        receipt({
+          assuranceLimitation: LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION,
+        }),
+        { status: 201 },
+      ),
+    );
+    const client = new ReportingRelayClient({
+      environment: environment(),
+      fetch: fetchMock,
+      idempotencyKey: () => idempotencyKey,
+    });
+
+    await expect(client.submit(publicDraft())).resolves.toMatchObject({
+      assuranceLimitation: ISSUE_DRAFT_ASSURANCE_LIMITATION,
+    });
   });
 
   it('rejects synthetic drafts before making a request', async () => {

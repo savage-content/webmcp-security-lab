@@ -453,6 +453,9 @@ export async function assessLocalGuardRelease(
   if (!assetsPresent && !blockers.includes('store_graphic_assets')) {
     blockers.unshift('store_graphic_assets');
   }
+  const storeAssetsReady =
+    assetsPresent &&
+    gateById.get('store_graphic_assets')?.status === 'verified';
   const allGatesVerified = blockers.length === 0;
   const ordinaryUserReleaseReady =
     allGatesVerified &&
@@ -490,7 +493,7 @@ export async function assessLocalGuardRelease(
     evidenceDate: evidence.evidenceDate,
     releaseChannel: evidence.releaseChannel,
     sourceDisclosureReady: true as const,
-    storeAssetsReady: assetsPresent,
+    storeAssetsReady,
     ordinaryUserReleaseReady,
     blockers: Object.freeze(blockers),
     assets: Object.freeze(assets),

@@ -70,7 +70,7 @@ describe('scriptless privacy-safe issue preview', () => {
       },
     ]);
 
-    expect(document.html).toContain("not LeftOut Security's inbox");
+    expect(document.html).toContain("not Left Out Security's inbox");
     expect(document.html).toContain('1 locally saved · 0 feed eligible');
     expect(document.html).toContain('<strong>0 eligible records.</strong>');
     expect(document.html).toContain('Saved locally · not submitted');

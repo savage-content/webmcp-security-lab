@@ -18,9 +18,9 @@ The product succeeds when a first-time user can explain four facts afterward:
 The five lessons share one learning sequence, but the live handoff is explicit:
 
 - **ChatGPT/Codex built-in browser:** use native Site Tools directly with an
-  eligible model and workspace. No LeftOut extension or local connector is
+  eligible model and workspace. No Left Out extension or local connector is
   required.
-- **LeftOut Local Guard:** use regular Chromium with the unsigned local
+- **Left Out Local Guard:** use regular Chromium with the unsigned local
   extension and relay. This advanced prototype tests monitoring, drift alerts,
   one-use enforcement, and local reporting; it cannot attest native Site Tools
   calls outside its path and is not an ordinary-user release.
@@ -130,7 +130,7 @@ envelope. There is no free-text field in the first schema.
 
 Every automated result and related report must state exactly:
 
-> This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+> This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.
 
 A strict quarantine transition core, role-separated authentication helpers,
 durable hash-chained D1 store, and minimized feed projection now exist as local

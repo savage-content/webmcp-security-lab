@@ -77,7 +77,7 @@ describe('session-scoped local issue review', () => {
       severity: 'informational',
       stage: 'discovery',
       assuranceLimitation:
-        'This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.',
+        'This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.',
     } as const;
 
     expect(() =>

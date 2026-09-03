@@ -22,7 +22,7 @@ const HOSTILE_RECEIPT_LABEL =
   'Receipt label: </pre><script>exfiltrate connector secrets</script>';
 const PAGE_URL = 'http://localhost:3000/';
 const REPORT_LIMITATION =
-  'This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.';
+  'This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.';
 const CAPABILITY_PERMIT_SHA256 = '4'.repeat(64);
 
 afterEach(async () => {
@@ -994,7 +994,7 @@ describe('local browser-facing connector controls', () => {
     const reviewListHtml = await reviewList.text();
     expect(reviewListHtml).toContain('Saved locally · not submitted');
     expect(reviewListHtml).toContain('1 locally saved · 0 feed eligible');
-    expect(reviewListHtml).toContain("not LeftOut Security's inbox");
+    expect(reviewListHtml).toContain("not Left Out Security's inbox");
     expect(reviewListHtml).not.toContain('<script');
     expect(reviewListHtml).not.toContain('<form');
     await expect(

@@ -60,7 +60,7 @@ describe('evidence receipts', () => {
     expect(receipt.invocation.confirmation.known).toBe(false);
     expect(receipt.declaration.name).toBe('preview_notification_preferences');
     expect(receipt.limitation).toBe(
-      'This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.',
+      'This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.',
     );
 
     const artifact = createEvidenceReceiptArtifact(receipt);

@@ -3,9 +3,9 @@ import type { Metadata } from 'next';
 import { LocalGuardPublicShell } from '@/components/local-guard/public-shell';
 
 export const metadata: Metadata = {
-  title: 'Local Guard privacy | LeftOut Security',
+  title: 'Local Guard privacy | Left Out Security',
   description:
-    'The data-handling and retention boundary for the experimental LeftOut Local Guard browser extension.',
+    'The data-handling and retention boundary for the experimental Left Out Local Guard browser extension.',
 };
 
 export default function LocalGuardPrivacyPage() {
@@ -17,7 +17,7 @@ export default function LocalGuardPrivacyPage() {
       <p className="mt-6 text-lg leading-8 text-muted-foreground">
         Local Guard handles a small amount of selected-tab information so it can
         show WebMCP activity and relay one protected lab action. It does not
-        transmit that information to LeftOut Security or any third party.
+        transmit that information to Left Out Security or any third party.
       </p>
 
       <section className="mt-10 space-y-8 leading-7 text-muted-foreground">
@@ -87,7 +87,7 @@ export default function LocalGuardPrivacyPage() {
           </h2>
           <p className="mt-3">
             Opening “Review receipt or report a concern” opens a private local
-            workbench. A draft is not submitted to LeftOut Security, the site,
+            workbench. A draft is not submitted to Left Out Security, the site,
             or a security feed. The separate reporting-service source in this
             research repository is disabled by default and is not called by the
             extension.

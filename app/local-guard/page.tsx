@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { LocalGuardPublicShell } from '@/components/local-guard/public-shell';
 
 export const metadata: Metadata = {
-  title: 'Local Guard developer preview | LeftOut Security',
+  title: 'Local Guard developer preview | Left Out Security',
   description:
-    'Review the exact scope, privacy boundary, and release status of the experimental LeftOut Local Guard browser extension.',
+    'Review the exact scope, privacy boundary, and release status of the experimental Left Out Local Guard browser extension.',
 };
 
 export default function LocalGuardPage() {
@@ -67,7 +67,7 @@ export default function LocalGuardPage() {
             It does not read full page text, forms, passwords, or cookies.
           </li>
           <li>
-            It does not send browsing or receipt data to LeftOut Security or a
+            It does not send browsing or receipt data to Left Out Security or a
             public reporting feed.
           </li>
         </ul>

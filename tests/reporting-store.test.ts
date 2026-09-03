@@ -1,10 +1,12 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 
 import { convertV4MiniflareOptions, Miniflare } from 'miniflare';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   createReportingLedgerIntake,
+  parseReportingLedgerBundle,
   transitionReportingLedger,
 } from '../products/reporting-service/ledger';
 import { createReportingRetention } from '../products/reporting-service/retention-core';
@@ -12,6 +14,7 @@ import {
   ensureReportingStoreSchema,
   loadReportingLedger,
   loadReportingPublication,
+  loadReportingPublicationByPublicId,
   loadReportingRetention,
   ReportingStoreConflictError,
   ReportingStoreIntegrityError,
@@ -91,6 +94,75 @@ describe('durable reporting store', () => {
     expect(
       await loadReportingLedger(database, created.record.moderation.id),
     ).toEqual(result.ledger);
+  });
+
+  it('rehydrates frozen d0c ledger and publication hashes without rewriting them', async () => {
+    const bytes = await readFile(
+      new URL('./fixtures/legacy/reporting-v1.json', import.meta.url),
+      'utf8',
+    );
+    const fixture = JSON.parse(bytes) as {
+      intake: { record: unknown; events: unknown[] };
+      publication: { record: Record<string, unknown>; recordSha256: string };
+      published: {
+        events: Array<{
+          actor: { id: string };
+          at: string;
+          eventId: string;
+          revision: number;
+        }>;
+      };
+    };
+    const legacy = parseReportingLedgerBundle(
+      fixture.intake.record,
+      fixture.intake.events,
+    );
+    const saved = await saveReportingIntake(
+      database,
+      { record: legacy.record, event: legacy.events[0]! },
+      {
+        invitationId: 'invitation.a1b2c3d4',
+        keySha256: digest('frozen-d0c-key'),
+        requestSha256: digest('frozen-d0c-intake'),
+      },
+    );
+    expect(JSON.stringify(saved.ledger.record)).toBe(
+      JSON.stringify(fixture.intake.record),
+    );
+    expect(
+      JSON.stringify(
+        await loadReportingLedger(database, legacy.record.moderation.id),
+      ),
+    ).toBe(JSON.stringify(legacy));
+
+    const publicationEvent = fixture.published.events.at(-1)!;
+    await database
+      .prepare(
+        `INSERT INTO leftout_report_publications (
+          public_id, schema_version, published_at, publisher_id,
+          source_revision, record_sha256, record_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        publicationEvent.eventId,
+        fixture.publication.record.schemaVersion,
+        publicationEvent.at,
+        publicationEvent.actor.id,
+        publicationEvent.revision,
+        fixture.publication.recordSha256,
+        JSON.stringify(fixture.publication.record),
+      )
+      .run();
+    const restoredPublication = await loadReportingPublicationByPublicId(
+      database,
+      publicationEvent.eventId,
+    );
+    expect(restoredPublication?.recordSha256).toBe(
+      'a989ba5ecfcdc500ddd18ba55acabafba1fbf1da0ab984ab97b88cd74b4e7448',
+    );
+    expect(JSON.stringify(restoredPublication?.record)).toBe(
+      JSON.stringify(fixture.publication.record),
+    );
   });
 
   it('atomically binds intake to its initial retention assignment', async () => {

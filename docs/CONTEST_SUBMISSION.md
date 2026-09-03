@@ -1,8 +1,10 @@
 # Contest submission copy
 
-> **CURRENT CANDIDATE — NOT YET SUBMITTED.** The public application is live,
-> but submission remains blocked until entrant attestations, the public GitHub
-> branch, final public YouTube video, and authenticated form rehearsal pass
+> **CURRENT CANDIDATE — NOT YET SUBMITTED.** Sites version 12 from `d0c1676`
+> and its matching source are public. The final truth-and-brand candidate below
+> still requires reviewed merge and deployment. Submission remains blocked
+> until entrant attestations, the final public YouTube video, and authenticated
+> form rehearsal pass
 > [CONTEST_READINESS.md](CONTEST_READINESS.md).
 > This copy makes no novelty, patentability, universal-compatibility, or
 > production-security claim.
@@ -60,7 +62,7 @@ does not invoke it. A compatible agent may invoke it once, without retry, and
 the page records before/after state, side effects, authority closure, and a
 receipt.
 
-The public experience also explains the optional LeftOut Local Guard: a
+The public experience also explains the optional Left Out Local Guard: a
 separate, local development preview for Chromium monitoring, change alerts,
 one-use enforcement, and local receipt review. It is not required for the
 built-in Site Tools path and is not represented as a hosted service or signed
@@ -115,15 +117,18 @@ pretending that a green badge or a reassuring annotation is enforcement.
 
 ## Verification
 
-After a clean `npm ci` on September 3, the tree committed as `73634a8` passed
-534 automated tests across 74 files on Node.js 24. The complete gate also passes
+On September 3, the final truth/brand candidate passed 542 automated tests
+with two intentional Windows-only skips across 75 files on Node.js 24. The exact
+candidate's automated gate also passes
 typecheck, the Local Guard and reporting release-readiness
 assessments, the standalone reporting-Worker dry run, lint, production build,
 fail-closed public-`dist/` allowlist verification, deterministic Local Guard
 packaging, retention-preserving idempotency replay and deletion-race checks,
-and a live non-invoking walkthrough/accessibility regression. Earlier bounded browser
-runs produced passing receipts for all five synthetic lessons through the
-local extension/connector path.
+and the automated walkthrough/accessibility contracts. A separate live,
+non-invoking acceptance run passed on the historically tested version 11
+release. Earlier bounded browser runs produced passing receipts for all five
+synthetic lessons through the local extension/connector path; those historical
+runs are not relabeled as exact-candidate evidence.
 
 The automated checks do not replace a first-time human study, screen-reader
 operator, entrant attestation, authenticated form rehearsal, or final recorded
@@ -184,4 +189,4 @@ freedom to operate.
 - Android is a conformance prototype, not a device-validated product.
 - Real first-time-human, screen-reader, and 200% zoom acceptance remain pending.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

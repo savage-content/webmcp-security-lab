@@ -3,13 +3,25 @@ import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 import { canonicalJson, sha256Hex } from '../../lib/capability-core';
+import { LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION } from '../../lib/legacy-contracts';
 import type { EvidenceReceipt } from '../../lib/lab/types';
 
 import type { PairedPageSummary } from './bridge-coordinator';
 import { validateConnectorCapabilityReceipt } from './lesson-capability-policy';
 
 export const REPORT_LIMITATION =
-  'This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.';
+  'This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.';
+
+export type ReportLimitation =
+  | typeof REPORT_LIMITATION
+  | typeof LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION;
+
+function isReportLimitation(value: unknown): value is ReportLimitation {
+  return (
+    value === REPORT_LIMITATION ||
+    value === LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION
+  );
+}
 
 export class ReceiptValidationError extends Error {
   constructor(message: string) {
@@ -38,7 +50,7 @@ export interface ConnectorReceiptEntry {
   previousEntryHash: string | null;
   entryHash: string;
   receipt: EvidenceReceipt;
-  limitation: typeof REPORT_LIMITATION;
+  limitation: ReportLimitation;
 }
 
 interface ReceiptStoreOptions {
@@ -183,7 +195,7 @@ export class ReceiptStore {
       if (
         entry.schemaVersion !== 'leftout.connector-receipt/1' ||
         entry.previousEntryHash !== previousEntryHash ||
-        entry.limitation !== REPORT_LIMITATION ||
+        !isReportLimitation(entry.limitation) ||
         seenEntryIds.has(entry.entryId) ||
         seenReceiptIds.has(entry.receiptId)
       ) {

@@ -79,7 +79,7 @@ describe('desktop extension package', () => {
     expect(content).toContain('lastPermitText');
     expect(content).not.toContain('permitHandoffForwarded');
     expect(content).not.toContain("kind: 'result'");
-    expect(content).toContain('LeftOut extension HUD');
+    expect(content).toContain('Left Out extension HUD');
     expect(popupCss).toContain('[hidden]');
     expect(popupCss).toContain('display: none !important');
     expect(popupHtml).toContain('Connect this practice tab');
@@ -135,7 +135,7 @@ describe('desktop extension package', () => {
     );
     expect(manifest).toMatchObject({
       manifest_version: 3,
-      name: 'LeftOut WebMCP Safety',
+      name: 'Left Out WebMCP Safety',
       version: '0.4.0',
       permissions: ['activeTab', 'scripting', 'storage', 'nativeMessaging'],
       host_permissions: [],

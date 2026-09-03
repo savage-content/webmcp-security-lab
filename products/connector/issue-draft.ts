@@ -1,5 +1,7 @@
 import { isIP } from 'node:net';
 
+import { LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION } from '../../lib/legacy-contracts';
+
 export const ISSUE_DRAFT_SCHEMA_VERSION = 'leftout.issue-draft/1' as const;
 
 export const ISSUE_DRAFT_CONTEXTS = [
@@ -38,7 +40,20 @@ export const ISSUE_DRAFT_SEVERITIES = [
 ] as const;
 
 export const ISSUE_DRAFT_ASSURANCE_LIMITATION =
-  'This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.';
+  'This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.';
+
+export type IssueDraftAssuranceLimitation =
+  | typeof ISSUE_DRAFT_ASSURANCE_LIMITATION
+  | typeof LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION;
+
+export function isIssueDraftAssuranceLimitation(
+  value: unknown,
+): value is IssueDraftAssuranceLimitation {
+  return (
+    value === ISSUE_DRAFT_ASSURANCE_LIMITATION ||
+    value === LEGACY_SELF_REPORTED_ASSURANCE_LIMITATION
+  );
+}
 
 export type IssueDraftContext = (typeof ISSUE_DRAFT_CONTEXTS)[number];
 export type IssueDraftCategory = (typeof ISSUE_DRAFT_CATEGORIES)[number];
@@ -59,7 +74,7 @@ export type IssueDraftSubmissionDisposition =
   | 'local-exercise-not-submittable';
 
 export interface PrivacySafeIssueDraft extends IssueDraftInput {
-  assuranceLimitation: typeof ISSUE_DRAFT_ASSURANCE_LIMITATION;
+  assuranceLimitation: IssueDraftAssuranceLimitation;
   schemaVersion: typeof ISSUE_DRAFT_SCHEMA_VERSION;
   submission: Readonly<{
     disposition: IssueDraftSubmissionDisposition;

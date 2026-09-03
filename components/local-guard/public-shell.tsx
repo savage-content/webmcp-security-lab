@@ -25,7 +25,7 @@ export function LocalGuardPublicShell({
             <Image src="/favicon.svg" alt="" width={38} height={38} priority />
             <span>
               <span className="block font-mono text-[10px] font-semibold tracking-[0.16em] uppercase text-muted-foreground">
-                LeftOut Security
+                Left Out Security
               </span>
               <span className="block font-semibold">Local Guard</span>
             </span>
@@ -76,7 +76,7 @@ export function LocalGuardPublicShell({
       </main>
       <footer className="border-t border-border bg-card">
         <div className="mx-auto max-w-5xl px-5 py-7 text-sm leading-6 text-muted-foreground">
-          LeftOut Local Guard is experimental local development software. It is
+          Left Out Local Guard is experimental local development software. It is
           not a certification, endorsement, managed service, or security
           guarantee.
         </div>

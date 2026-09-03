@@ -55,7 +55,7 @@ describe('Local Guard release packaging', () => {
       profile: 'native-candidate',
     });
     expect(candidate.release).toMatchObject({
-      name: 'LeftOut WebMCP Safety',
+      name: 'Left Out WebMCP Safety',
       version: '0.4.0',
       security: {
         manifestVersion: 3,

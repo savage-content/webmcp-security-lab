@@ -55,4 +55,4 @@ The learning-site deployment remains separate and reporting remains off. A
 successful source check does not approve privacy, operations, identity,
 retention, publication, feed, support, or incident readiness.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

@@ -3,6 +3,8 @@ package com.leftout.security.capability
 const val CAPABILITY_PROTOCOL = "leftout-one-use-capability/1"
 const val RECEIPT_PROTOCOL = "leftout-capability-receipt/1"
 const val RECEIPT_DISCLAIMER =
+    "This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system."
+const val LEGACY_RECEIPT_DISCLAIMER =
     "This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system."
 
 /** The complete authority and state identity approved by the human. */

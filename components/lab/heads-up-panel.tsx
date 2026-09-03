@@ -157,7 +157,7 @@ export function HeadsUpPanel({
         <p className="mt-3 text-[11px] leading-5 text-muted-foreground">
           Current assessment: <strong>{assessment.level} risk</strong>. The HUD
           distinguishes what it merely observes from actions protected by the
-          LeftOut Membrane path.
+          Left Out Membrane path.
         </p>
 
         <div className="mt-4 flex flex-wrap gap-2">

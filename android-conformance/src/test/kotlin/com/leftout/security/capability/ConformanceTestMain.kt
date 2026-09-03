@@ -254,6 +254,23 @@ fun main() {
         check(!OneUseCapabilityEngine.verifyReceipt(tampered, grant))
         val missingDisclaimer = result.receipt.copy(disclaimer = "")
         check(!OneUseCapabilityEngine.verifyReceipt(missingDisclaimer, grant))
+        val legacyReceipt = result.receipt.copy(disclaimer = LEGACY_RECEIPT_DISCLAIMER)
+        val legacyReceiptDigest = OneUseCapabilityEngine.recomputeReceiptHash(legacyReceipt, grant)
+        val selfConsistentLegacyReceipt = legacyReceipt.copy(
+            receiptId = "receipt_${legacyReceiptDigest.take(24)}",
+            receiptSha256 = legacyReceiptDigest,
+        )
+        check(OneUseCapabilityEngine.verifyReceipt(selfConsistentLegacyReceipt, grant))
+        val arbitraryDisclaimer = result.receipt.copy(disclaimer = "unrecognized assurance text")
+        val arbitraryDisclaimerDigest = OneUseCapabilityEngine.recomputeReceiptHash(
+            arbitraryDisclaimer,
+            grant,
+        )
+        val selfConsistentArbitraryDisclaimer = arbitraryDisclaimer.copy(
+            receiptId = "receipt_${arbitraryDisclaimerDigest.take(24)}",
+            receiptSha256 = arbitraryDisclaimerDigest,
+        )
+        check(!OneUseCapabilityEngine.verifyReceipt(selfConsistentArbitraryDisclaimer, grant))
         val wrongBinding = result.receipt.copy(
             observedBindingSha256 = Hashing.sha256Hex("different-observed-binding"),
         )

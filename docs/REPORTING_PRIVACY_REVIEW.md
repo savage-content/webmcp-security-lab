@@ -80,4 +80,4 @@ Until those decisions are recorded as inspectable evidence, the service must
 remain disabled and must not be described as privacy approved or production
 ready.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

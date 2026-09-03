@@ -1,4 +1,4 @@
-# LeftOut WebMCP Safety (desktop prototype)
+# Left Out WebMCP Safety (desktop prototype)
 
 This Chrome Manifest V3 extension is the browser-owned **Protect** surface for
 the beginner WebMCP lesson. It pairs one user-selected HTTP(S) tab with the
@@ -175,4 +175,4 @@ enforcement.
 The bridge reports evidence from one named browser session. It does not prove
 that a page, client, or tool is safe.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

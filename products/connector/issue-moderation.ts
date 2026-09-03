@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
 import {
-  ISSUE_DRAFT_ASSURANCE_LIMITATION,
   ISSUE_DRAFT_SCHEMA_VERSION,
   createPrivacySafeIssueDraft,
+  isIssueDraftAssuranceLimitation,
+  type IssueDraftAssuranceLimitation,
   type PrivacySafeIssueDraft,
 } from './issue-draft';
 import {
@@ -119,7 +120,7 @@ function parseStoredDraft(value: unknown) {
   );
   if (
     value.schemaVersion !== ISSUE_DRAFT_SCHEMA_VERSION ||
-    value.assuranceLimitation !== ISSUE_DRAFT_ASSURANCE_LIMITATION ||
+    !isIssueDraftAssuranceLimitation(value.assuranceLimitation) ||
     !isRecord(value.submission)
   ) {
     throw new Error('Stored issue draft contract is invalid.');
@@ -145,7 +146,13 @@ function parseStoredDraft(value: unknown) {
   ) {
     throw new Error('Stored issue submission disposition is invalid.');
   }
-  return canonical;
+  return Object.freeze({
+    ...canonical,
+    // Keep the exact schema-v1 bytes so existing payload and event hashes
+    // continue to verify after the public brand correction.
+    assuranceLimitation:
+      value.assuranceLimitation as IssueDraftAssuranceLimitation,
+  });
 }
 
 function freezeRecord(record: IssueModerationRecord) {
@@ -364,5 +371,10 @@ export function parseIssueModerationRecord(
   ) {
     throw new Error('Stored moderation snapshot does not match its history.');
   }
-  return replayed;
+  return freezeRecord({
+    ...replayed,
+    // Replay validates the state machine with current constructors. Restore
+    // the already-validated stored draft before ledger hash verification.
+    draft,
+  });
 }

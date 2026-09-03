@@ -132,7 +132,7 @@ function documentShell(title: string, body: string, formAction: boolean) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${escapeHtml(title)} · LeftOut Security</title>
+  <title>${escapeHtml(title)} · Left Out Security</title>
   <style>${styles()}</style>
 </head>
 <body>${body}</body>

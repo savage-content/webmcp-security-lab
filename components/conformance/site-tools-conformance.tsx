@@ -313,8 +313,8 @@ export function SiteToolsConformance() {
           {
             name,
             title: replacement
-              ? 'LeftOut current registration control'
-              : 'LeftOut top-level Site Tools baseline',
+              ? 'Left Out current registration control'
+              : 'Left Out top-level Site Tools baseline',
             description:
               'Return a fixed synthetic conformance value. No inputs, mutation, network request, or follow-on action.',
             inputSchema: {
@@ -395,7 +395,7 @@ export function SiteToolsConformance() {
         <div className="mx-auto flex max-w-[1380px] items-center justify-between gap-4 px-5 py-4 lg:px-8">
           <div>
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-800">
-              LeftOut Security · Advanced test family
+              Left Out Security · Advanced test family
             </p>
             <h1 className="mt-1 text-xl font-semibold">
               Site Tools conformance
@@ -423,7 +423,7 @@ export function SiteToolsConformance() {
               This suite measures ChatGPT Site Tools in the built-in browser. It
               records page API support, registration, policy, client discovery,
               invocation, model, workspace, document, and session as separate
-              evidence. The LeftOut Local Guard is tested elsewhere.
+              evidence. The Left Out Local Guard is tested elsewhere.
             </p>
           </div>
           <Alert className="border-amber-300 bg-amber-50 p-4 text-amber-950">
@@ -555,7 +555,7 @@ export function SiteToolsConformance() {
               </h2>
               <p className="mt-3 text-sm leading-6 text-slate-300">
                 Registration proves only that this page registered a tool. Ask
-                the agent in this same built-in browser to invoke the LeftOut
+                the agent in this same built-in browser to invoke the Left Out
                 synthetic conformance ping once. The callback records invocation
                 automatically.
               </p>
@@ -571,7 +571,7 @@ export function SiteToolsConformance() {
           <div className="mt-5 rounded-lg border border-white/15 bg-white/5 p-4">
             <p className="text-sm font-semibold">Tell the same agent:</p>
             <p className="mt-2 text-sm leading-6 text-slate-200">
-              “Invoke the LeftOut top-level Site Tools baseline once. Do not
+              “Invoke the Left Out top-level Site Tools baseline once. Do not
               invoke any other tool.”
             </p>
           </div>
@@ -633,7 +633,7 @@ export function SiteToolsConformance() {
                       register B
                     </Button>
                     <p className="text-xs leading-5 text-muted-foreground">
-                      Ask the agent to invoke the current LeftOut conformance
+                      Ask the agent to invoke the current Left Out conformance
                       ping. Then separately ask whether the previous
                       registration is still available.
                     </p>
