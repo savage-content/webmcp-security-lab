@@ -36,6 +36,23 @@ remediation for the public page and extension. Independent first-time-human, rea
 zoom, and human 360 px popup acceptance remain pending and are not inferred
 from automation. See [NOVICE_ACCEPTANCE.md](NOVICE_ACCEPTANCE.md).
 
+A fresh version 11 in-app-browser retest on September 2 traversed all six tour
+steps, inspected the exact approval without approving it, and called no Site
+Tool. Both dialog types trapped keyboard focus and restored focus on Escape. At
+360×800 CSS pixels, the live page had no horizontal overflow; the longest tour
+step used an internal scroll region, and both dialogs and all decision buttons
+remained inside the viewport. This strengthens technical responsive evidence
+but does not change the pending real-human, screen-reader, 200% zoom, or Local
+Guard popup gates.
+
+The same working tree then passed a clean `npm ci` followed by the complete
+Node.js 24 verification gate: typecheck, Local Guard disclosure/readiness
+assessment, 431 tests across 52 files, lint, and the production build. The
+strict ordinary-user Local Guard gate remains intentionally unsatisfied and
+lists the external signing, identity, secure-transport, distribution,
+acceptance, public-policy, platform, and incident-response evidence still
+required.
+
 The local productization candidate adds a deterministic, allowlisted Local
 Guard ZIP, SHA-256 release manifest, and detached Ed25519 release-attestation
 gate. The gate verifies exact bytes against an independently supplied trusted

@@ -8,11 +8,13 @@
 participant or screen-reader operator was available inside this development
 session. Automated browser interaction is not relabeled as a human study.
 
-The public baseline tested on 2026-09-02 was commit `5ba6e97`, Sites version
-10. The reduced-motion remediation and regression-tested release is commit
+The public baseline tested on 2026-09-02 was commit `5ba6e97`, Sites version 10. The reduced-motion remediation and regression-tested release is commit
 `8568a5f`, Sites version 11, at
 <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>. No Site Tool was
-invoked during either acceptance run.
+invoked during either acceptance run. A fresh Codex in-app-browser retest on
+2026-09-02 revalidated the live version 11 surface and the measurements below;
+it did not invoke the one declared Site Tool and is not relabeled as a human
+study.
 
 ## Deployed technical novice run
 
@@ -26,21 +28,29 @@ invoked during either acceptance run.
 | Lesson unlock             | PASS   | Confirming the viable setup opened Lesson 1 and one primary review action.                                                               |
 | Approval clarity          | PASS   | Dialog named `TRAINING-1042`, read eligibility once, no inputs, one attempt, no retry, forbidden changes, expiry, and “does not invoke.” |
 | Cancel safety             | PASS   | “Not now” returned to review with no generated authority and no invocation.                                                              |
+| Site Tool boundary        | PASS   | The live document declared one `check_training_eligibility` action; acceptance inspected but did not call it.                            |
 
 ## Technical accessibility run
 
-| Check                           | Result                 | Evidence or limitation                                                                                                                                 |
-| ------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Landmark and heading structure  | PASS                   | Live accessibility tree contained one `main`, one H1, coherent H2/H3 order, and one named navigation region.                                           |
-| Accessible control names        | PASS                   | Live tree contained no unnamed button, link, textbox, checkbox, or combobox.                                                                           |
-| Keyboard dialog navigation      | PASS                   | Tab moved from cancel to the approval action; focus remained inside the dialog.                                                                        |
-| Escape and focus restoration    | PASS                   | Escape closed the alert dialog and returned focus to “Review the exact approval.”                                                                      |
-| Short/zoomed dialog containment | CODE PASS              | Walkthrough and approval dialogs use bounded viewport height, internal scrolling, wrapping actions, and responsive width.                              |
-| 360 CSS px Local Guard popup    | CODE PASS              | Popup is fixed at 360 CSS px, wraps technical values, has named labels/status regions, 40 px controls, and visible focus outlines.                     |
-| Reduced motion                  | PASS LIVE              | Version 10 lacked a reduced-motion rule. The version 11 live stylesheet disables smooth scroll, animation, and transitions when requested.           |
-| Real screen reader              | PENDING HUMAN          | No NVDA, JAWS, VoiceOver, or TalkBack operator completed the journey.                                                                                  |
-| Real 200% zoom                  | PENDING HUMAN          | Responsive code is present; a human usability pass at 200% remains required.                                                                           |
-| Real 360 px popup               | PENDING HUMAN          | Static contract and earlier Chrome visual evidence exist; a first-time human completion remains required.                                              |
+| Check                           | Result        | Evidence or limitation                                                                                                                                    |
+| ------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Landmark and heading structure  | PASS          | Live accessibility tree contained one `main`, one H1, coherent heading order, and named primary and scenario navigation regions.                          |
+| Accessible control names        | PASS          | Live tree contained no unnamed button, link, textbox, checkbox, or combobox.                                                                              |
+| Keyboard dialog navigation      | PASS LIVE     | The tour cycled among enabled controls; the approval dialog traversed cancel, approve, and technical-detail controls without leaving the dialog.          |
+| Escape and focus restoration    | PASS LIVE     | Escape closed both dialog types and returned focus to “First-time tour” or “Review the exact approval,” respectively.                                     |
+| 360 px public lab               | PASS LIVE     | At 360×800 there was no page-level horizontal overflow. The longest tour step scrolled internally; both dialogs and every decision button stayed visible. |
+| Short/zoomed dialog containment | CODE PASS     | Walkthrough and approval dialogs use bounded viewport height, internal scrolling, wrapping actions, and responsive width.                                 |
+| 360 CSS px Local Guard popup    | CODE PASS     | Popup is fixed at 360 CSS px, wraps technical values, has named labels/status regions, 40 px controls, and visible focus outlines.                        |
+| Reduced motion                  | PASS LIVE     | Version 10 lacked a reduced-motion rule. The version 11 live stylesheet disables smooth scroll, animation, and transitions when requested.                |
+| Real screen reader              | PENDING HUMAN | No NVDA, JAWS, VoiceOver, or TalkBack operator completed the journey.                                                                                     |
+| Real 200% zoom                  | PENDING HUMAN | Responsive code is present; a human usability pass at 200% remains required.                                                                              |
+| Real 360 px popup               | PENDING HUMAN | Static contract and earlier Chrome visual evidence exist; a first-time human completion remains required.                                                 |
+
+The live 360×800 measurement recorded a 345 CSS px page scroll width, a
+321×738 CSS px longest-step tour dialog with a 592/854 CSS px internal scroll
+region, and a 313×768 CSS px approval dialog with two 258×44 CSS px decision
+buttons. These measurements prove containment in this client and session; they
+do not substitute for 200% zoom or assistive-technology acceptance.
 
 ## Ten-minute first-time-human script
 
