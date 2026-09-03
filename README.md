@@ -361,10 +361,10 @@ The automated suite covers:
   credential forms, unreviewed deployment inputs, and extra Worker authority.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The current automated suite passes 530/530
-tests across 74 files, typecheck, the Local Guard and reporting release-readiness
-assessments, a disabled standalone reporting-Worker dry run, lint, and a
-production build plus its public-artifact boundary check on Node.js 24.
+separate Android conformance script. The tree committed as `73634a8` passes
+534/534 tests across 74 files, typecheck, the Local Guard and reporting
+release-readiness assessments, a disabled standalone reporting-Worker dry run,
+lint, and a production build plus its public-artifact boundary check on Node.js 24.
 Source-ready native transport, a
 separately packaged no-host-permission extension candidate, authenticated
 replay-resistant named-pipe IPC with a native-only connector mode,

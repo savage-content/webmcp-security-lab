@@ -11,10 +11,13 @@ session. Automated browser interaction is not relabeled as a human study.
 The public baseline tested on 2026-09-02 was commit `5ba6e97`, Sites version 10. The reduced-motion remediation and regression-tested release is commit
 `8568a5f`, Sites version 11, at
 <https://left-out-webmcp-security-lab.taitfor.chatgpt.site>. No Site Tool was
-invoked during either acceptance run. A fresh Codex in-app-browser retest on
-2026-09-02 revalidated the live version 11 surface and the measurements below;
-it did not invoke the one declared Site Tool and is not relabeled as a human
-study.
+invoked during either acceptance run. Codex in-app-browser retests on
+2026-09-02 and 2026-09-03 revalidated the live version 11 surface and the
+measurements below; neither invoked the one declared Site Tool and neither is
+relabeled as a human study. The September 3 run moved from a stale, unconfirmed
+Local Guard selection to the API-detected built-in path, completed all six tour
+steps, opened and cancelled Lesson 1 approval, and left no generated approval
+or invocation.
 
 ## Deployed technical novice run
 
@@ -46,7 +49,9 @@ study.
 | Real 200% zoom                  | PENDING HUMAN | Responsive code is present; a human usability pass at 200% remains required.                                                                              |
 | Real 360 px popup               | PENDING HUMAN | Static contract and earlier Chrome visual evidence exist; a first-time human completion remains required.                                                 |
 
-The live 360×800 measurement recorded a 345 CSS px page scroll width, a
+The September 3 live 360×800 recheck again recorded a 345 CSS px page scroll
+width. Its Lesson 1 approval dialog was 313×768 CSS px, scrolled internally,
+and kept both 258×44 CSS px decisions visible. The earlier run recorded a
 321×738 CSS px longest-step tour dialog with a 592/854 CSS px internal scroll
 region, and a 313×768 CSS px approval dialog with two 258×44 CSS px decision
 buttons. These measurements prove containment in this client and session; they

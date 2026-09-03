@@ -1,6 +1,6 @@
 # OpenAI WebMCP Challenge rules audit
 
-**Reviewed:** September 3, 2026 at 12:12 AM CDT
+**Reviewed:** September 3, 2026 at 1:36 AM CDT
 
 **Submission deadline:** September 3, 2026 at 1:00 PM PDT / 3:00 PM CDT
 
@@ -9,8 +9,9 @@
 
 ## Authority
 
-This audit was refreshed against the challenge's current September 3 pages and
-uses the [Official
+This audit was refreshed again against the challenge's current September 3
+Official Rules, overview, resources, and updates pages. The deadline and
+submission requirements were unchanged at 1:36 AM CDT. It uses the [Official
 Rules](https://webmcp.devpost.com/rules), [overview and
 FAQ](https://webmcp.devpost.com/), [resources and
 FAQ](https://webmcp.devpost.com/resources), and [organizer

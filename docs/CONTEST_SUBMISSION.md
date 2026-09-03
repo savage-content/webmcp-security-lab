@@ -112,13 +112,13 @@ pretending that a green badge or a reassuring annotation is enforcement.
 
 ## Verification
 
-After a clean `npm ci` on September 3, the current local candidate passed 530
-automated tests across 74 files on Node.js 24. The complete gate also passes
+After a clean `npm ci` on September 3, the tree committed as `73634a8` passed
+534 automated tests across 74 files on Node.js 24. The complete gate also passes
 typecheck, the Local Guard and reporting release-readiness
 assessments, the standalone reporting-Worker dry run, lint, production build,
 fail-closed public-`dist/` allowlist verification, deterministic Local Guard
-packaging, and a live non-invoking
-walkthrough/accessibility regression. Earlier bounded browser
+packaging, retention-preserving idempotency replay and deletion-race checks,
+and a live non-invoking walkthrough/accessibility regression. Earlier bounded browser
 runs produced passing receipts for all five synthetic lessons through the
 local extension/connector path.
 
