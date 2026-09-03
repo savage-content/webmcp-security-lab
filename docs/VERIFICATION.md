@@ -48,8 +48,8 @@ Guard popup gates.
 
 The same working tree then passed a clean `npm ci` followed by the complete
 Node.js 24 verification gate. Committed candidate `fd30afa` subsequently passed
-a fresh `npm ci` followed immediately by all 530 tests. The tree committed as
-`73634a8` later passed a fresh `npm ci` followed by the complete local
+a fresh `npm ci` followed immediately by all 530 tests. The final
+truth/brand candidate later passed a fresh `npm ci` followed by the complete local
 productization gate:
 typecheck, Local Guard and reporting disclosure/readiness assessments, an inert
 standalone reporting-Worker dry run, 534 passing tests plus two Windows-only skips across 75 files, lint, the
