@@ -107,12 +107,20 @@ Receipts and safety reports are deliberately separate:
 1. A local receipt retains detailed evidence for one run.
 2. The HUD opens the private receipt and local reporting workbench.
 3. The connector derives a typed finding candidate from verified evidence.
-4. The user previews the exact redacted issue draft.
-5. One explicit, one-use action can save the displayed draft to a temporary,
-   session-scoped local review list.
-6. Nothing leaves the device in this build.
-7. A future intake must quarantine submitted data for human review.
-8. Only a separately redacted, human-approved publication record may enter a
+4. A synthetic lesson can preview and save only a temporary, session-scoped
+   practice draft; it can never enter external intake.
+5. For a separately allowed public HTTPS origin, a scriptless loopback form
+   binds the site origin on the connector and lets the person choose only
+   category, severity, and stage.
+6. The person reviews the exact four-field envelope. No free text, full URL,
+   page content, screenshot, receipt, tool payload, conversation, identity, or
+   credential is accepted.
+7. Nothing leaves the device by default. When an invited reporting relay is
+   explicitly configured outside the browser, one one-use action sends the
+   reviewed envelope once with no automatic retry.
+8. The service places every accepted report in private quarantine for human
+   review. Receipt metadata is shown without echoing the reported origin.
+9. Only a separately redacted, human-approved publication record may enter a
    JSON or NDJSON security-tooling feed.
 
 Synthetic lessons, local addresses, private hosts, IP literals, paths, queries,
@@ -147,7 +155,12 @@ production identity and key custody, independent trust-metadata distribution,
 and correction operations rehearsal do not exist; all external reporting
 remains disabled until a dedicated privacy and security review approves the
 destination, retention, abuse controls, publication and correction standards,
-and incident process.
+and incident process. The loopback connector now includes a source-tested,
+scriptless public-report composer and a server-to-server invited relay. The
+relay credential never enters browser HTML or storage, partial configuration
+fails startup, remote responses are treated as bounded untrusted data, and a
+failed send consumes its one-use action instead of retrying. This does not mean
+the public service or learning-site reporting is enabled.
 
 ## Agent behavior
 
@@ -179,6 +192,11 @@ An agent using this product should:
 - Reporting preview shows included and excluded fields; synthetic and local
   data can enter only the temporary local review list and cannot be submitted
   externally.
+- A paired public HTTPS report uses one connector-bound origin plus three
+  closed choices, exposes no browser credential, shows an exact preview, and
+  has no send action unless an invited relay is explicitly configured.
+- One approved external submission produces only a quarantined receipt and is
+  never retried automatically; a consumed action cannot be replayed.
 - Store disclosure, privacy policy, runtime behavior, permissions, transport,
   signing identity, and release evidence agree without unsupported claims.
 - Ordinary-user distribution uses Chrome Web Store hosting/signing and an
@@ -198,11 +216,11 @@ An agent using this product should:
 3. Verify keyboard, screen-reader, 200% zoom, and 360 px popup journeys with
    first-time users against that same candidate.
 4. Complete novice acceptance of the HUD-to-receipt-to-local-review-list handoff.
-5. Conduct privacy/security review for the implemented intake, review, and
-   publication service boundary.
+5. Conduct privacy/security review for the implemented loopback report
+   composer, server-to-server relay, intake, review, and publication boundary.
 6. Complete production identity, abuse handling, backup purge, and lifecycle
-   operations; rehearse private deletion and immutable public correction; and
-   add an explicit external submission confirmation.
+   operations; rehearse the explicit one-use submission, private deletion, and
+   immutable public correction against an isolated service hostname.
 7. Serve only a signed, versioned, human-reviewed feed projection—never raw
    reports or receipts.
 8. Extract the policy, receipt, and conformance logic for a small native Android

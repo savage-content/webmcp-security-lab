@@ -79,6 +79,22 @@
       ]
     },
     {
+      "id": "external_reporting_operations",
+      "status": "source_ready",
+      "evidence": [
+        "products/connector/external-report-action.ts",
+        "products/connector/reporting-relay.ts",
+        "products/connector/reporting-workbench.ts",
+        "products/reporting-service/intake.ts",
+        "products/reporting-service/review.ts",
+        "products/reporting-service/publish.ts",
+        "products/reporting-service/feed.ts",
+        "tests/connector-external-report.test.ts",
+        "tests/reporting-relay-client.test.ts",
+        "docs/REPORTING_SERVICE.md"
+      ]
+    },
+    {
       "id": "supported_platform_matrix",
       "status": "source_ready",
       "evidence": [

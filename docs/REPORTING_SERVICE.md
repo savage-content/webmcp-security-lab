@@ -10,6 +10,13 @@ the same `404` response as unavailable routes.
 
 The local implementation currently provides:
 
+- a scriptless loopback composer that derives one paired public HTTPS origin
+  server-side, accepts only category, severity, and stage as closed choices,
+  and shows the exact four-field envelope before any send authority exists;
+- a disabled-by-default server-to-server relay that keeps its invitation
+  credential out of browser HTML, storage, URLs, and logs; consumes one-use
+  submit authority before the request; never retries automatically; rejects
+  redirects; and treats the bounded service receipt as untrusted data;
 - a four-field, closed public-web input contract: `siteOrigin`, `category`,
   `severity`, and `stage`;
 - exact `application/json`, a 2 KiB decoded-body ceiling, and rejection of
@@ -47,13 +54,15 @@ The local implementation currently provides:
   mutation, quota substitution, quota overflow, publication mutation,
   correction/publication mismatch, or correction mutation.
 
-No backup purge, browser submission UI, production identity integration,
-production signing-key custodian, or independent fingerprint publication
-exists yet. A source-only incident runbook now records fail-closed containment,
-but every accountable owner is null and no operator rehearsal or response-time
-commitment exists. The correction operation is source-tested only and has not
-passed an operator rehearsal. Source code for a route is not evidence that the
-service is enabled.
+No hosted learning-site submission UI, backup purge, production identity
+integration, production signing-key custodian, or independent fingerprint
+publication exists yet. The local composer is available only through an
+authenticated, pairing-bound loopback report session; it is not an Internet
+form. A source-only incident runbook now records fail-closed containment, but
+every accountable owner is null and no operator rehearsal or response-time
+commitment exists. The relay, correction operation, and full submission path
+are source-tested only and have not passed an operator rehearsal. Source code
+for a route is not evidence that the service is enabled.
 
 ## Configuration contract
 
@@ -93,6 +102,26 @@ deployment to upgrade; an operator must set it explicitly before enablement.
 The bearer itself is given only to the invited non-browser client. The stored
 configuration and quota rows retain digests, not bearer material. Changing a
 quota upward during an active window does not reset or widen that window.
+
+### Loopback relay configuration
+
+The connector-side reporting client is separately disabled unless all three
+values below are supplied to the connector process. Partial or disabled
+configuration containing a destination or credential is rejected. These are
+operator secrets and controls, not browser or public-site settings.
+
+| Setting                                         | Required value or boundary                                      |
+| ----------------------------------------------- | --------------------------------------------------------------- |
+| `LEFTOUT_CONNECTOR_REPORTING_MODE`              | `invited`; otherwise absent or `disabled`                       |
+| `LEFTOUT_CONNECTOR_REPORTING_ENDPOINT`          | Exact public HTTPS URL ending in `/api/reports/intake`          |
+| `LEFTOUT_CONNECTOR_REPORTING_INVITATION_TOKEN`  | Header-safe 32–512 character invitation bearer held server-side |
+
+The composer is offered only for an exact paired public HTTPS origin. The
+synthetic public lab, local/private names, IP literals, non-HTTPS pages, full
+page paths, queries, and fragments are ineligible. A successful remote receipt
+must match the exact response schema, quarantine state, first revision, and
+mandatory assurance limitation. The loopback page shows only the bounded
+receipt metadata and deliberately does not echo the reported origin.
 
 ## Intake request
 

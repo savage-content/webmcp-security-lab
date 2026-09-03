@@ -20,6 +20,13 @@ service worker or connector, has no signed executable, and performs no host or
 registry installation. Accordingly, the native identity and secure-transport
 gates are `source_ready`, not `verified`; the preview still uses loopback HTTP.
 
+The loopback connector also contains a scriptless four-field public-report
+review flow and a disabled-by-default invited server-to-server relay. It keeps
+the reporting credential out of the browser and never retries a failed send.
+This is source evidence only: the public learning deployment has no reporting
+destination, and reporting remains blocked on privacy, identity, operations,
+retention, abuse, incident, and rehearsal ownership.
+
 ## Native-host migration checkpoint
 
 The source under `products/native-host` follows Chrome's current native
@@ -149,6 +156,9 @@ records all of these external controls:
    homepage routes named in the store metadata.
 8. Approve a supported browser/operating-system matrix, incident contact, and
    release rollback owner.
+9. Approve and rehearse the explicit reporting relay, quarantine, reviewer,
+   publisher, feed-signing, retention, correction, deletion, abuse, backup,
+   support, and incident responsibilities before enabling external reports.
 
 The release-gate sources are:
 

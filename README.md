@@ -47,7 +47,7 @@ Site Tools support, or another client.
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Public learning range                                | Commit `8568a5f`, Sites version 11, is live with the setup gate, first-visit walkthrough, and five lessons                                                |
 | Five guided page capabilities                        | `PASS` in one fresh Chrome 152 sequence; one exact call per lesson and no retries                                                                         |
-| Connector receipt path                               | `PASS` for five validated receipts, the hash chain, local redacted draft, and zero feed-eligible records                                                  |
+| Connector receipt and report path                    | `PASS` for five validated receipts, the hash chain, local redacted draft, zero feed-eligible synthetic records, and a source-tested default-off public-report relay |
 | Browser extension                                    | Manifest V3 development preview; deterministic package, integrity manifest, and detached release-attestation gate now available; still unsigned by Chrome |
 | Android                                              | JVM/API conformance prototype; not device-invokable                                                                                                       |
 | Deployment split                                     | Public learning site only; Local Guard, connector, moderation core, and reporting workbench are not hosted                                                |
@@ -358,10 +358,11 @@ The automated suite covers:
   behavior, revocation, and failure handling.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The current automated suite passes 459/459
-tests across 58 files, typecheck, the Local Guard release-readiness assessment,
+separate Android conformance script. The current automated suite passes 482/482
+tests across 62 files, typecheck, the Local Guard release-readiness assessment,
 lint, and a production build on Node.js 24. Source-ready native transport,
-lifecycle, platform-matrix, and incident-response checkpoints are included in
+lifecycle, platform-matrix, incident-response, and default-off external-report
+relay checkpoints are included in
 those tests but are not installed, signed, rehearsed, or wired into the
 shipping preview.
 Live connector evidence is recorded separately: the
@@ -401,9 +402,9 @@ The public URL currently hosts commit `8568a5f` as Sites version 11. Repository
 and later working-tree changes are not live merely because they exist, are
 committed, or are pushed. That deployment contains the beginner page and
 synthetic Site Tools fixtures.
-It does not host or distribute the Local Guard extension, loopback
-connector, private reporting workbench, public intake, moderation service,
-security-tooling feed, or Android client.
+It does not host or distribute the Local Guard extension, loopback connector,
+private reporting workbench or its default-off server-to-server relay, public
+intake, moderation service, security-tooling feed, or Android client.
 
 The repository includes `.openai/hosting.json` with a logical `DB` binding and
 generated Drizzle migrations for a possible future web deployment.

@@ -14,11 +14,15 @@ Quarantined reviewed service,** adds authenticated intake, durable moderation
 events, abuse and retention controls, a separate publication decision, and a
 minimized JSON/NDJSON projection.
 
-I recommend we keep Option 1 live while building Option 2 behind a disabled
-feature gate. The pure moderation state machine is a safe shared prerequisite;
-connecting it to the network is not. A direct report-to-feed alternative is
-rejected because it collapses untrusted reporter input, evidence, human
-judgment, and publication into one authority boundary.
+Option 1 remains the only enabled behavior. Option 2 is now implemented as a
+disabled-by-default source candidate: a scriptless loopback composer,
+server-held invited relay credential, strict intake, durable moderation,
+separate publication, signed minimized feed, lifecycle, deletion, and
+correction boundaries. It must remain disabled until named privacy, security,
+identity, signing, retention, abuse, incident, and operations owners approve
+and rehearse it. A direct report-to-feed alternative remains rejected because
+it collapses untrusted reporter input, evidence, human judgment, and
+publication into one authority boundary.
 
 ## Evidence
 
@@ -31,20 +35,30 @@ strict; the missing product boundary is authenticated, durable operations.
 | `E-RP-3`  | Local review list (`products/connector/issue-review.ts`)                | Saving is one-use, session-scoped, synthetic-only, bounded, and memory-only.                                                     |
 | `E-RP-4`  | Human-gated feed projection (`products/connector/issue-publication.ts`) | Only `published` public-web records project; named hosts require explicit consent and reproduction-grade evidence.               |
 | `E-RP-5`  | Moderation state machine (`products/connector/issue-moderation.ts`)     | New shared core starts public-web drafts in quarantine, enforces transitions, and separates `accepted_private` from `published`. |
+| `E-RP-6`  | Local composer and relay (`products/connector/reporting-*.ts`)          | A paired public origin and three closed choices become one exact four-field preview; server-held authority permits at most one no-retry send. |
+| `E-RP-7`  | Reporting service (`products/reporting-service`)                       | Disabled gates protect strict intake, durable role-separated review/publication, retention, deletion, corrections, and a signed minimized feed. |
 | `E-DOC-1` | Product acceptance and privacy boundary (`docs/PRODUCT.md`)             | Public intake is explicitly blocked pending privacy, security, moderation, retention, abuse, and incident decisions.             |
 
-Observed code rejects raw receipts and synthetic/local publication. We infer
-that the domain model can support a service, but it cannot prove who reviewed a
-record, whether events were durably ordered, or whether operational policies
-were enforced. Those properties belong to the future service boundary.
+Observed code rejects raw receipts and synthetic/local publication. It also
+implements durable event and role-separation checks, but source tests cannot
+prove that production identities, key custody, backups, reviewers, retention,
+or incident operations exist. Those properties remain external release gates.
 
 ## Current Design And Failure Mode
 
 A verified local receipt can create a fixed, redacted issue candidate. A
-one-use form action saves only that draft to an in-memory, session-scoped list.
-There is no external submission or publication endpoint. Separately, a pure
-projection function can create a tiny feed record from an already-published
-candidate.
+one-use form action saves only that synthetic draft to an in-memory,
+session-scoped list. A separately allowed public HTTPS pairing can open a
+scriptless composer: the connector fixes the origin, the person chooses three
+closed labels, and a second page shows the exact four fields. With no relay
+configuration there is no send action. With invited configuration, one opaque
+server-held action can make exactly one server-to-server intake request with no
+automatic retry. The public learning deployment has no such configuration.
+
+The reporting service source has strict intake, durable quarantine, reviewer,
+publisher, feed, lifecycle, deletion, and correction routes. Every route is
+indistinguishable from absent while disabled. No production identity, key,
+owner, backup, or rehearsal evidence exists.
 
 The safe current failure mode is absence: nothing can reach a human or tooling
 feed. The dangerous future failure would be wiring the existing projection to
@@ -108,7 +122,7 @@ makes the local lifecycle explicit and keeps feed eligibility at zero.
 
 ### Option 2: Quarantined reviewed service
 
-This option adds a separate, authenticated service. A high-level public report
+This option uses a separate, authenticated service. A high-level public report
 passes schema, size, rate, bot/abuse, and privacy checks before a durable write
 to quarantine. Reviewer actions use role-bound sessions and append immutable
 moderation events. Acceptance remains private. A second explicit publication
@@ -152,10 +166,11 @@ requirements.
 ## Recommendation
 
 I recommend Option 2 as the eventual product architecture and Option 1 as the
-only currently releasable behavior. The deciding condition is not code
-completion; it is whether we can name and operate authentication, human review,
-retention/deletion, abuse, incident, and publication owners. Without those,
-keeping intake absent is a feature, not a delay.
+only currently releasable behavior. The source-ready Option 2 path does not
+change that decision. The deciding condition is whether we can name, approve,
+and rehearse authentication, human review, retention/deletion, abuse, incident,
+key-custody, backup, and publication ownership. Without those, keeping the
+relay and service disabled is a feature, not a delay.
 
 ## Evidence Coverage And Residual Risk
 
@@ -169,12 +184,14 @@ keeping intake absent is a feature, not a delay.
 
 ## Migration And Rollout
 
-Keep current routes unchanged. Build the moderation service with no public DNS
-and feed disabled, import only synthetic service-level fixtures, and complete
-authorization/abuse/privacy tests. Add operator-only intake, then a tiny
-invited cohort. Enable publication separately after review quality and
-correction workflows are proven. Rollback disables intake first, preserves
-quarantine under retention policy, and never republishes by replaying events.
+Keep the public deployment unchanged. Exercise the existing service and relay
+only against an isolated non-public candidate, import only synthetic
+service-level fixtures, and complete authorization, abuse, privacy,
+accessibility, backup, deletion, correction, and incident rehearsals. Then add
+a tiny invited cohort. Enable publication separately after review quality and
+correction workflows are proven. Rollback disables the relay and intake first,
+preserves quarantine under retention policy, and never republishes by replaying
+events.
 
 ## Validation Plan
 

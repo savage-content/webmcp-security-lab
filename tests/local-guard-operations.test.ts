@@ -100,11 +100,12 @@ describe('Local Guard platform and incident operations', () => {
     );
   });
 
-  it('records both operations gates as source-ready without removing release blockers', async () => {
+  it('records operations gates as source-ready without removing release blockers', async () => {
     const evidence = JSON.parse(
       await readFile(new URL('release-evidence.json', releaseRoot), 'utf8'),
     );
     for (const id of [
+      'external_reporting_operations',
       'supported_platform_matrix',
       'release_incident_response',
     ]) {
@@ -117,6 +118,7 @@ describe('Local Guard platform and incident operations', () => {
     const { report } = await assessLocalGuardRelease({ outputPath: null });
     expect(report.blockers).toEqual(
       expect.arrayContaining([
+        'external_reporting_operations',
         'supported_platform_matrix',
         'release_incident_response',
       ]),

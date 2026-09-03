@@ -7,19 +7,21 @@ This local MVP connects the beginner-first product journey:
    browser-owned bridge;
 2. **Protect** — the browser-owned extension HUD and loopback connector keep
    observation, guarded authority, invocation, and evidence separate; and
-3. **Report** — a local receipt dashboard, separately redacted issue preview,
-   explicit one-use save action, and temporary review list show the full
-   reporting journey without enabling external submission or publication.
+3. **Report** — a local receipt dashboard, separately redacted synthetic
+   preview, temporary practice list, and a scriptless four-field public-report
+   review flow show the path to quarantine without enabling publication.
 
 The connector also exposes a tool-only MCP server for ChatGPT/Codex or MCP
 Inspector so an external agent can inspect the paired page and request the one
 already-approved action.
 
 It is intentionally a **tool-only** MCP app. The reporting UI is an ordinary
-local web page, not an in-chat widget. Its only mutation is an explicit,
-one-use save to the connector's temporary review list. The connector does not
-create approval, generate a capability, invoke the broad source/proposal tools,
-or submit anything externally.
+local web page, not an in-chat widget. Synthetic lessons can only save one
+redacted draft to a temporary local list. A separately allowed public HTTPS
+page can reach a two-step exact preview; it receives no send button unless an
+invited server-to-server relay is explicitly configured in the connector
+process. The connector does not create approval, generate a capability, invoke
+the broad source/proposal tools, publish a finding, or retry a report.
 
 ## Live validation status
 
@@ -90,11 +92,16 @@ not recaptured, and the future final commit itself was not live-run.
 - Receipts and issue drafts are separate stores and purposes. The scriptless
   local issue preview exposes only fixed, redacted synthetic fields. An exact,
   one-use action may save that displayed draft to a temporary, session-scoped
-  review list; it cannot submit or publish it. A pure quarantine/moderation
-  state machine and minimized published-record projection are implemented and
-  tested, but they have no network or persistence route. A real intake,
-  authenticated moderation service, durable audit store, or security-tooling
-  feed requires a separate privacy and security review.
+  review list; it cannot submit or publish it. The public-report composer binds
+  one paired public HTTPS origin server-side and accepts only category,
+  severity, and stage as closed choices. It excludes full URLs, page content,
+  screenshots, tool payloads, receipts, conversations, identity, credentials,
+  and free text. Its invited relay keeps its bearer outside the browser,
+  consumes one-use authority before one request, rejects redirects and invalid
+  receipts, and never retries. The quarantine/moderation store and minimized,
+  signed feed are implemented behind disabled service gates. Production
+  identity, privacy, abuse, retention, backup, incident, correction, and
+  operator rehearsal remain required before external use.
 
 ## Delivery durability boundary
 

@@ -4,6 +4,7 @@ export interface DashboardDocumentOptions {
   entries: readonly ConnectorReceiptEntry[];
   selectedEntryId?: string;
   loadError?: string;
+  publicReportOrigin?: string;
 }
 
 type DashboardText = string | number | boolean | null | undefined;
@@ -78,6 +79,7 @@ export function createDashboardDocument({
   entries,
   selectedEntryId,
   loadError,
+  publicReportOrigin,
 }: DashboardDocumentOptions) {
   const countText = loadError
     ? 'Reports unavailable'
@@ -86,6 +88,9 @@ export function createDashboardDocument({
   const reportMarkup = loadError
     ? `<article><h2>${escapeHtml(loadError)}</h2></article>`
     : renderDashboardReports(entries, selectedEntryId);
+  const publicReportAction = publicReportOrigin
+    ? `<a class="button" href="/issues/public/new">Report a concern about ${escapeHtml(publicReportOrigin)}</a>`
+    : '';
   const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -139,6 +144,7 @@ export function createDashboardDocument({
   </div>
   <p class="notice" id="notice">${escapeHtml(REPORT_LIMITATION)}</p>
   <nav class="actions" aria-label="Local reporting views">
+    ${publicReportAction}
     <a class="button" href="/issues/preview">Open the local reporting walkthrough</a>
     <a class="button" href="/issues/review">Open the local review list</a>
   </nav>

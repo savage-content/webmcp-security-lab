@@ -17,6 +17,10 @@ import {
 } from './bridge-coordinator';
 import { createDashboardDocument } from './dashboard';
 import {
+  canonicalExternalReportOrigin,
+  ExternalReportActionManager,
+} from './external-report-action';
+import {
   createIssueCandidateFromVerifiedReceipt,
   createSyntheticLessonIssueCandidate,
   type LocalIssueCandidateSource,
@@ -38,6 +42,13 @@ import {
 } from './report-access';
 import { PairingChallengeManager } from './pairing-challenge';
 import { ReceiptStore, type ConnectorReceiptEntry } from './receipt-store';
+import { ReportingRelayClient } from './reporting-relay';
+import {
+  createExternalReportFailureDocument,
+  createExternalReportFormDocument,
+  createExternalReportPreviewDocument,
+  createExternalReportReceiptDocument,
+} from './reporting-workbench';
 import { createSetupDocument } from './setup';
 
 const MCP_PATH = '/mcp';
@@ -53,6 +64,9 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'https://left-out-webmcp-security-lab.taitfor.chatgpt.site',
 ];
+const SYNTHETIC_PUBLIC_ORIGINS = new Set([
+  'https://left-out-webmcp-security-lab.taitfor.chatgpt.site',
+]);
 
 function secret() {
   return Buffer.from(randomBytes(32)).toString('base64url');
@@ -176,7 +190,7 @@ async function readJsonBody(request: IncomingMessage, limit = 64 * 1024) {
   return JSON.parse(text || '{}') as unknown;
 }
 
-async function readFormBody(request: IncomingMessage, limit = 4 * 1024) {
+async function readFormParameters(request: IncomingMessage, limit = 4 * 1024) {
   const contentType = request.headers['content-type'] ?? '';
   if (
     Array.isArray(contentType) ||
@@ -196,6 +210,11 @@ async function readFormBody(request: IncomingMessage, limit = 4 * 1024) {
   const parameters = new URLSearchParams(
     Buffer.concat(chunks).toString('utf8'),
   );
+  return parameters;
+}
+
+async function readFormBody(request: IncomingMessage, limit = 4 * 1024) {
+  const parameters = await readFormParameters(request, limit);
   const values = parameters.getAll('action_token');
   if (
     values.length !== 1 ||
@@ -206,6 +225,46 @@ async function readFormBody(request: IncomingMessage, limit = 4 * 1024) {
     throw new Error('One bounded local action token is required.');
   }
   return { actionToken: values[0] };
+}
+
+async function readExternalReportForm(request: IncomingMessage) {
+  const parameters = await readFormParameters(request);
+  const fields = ['action_token', 'category', 'severity', 'stage'] as const;
+  if (
+    [...parameters.keys()].length !== fields.length ||
+    fields.some((field) => parameters.getAll(field).length !== 1)
+  ) {
+    throw new Error('The external report form is incomplete or over-broad.');
+  }
+  const actionToken = parameters.get('action_token') ?? '';
+  const category = parameters.get('category') ?? '';
+  const severity = parameters.get('severity') ?? '';
+  const stage = parameters.get('stage') ?? '';
+  if (
+    actionToken.length < 20 ||
+    actionToken.length > 128 ||
+    category.length > 80 ||
+    severity.length > 32 ||
+    stage.length > 32
+  ) {
+    throw new Error('The external report form exceeds its boundary.');
+  }
+  return { actionToken, category, severity, stage };
+}
+
+function sendHtmlDocument(
+  response: ServerResponse,
+  document: { html: string; contentSecurityPolicy: string },
+  status = 200,
+) {
+  response.writeHead(status, {
+    'content-type': 'text/html; charset=utf-8',
+    'content-security-policy': document.contentSecurityPolicy,
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff',
+    'referrer-policy': 'no-referrer',
+  });
+  response.end(document.html);
 }
 
 function errorMessage(error: unknown) {
@@ -312,6 +371,7 @@ export interface CapabilityConnectorOptions {
   };
   reportTicketTtlMs?: number;
   reportSessionTtlMs?: number;
+  reportingRelay?: ReportingRelayClient;
   log?: (message: string) => void;
 }
 
@@ -347,6 +407,10 @@ export async function startCapabilityConnector(
   });
   const issueSaveActions = new IssueSaveActionManager();
   const issueReviews = new LocalIssueReviewStore();
+  const externalReportActions = new ExternalReportActionManager();
+  const reportingRelay =
+    options.reportingRelay ??
+    new ReportingRelayClient({ environment: process.env });
   let publicBaseUrl = '';
 
   const createLaunchUrl = (target: LocalPageTarget, binding?: string) => {
@@ -382,6 +446,19 @@ export async function startCapabilityConnector(
       throw new Error('The selected receipt is outside this report session.');
     }
     return createIssueCandidateFromVerifiedReceipt(entry);
+  };
+  const boundPage = (binding: string | undefined) =>
+    binding
+      ? coordinator.listPairedPages().find((page) => page.sessionId === binding)
+      : undefined;
+  const reportableOrigin = (binding: string | undefined) => {
+    const page = boundPage(binding);
+    if (!page || SYNTHETIC_PUBLIC_ORIGINS.has(page.origin)) return undefined;
+    try {
+      return canonicalExternalReportOrigin(page.origin);
+    } catch {
+      return undefined;
+    }
   };
   const coordinator = new BridgeCoordinator({
     pairCode: options.pairCode ?? process.env.BRIDGE_PAIR_CODE,
@@ -474,6 +551,121 @@ export async function startCapabilityConnector(
         'referrer-policy': 'no-referrer',
       });
       response.end(document.html);
+      return;
+    }
+
+    if (request.method === 'GET' && url.pathname === '/issues/public/new') {
+      const authorization = reportAccess.authorize(
+        reportSession,
+        '/issues/preview',
+      );
+      if (!authorization) {
+        sendJson(response, 401, { error: 'External report access denied.' });
+        return;
+      }
+      const siteOrigin = reportableOrigin(authorization.binding);
+      if (!siteOrigin) {
+        sendHtmlDocument(
+          response,
+          createExternalReportFailureDocument(
+            'A paired public HTTPS page is required. Synthetic lessons, local pages, IP addresses, and private names cannot enter external reporting.',
+          ),
+          400,
+        );
+        return;
+      }
+      const actionToken = externalReportActions.issueComposition(
+        issueScope(reportSession, authorization),
+        siteOrigin,
+      );
+      sendHtmlDocument(
+        response,
+        createExternalReportFormDocument({
+          actionToken,
+          siteOrigin,
+          relayStatus: reportingRelay.status(),
+        }),
+      );
+      return;
+    }
+
+    if (
+      request.method === 'POST' &&
+      url.pathname === '/issues/public/preview'
+    ) {
+      const authorization = reportAccess.authorize(
+        reportSession,
+        '/issues/preview',
+      );
+      if (!authorization) {
+        sendJson(response, 401, { error: 'External report access denied.' });
+        return;
+      }
+      try {
+        const form = await readExternalReportForm(request);
+        const scope = issueScope(reportSession, authorization);
+        const draft = externalReportActions.compose(
+          form.actionToken,
+          scope,
+          form,
+        );
+        const relayStatus = reportingRelay.status();
+        const submissionToken = relayStatus.acceptsExternalReports
+          ? externalReportActions.issueSubmission(scope, draft)
+          : undefined;
+        sendHtmlDocument(
+          response,
+          createExternalReportPreviewDocument({
+            draft,
+            relayStatus,
+            ...(submissionToken ? { submissionToken } : {}),
+          }),
+        );
+      } catch (error) {
+        sendHtmlDocument(
+          response,
+          createExternalReportFailureDocument(errorMessage(error)),
+          400,
+        );
+      }
+      return;
+    }
+
+    if (request.method === 'POST' && url.pathname === '/issues/public/submit') {
+      const authorization = reportAccess.authorize(
+        reportSession,
+        '/issues/preview',
+      );
+      if (!authorization) {
+        sendJson(response, 401, { error: 'External report access denied.' });
+        return;
+      }
+      try {
+        const { actionToken } = await readFormBody(request);
+        const scope = issueScope(reportSession, authorization);
+        const draft = externalReportActions.consumeSubmission(
+          actionToken,
+          scope,
+        );
+        const relayStatus = reportingRelay.status();
+        if (!relayStatus.acceptsExternalReports) {
+          throw new Error('External reporting is not configured.');
+        }
+        const receipt = await reportingRelay.submit(draft);
+        sendHtmlDocument(
+          response,
+          createExternalReportReceiptDocument({
+            receipt,
+            destinationOrigin: relayStatus.destinationOrigin,
+          }),
+        );
+      } catch (error) {
+        sendHtmlDocument(
+          response,
+          createExternalReportFailureDocument(errorMessage(error)),
+          502,
+        );
+      }
       return;
     }
 
@@ -607,6 +799,7 @@ export async function startCapabilityConnector(
         entries,
         selectedEntryId: reportMatch[1],
         loadError,
+        publicReportOrigin: reportableOrigin(reportAuthorization.binding),
       });
       response.writeHead(loadError ? 500 : 200, {
         'content-type': 'text/html; charset=utf-8',
@@ -767,6 +960,7 @@ export async function startCapabilityConnector(
         reportAccess.revokeBinding(sessionId);
         issueSaveActions.revokeScope(`pairing:${sessionId}`);
         issueReviews.revokeScope(`pairing:${sessionId}`);
+        externalReportActions.revokeScope(`pairing:${sessionId}`);
         sendJson(response, 200, { revoked: true });
         return;
       }
@@ -847,6 +1041,7 @@ export async function startCapabilityConnector(
       reportAccess.dispose();
       issueSaveActions.dispose();
       issueReviews.dispose();
+      externalReportActions.dispose();
       await Promise.all([close(publicServer), close(bridgeServer)]);
     },
   };

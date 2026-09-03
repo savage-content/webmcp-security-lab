@@ -5,8 +5,8 @@
   "sourceEvidence": {
     "kind": "source_document_collection",
     "label": "Local Guard and reporting source evidence",
-    "collectionSha256": "da712c92bda69d5f4cf2ec812e770b11e66548bb8bd667d87ef785f30fd39693",
-    "artifactCount": 75,
+    "collectionSha256": "03fa60ba4cf792f599ccfaf8ff29683fdc9044091a044a668f08a3d6f950c896",
+    "artifactCount": 83,
     "targetRevision": "5ba6e97095918d8877e1e12c98faabb3b81a869f",
     "sourceDrift": "present"
   },
@@ -300,8 +300,8 @@
     {
       "opportunityId": "reporting-quarantine-boundary",
       "title": "Make publication a distinct reviewed state",
-      "summary": "Keep local evidence disconnected while building authenticated quarantine, human review, and minimized feed projection as separate authorities.",
-      "diagnosis": "The data schemas are narrow, but a real service still lacks authenticated reviewers, durable events, abuse controls, retention, and an approved public intake boundary.",
+      "summary": "Keep local evidence enabled while the implemented invited relay, quarantine, human review, and minimized feed remain disabled behind separate authorities.",
+      "diagnosis": "The source now implements the narrow data path and durable role-separated service controls, but no production identities, owners, key custody, privacy approval, backup policy, incident rehearsal, or approved public intake deployment exists.",
       "evidence": [
         {
           "claimType": "observed",
@@ -316,6 +316,20 @@
           "evidenceId": "E-RP-4",
           "path": "products/connector/issue-publication.ts",
           "claim": "Only published public-web records project, and named hosts require explicit consent plus reproduction-grade evidence."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E-RP-6",
+          "path": "products/connector/reporting-relay.ts",
+          "claim": "The connector binds one public origin to a scriptless four-field preview and permits one no-retry server-to-server send only when invited relay authority is explicitly configured."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E-RP-7",
+          "path": "products/reporting-service/intake.ts",
+          "claim": "The disabled-first service enforces strict intake, quarantine, role-separated review and publication, retention, correction, and minimized signed-feed boundaries."
         },
         {
           "claimType": "inferred",
@@ -337,7 +351,7 @@
           "optionId": "local-only-evidence",
           "title": "Local-only evidence",
           "kind": "baseline",
-          "summary": "Retain the private receipt, redacted preview, one-use local save, and zero external routes.",
+          "summary": "Retain the private receipt, redacted preview, and one-use local save while every external relay and service gate stays disabled.",
           "diagramPaths": {
             "before": "diagrams/reporting-quarantine-before.mmd",
             "after": "diagrams/reporting-quarantine-local-only-after.mmd"
@@ -356,6 +370,12 @@
               "rationale": "The feed projector stays disconnected."
             },
             {
+              "evidenceId": "E-RP-6",
+              "effect": "addresses",
+              "tacticalFixRequired": true,
+              "rationale": "Default configuration exposes no external send action or credential."
+            },
+            {
               "evidenceId": "E-DOC-1",
               "effect": "addresses",
               "tacticalFixRequired": false,
@@ -368,8 +388,8 @@
               "direction": "neutral",
               "confidence": "high",
               "basis": "source-derived",
-              "assessment": "No external attack or publication surface is added.",
-              "validationPlan": "Verify routes remain absent and synthetic/local feed eligibility remains zero."
+              "assessment": "No external attack or publication surface is enabled.",
+              "validationPlan": "Verify the relay and service remain disabled and synthetic/local feed eligibility remains zero."
             },
             {
               "dimension": "performance",
@@ -400,7 +420,7 @@
               "direction": "neutral",
               "confidence": "high",
               "basis": "source-derived",
-              "assessment": "No external service or review queue exists.",
+              "assessment": "No external service or review queue is enabled or owned.",
               "validationPlan": "Review user copy for a clear local-only boundary."
             },
             {
@@ -423,7 +443,7 @@
             ],
             "workPackages": ["Keep local-only copy and exclusions testable."],
             "acceptanceCriteria": [
-              "No external endpoint exists.",
+              "No external relay or service gate is configured or enabled.",
               "Synthetic/local feed eligibility is zero."
             ],
             "migrationNotes": [],
@@ -434,7 +454,7 @@
           "optionId": "quarantined-human-review",
           "title": "Quarantined reviewed service",
           "kind": "structural",
-          "summary": "Add authenticated intake, durable moderation events, abuse/retention controls, separate publication, and minimized feed serving.",
+          "summary": "Approve and operate the implemented authenticated intake, durable moderation events, abuse/retention controls, separate publication, and minimized feed serving.",
           "diagramPaths": {
             "before": "diagrams/reporting-quarantine-before.mmd",
             "after": "diagrams/reporting-quarantine-service-after.mmd"
@@ -451,6 +471,18 @@
               "effect": "addresses",
               "tacticalFixRequired": true,
               "rationale": "Publication projection remains a separate gated step."
+            },
+            {
+              "evidenceId": "E-RP-6",
+              "effect": "addresses",
+              "tacticalFixRequired": true,
+              "rationale": "The local composer exposes only an exact four-field envelope and keeps the invited credential server-side."
+            },
+            {
+              "evidenceId": "E-RP-7",
+              "effect": "addresses",
+              "tacticalFixRequired": true,
+              "rationale": "The service source separates intake, moderation, publication, correction, lifecycle, and feed authority."
             },
             {
               "evidenceId": "E-DOC-1",
@@ -516,15 +548,16 @@
           ],
           "implementationReadiness": {
             "affectedComponents": [
-              "products/connector/issue-moderation.ts",
-              "future intake, reviewer, storage, and feed services"
+              "products/connector/reporting-relay.ts",
+              "products/connector/reporting-workbench.ts",
+              "products/reporting-service"
             ],
             "workPackages": [
-              "Finish domain state machine.",
-              "Select identity and durable audit store.",
-              "Implement abuse and retention controls.",
-              "Build reviewer UI.",
-              "Enable feed only after publication acceptance."
+              "Approve privacy, retention, abuse, correction, and incident policy.",
+              "Provision production identity, durable store, key custody, and backup ownership.",
+              "Build and accessibility-test the operator review surface.",
+              "Rehearse submission, review, publication, correction, deletion, restore, and rollback.",
+              "Enable only a tiny isolated invited cohort after approval."
             ],
             "acceptanceCriteria": [
               "Every report starts quarantined.",
@@ -539,7 +572,7 @@
         }
       ],
       "recommendedOptionId": "quarantined-human-review",
-      "recommendation": "Build the pure quarantine core now, but do not connect public intake or feed serving until the operational and privacy gates are approved."
+      "recommendation": "Keep the implemented relay and service disabled until named owners approve and rehearse privacy, identity, retention, abuse, backup, incident, correction, and publication operations."
     }
   ],
   "openQuestions": [

@@ -22,6 +22,7 @@ describe('Local Guard ordinary-user release gate', () => {
       'install_update_rollback_removal',
       'signed_candidate_novice_accessibility',
       'public_privacy_and_support_deployment',
+      'external_reporting_operations',
       'supported_platform_matrix',
       'release_incident_response',
     ]);
