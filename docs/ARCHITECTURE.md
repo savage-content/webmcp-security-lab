@@ -251,9 +251,16 @@ write an immutable minimized publication row. Stored or caller-supplied state
 is not treated as authenticated human review. When its independent lifecycle
 gate is enabled, intake atomically persists an immutable retention assignment
 and a distinct custodian can set or clear legal hold through a narrow,
-idempotent revision transition. Controlled deletion, backup purge, tombstones,
-and correction workflows do not yet exist. An independently authenticated feed
-handler reads only the
+idempotent revision transition. That custodian can authorize an exact private
+deletion against the current retention revision. The deletion transaction
+blocks legal holds, enforces the stored deadline for retention-expiry requests,
+writes an immutable non-identifying tombstone, removes the private moderation
+and retention chains plus their lookup state, and removes its transient
+authorization. Public publication rows are keyed by a public event ID in a
+separate table; deleting private data removes only the private mapping, so the
+minimized public projection remains available without a private report ID.
+Provider-backup purge and public correction workflows do not yet exist. An
+independently authenticated feed handler reads only the
 immutable publication table through a bounded, stable snapshot cursor; its JSON
 and NDJSON forms omit private report IDs, reviewer/publisher identities, source
 revisions, and private origins. Exact response bytes carry an Ed25519 detached

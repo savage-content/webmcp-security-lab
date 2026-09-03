@@ -97,9 +97,11 @@ separate publisher, and independently authenticated signed JSON/NDJSON feed
 handlers exist in source but are disabled and unconfigured on the public site.
 The feed exposes only minimized publication rows and signs exact snapshot-page
 bytes with an externally supplied Ed25519 key; consumers must pin a fingerprint
-obtained separately. Retention/correction operations, production identities,
-signing-key custody, fingerprint distribution, and operating approval remain
-absent.
+obtained separately. Atomic retention assignment, custodian-only legal hold,
+and controlled private deletion with immutable non-identifying tombstones are
+implemented locally. Public correction, provider-backup purge, production
+identities, signing-key custody, fingerprint distribution, and operating
+approval remain absent.
 
 ## The guided experience
 
@@ -344,8 +346,8 @@ The automated suite covers:
   behavior, revocation, and failure handling.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The current automated suite passes 407/407
-tests across 47 files, typecheck, lint, and a production build on Node.js 24.
+separate Android conformance script. The current automated suite passes 415/415
+tests across 49 files, typecheck, lint, and a production build on Node.js 24.
 Live connector evidence is recorded separately: the
 September 1 target-client run satisfied the bounded end-to-end checks in
 [docs/GO_NO_GO.md](docs/GO_NO_GO.md).

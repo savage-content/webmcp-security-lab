@@ -133,9 +133,13 @@ snapshot pages from only those immutable publication records and sign the exact
 bytes with an externally supplied Ed25519 key. Its trust depends on a
 fingerprint distributed through another trusted channel. New intakes can now
 receive an immutable retention assignment, and a separately authenticated
-custodian can set or clear legal hold. Controlled deletion, tombstones, backup
-purge, and public-correction operations do not exist; all external reporting
-remains disabled until a
+custodian can set or clear legal hold. The custodian can also perform an exact,
+idempotent private deletion that is blocked by legal hold, enforces the stored
+retention deadline when that reason is used, removes the private chains and
+lookup link atomically, preserves any separately minimized public projection,
+and retains only a non-identifying immutable tombstone. Backup purge and
+public-correction operations do not exist; all external reporting remains
+disabled until a
 dedicated privacy and security review approves the destination, production
 identity boundary, key custody, trust-metadata distribution, retention, abuse
 controls, publication standard, and incident process.
@@ -179,9 +183,9 @@ An agent using this product should:
 3. Complete novice acceptance of the HUD-to-receipt-to-local-review-list handoff.
 4. Conduct privacy/security review for the implemented intake, review, and
    publication service boundary.
-5. Complete production identity, abuse handling, controlled deletion,
-   correction, backup, and lifecycle operations, plus an explicit external
-   submission confirmation.
+5. Complete production identity, abuse handling, backup purge, public
+   correction, and lifecycle operations; rehearse the implemented private
+   deletion; and add an explicit external submission confirmation.
 6. Serve only a signed, versioned, human-reviewed feed projection—never raw
    reports or receipts.
 7. Extract the policy, receipt, and conformance logic for a small native Android

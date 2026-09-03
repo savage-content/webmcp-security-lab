@@ -120,10 +120,14 @@ The fixture mismatches are intentional application-design failures. The lab does
   record. A separate feed credential and Ed25519 signer protect minimized
   snapshot pages, with tamper and wrong-trust-root tests. All routes remain
   disabled and unconfigured publicly. Production operator identity, signing-key
-  custody, independently published trust metadata, controlled deletion,
-  tombstones, backup and recovery, correction, and incident response remain
-  absent. Source now includes atomic retention assignment and custodian-only
-  legal-hold transitions, but no public deployment has enabled them.
+  custody, independently published trust metadata, backup purge and recovery,
+  public correction, and incident response remain absent. Source now includes
+  atomic retention assignment, custodian-only legal-hold transitions, and
+  controlled private deletion. The deletion path requires the exact current
+  retention revision, rejects every legal hold, removes private chains and
+  lookup state atomically, retains any separately minimized public projection,
+  and writes an immutable tombstone that omits the report ID and origin. No
+  public deployment has enabled these operations.
 - Two earlier 2026-09-01 page invocations produced local `PASS` receipts but
   failed before connector commitment. An in-flight Chrome 152 registration
   abort remains the leading hypothesis for the later failure, not proven

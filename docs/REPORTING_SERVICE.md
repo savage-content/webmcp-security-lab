@@ -31,18 +31,22 @@ The local implementation currently provides:
   with externally supplied Ed25519 material, and identifies the fingerprint
   clients must verify through a separate trust channel; and
 - an optional lifecycle gate that atomically assigns an immutable retention
-  deadline at intake and gives a separate custodian an idempotent,
-  optimistic-revision legal-hold operation; and
+  deadline at intake, gives a separate custodian an idempotent,
+  optimistic-revision legal-hold operation, and permits a controlled private
+  deletion only after an exact current-state authorization;
+- an atomic deletion workflow that blocks legal holds, distinguishes retention
+  expiry from a data-subject request, removes private records and lookup links,
+  preserves any immutable public projection, and emits an immutable,
+  non-identifying tombstone; and
 - database constraints and triggers that reject state/hash drift, event or
-  idempotency mutation, record deletion outside a future retention workflow,
-  retention-chain mutation, quota substitution, quota overflow, or publication
-  mutation.
+  idempotency mutation, deletion outside the controlled retention workflow,
+  stale or held deletion authorization, retention-chain mutation, tombstone
+  mutation, quota substitution, quota overflow, or publication mutation.
 
-No controlled deletion, tombstone, backup purge, or public-correction operation,
-browser submission UI, production identity integration, production signing-key
-custodian, independent fingerprint publication, or production operations
-runbook exists yet. Source code for a route is not evidence that the service is
-enabled.
+No backup purge, public-correction operation, browser submission UI, production
+identity integration, production signing-key custodian, independent fingerprint
+publication, or production operations runbook exists yet. Source code for a
+route is not evidence that the service is enabled.
 
 ## Configuration contract
 
@@ -136,9 +140,27 @@ private report. An authenticated custodian can read that limited projection at
 `expectedRevision` and `legalHold`, requires a lowercase UUID idempotency key,
 and cannot change policy, deadline, report content, moderation, or publication.
 
-This is not yet a deletion system. The database still rejects private-record
-deletion until a controlled purge, non-identifying tombstone, backup policy,
-and public-record correction design are implemented and tested.
+An authenticated custodian can request a controlled private deletion at
+`POST /api/reports/lifecycle/:reportId/delete`. The request accepts only
+`expectedRetentionRevision` and one closed reason:
+`retention_expired` or `data_subject_request`. It requires exact JSON, a
+lowercase UUID idempotency key, and no browser origin. A legal hold always
+blocks deletion. Retention-expiry deletion is allowed only at or after the
+stored deadline; a data-subject request may act earlier under custodian
+authority.
+
+The D1 batch writes one immutable tombstone, deletes the private moderation and
+retention chains, removes intake idempotency and the private-to-public lookup
+link, and then removes the transient deletion authorization. A previously
+published, minimized public record is deliberately retained without a private
+report lookup. The tombstone contains no private report ID, origin, draft, or
+free text. It records only lifecycle proof fields and, when applicable, the
+already-public publication ID. Exact request replay returns the same tombstone;
+conflicting reuse is rejected.
+
+This workflow does not purge provider backups or correct an erroneous public
+record. Those remain separate release blockers, and the route remains disabled
+and unconfigured on the public learning deployment.
 
 ## Required enablement evidence
 

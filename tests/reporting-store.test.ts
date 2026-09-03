@@ -297,9 +297,9 @@ describe('durable reporting store', () => {
     await expect(
       database
         .prepare(
-          'UPDATE leftout_report_publications SET publisher_id = ? WHERE report_id = ?',
+          'UPDATE leftout_report_publications SET publisher_id = ? WHERE public_id = ?',
         )
-        .bind('substituted', created.record.moderation.id)
+        .bind('substituted', published.event.eventId)
         .run(),
     ).rejects.toThrow('immutable');
   });

@@ -15,13 +15,20 @@ import {
   type ReportingLedgerRecord,
 } from './ledger';
 import {
+  createReportingDeletionTombstone,
+  parseReportingDeletionTombstone,
+  REPORTING_DELETION_REASONS,
+  type ReportingDeletionReason,
+  type ReportingDeletionTombstone,
+} from './deletion-core';
+import {
   parseReportingRetentionEvent,
   parseReportingRetentionState,
   type ReportingRetentionEvent,
   type ReportingRetentionState,
 } from './retention-core';
 
-export const REPORTING_STORE_SCHEMA_VERSION = 3 as const;
+export const REPORTING_STORE_SCHEMA_VERSION = 4 as const;
 
 export class ReportingStoreConflictError extends Error {
   override readonly name = 'ReportingStoreConflictError';
@@ -45,6 +52,17 @@ export interface ReportingRetentionBundle {
   events: readonly Readonly<ReportingRetentionEvent>[];
 }
 
+export interface ReportingDeletionRequest {
+  reportId: string;
+  expectedRetentionRevision: number;
+  reason: ReportingDeletionReason;
+  custodianId: string;
+  requestId: string;
+  requestSha256: string;
+  now: number;
+  tombstoneId?: () => string;
+}
+
 export interface ReportingIntakeIdempotency {
   invitationId: string;
   keySha256: string;
@@ -60,7 +78,7 @@ export interface ReportingIntakeQuotaPolicy {
 
 export interface ReportingPublicationRecord {
   publicId: string;
-  reportId: string;
+  reportId: string | null;
   publishedAt: string;
   publisherId: string;
   sourceRevision: number;
@@ -84,6 +102,7 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const INVITATION_ID_PATTERN =
   /^invitation\.[a-z0-9](?:[a-z0-9._-]{1,62}[a-z0-9])?$/u;
+const ACTOR_ID_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{1,62}[a-z0-9])?$/u;
 
 export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
   `CREATE TABLE IF NOT EXISTS leftout_report_records (
@@ -131,14 +150,19 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     max_count INTEGER NOT NULL CHECK (max_count >= 1)
   )`,
   `CREATE TABLE IF NOT EXISTS leftout_report_publications (
-    report_id TEXT PRIMARY KEY NOT NULL,
+    public_id TEXT PRIMARY KEY NOT NULL,
     schema_version TEXT NOT NULL,
     published_at TEXT NOT NULL,
     publisher_id TEXT NOT NULL,
     source_revision INTEGER NOT NULL CHECK (source_revision >= 2),
     record_sha256 TEXT NOT NULL CHECK (length(record_sha256) = 64),
-    record_json TEXT NOT NULL,
-    FOREIGN KEY (report_id) REFERENCES leftout_report_records(id)
+    record_json TEXT NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS leftout_report_publication_links (
+    report_id TEXT PRIMARY KEY NOT NULL,
+    public_id TEXT NOT NULL UNIQUE,
+    FOREIGN KEY (report_id) REFERENCES leftout_report_records(id),
+    FOREIGN KEY (public_id) REFERENCES leftout_report_publications(public_id)
   )`,
   `CREATE TABLE IF NOT EXISTS leftout_report_retention_states (
     report_id TEXT PRIMARY KEY NOT NULL,
@@ -169,15 +193,46 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     event_json TEXT NOT NULL,
     FOREIGN KEY (report_id) REFERENCES leftout_report_records(id)
   )`,
+  `CREATE TABLE IF NOT EXISTS leftout_report_deletion_authorizations (
+    report_id TEXT PRIMARY KEY NOT NULL,
+    request_id TEXT NOT NULL UNIQUE,
+    request_sha256 TEXT NOT NULL CHECK (length(request_sha256) = 64),
+    custodian_id TEXT NOT NULL CHECK (length(custodian_id) BETWEEN 3 AND 64),
+    expected_retention_revision INTEGER NOT NULL CHECK (expected_retention_revision >= 1),
+    authorized_at TEXT NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS leftout_report_deletion_tombstones (
+    tombstone_id TEXT PRIMARY KEY NOT NULL,
+    schema_version TEXT NOT NULL,
+    deleted_at TEXT NOT NULL,
+    reason TEXT NOT NULL CHECK (reason IN ('retention_expired','data_subject_request')),
+    policy_version TEXT NOT NULL,
+    public_id TEXT,
+    publication_survives INTEGER NOT NULL CHECK (publication_survives IN (0, 1)),
+    moderation_event_count INTEGER NOT NULL CHECK (moderation_event_count >= 1),
+    retention_event_count INTEGER NOT NULL CHECK (retention_event_count >= 1),
+    last_moderation_event_sha256 TEXT NOT NULL CHECK (length(last_moderation_event_sha256) = 64),
+    last_retention_event_sha256 TEXT NOT NULL CHECK (length(last_retention_event_sha256) = 64),
+    custodian_id TEXT NOT NULL,
+    request_id TEXT NOT NULL UNIQUE,
+    request_sha256 TEXT NOT NULL CHECK (length(request_sha256) = 64),
+    tombstone_sha256 TEXT NOT NULL CHECK (length(tombstone_sha256) = 64),
+    tombstone_json TEXT NOT NULL,
+    CHECK ((publication_survives = 0 AND public_id IS NULL) OR (publication_survives = 1 AND public_id IS NOT NULL))
+  )`,
   'CREATE INDEX IF NOT EXISTS idx_leftout_report_records_state_updated ON leftout_report_records(state, updated_at)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_events_report_sequence ON leftout_report_events(report_id, sequence)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_events_report_request ON leftout_report_events(report_id, request_id)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_intake_idempotency_key ON leftout_report_intake_idempotency(invitation_id, key_sha256)',
   'CREATE INDEX IF NOT EXISTS idx_leftout_report_intake_quotas_expiry ON leftout_report_intake_quotas(expires_at)',
-  'CREATE INDEX IF NOT EXISTS idx_leftout_report_publications_published ON leftout_report_publications(published_at, report_id)',
+  'CREATE INDEX IF NOT EXISTS idx_leftout_report_publications_published ON leftout_report_publications(published_at, public_id)',
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_publication_links_public ON leftout_report_publication_links(public_id)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_retention_events_report_revision ON leftout_report_retention_events(report_id, revision)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_retention_events_report_request ON leftout_report_retention_events(report_id, request_id)',
   'CREATE INDEX IF NOT EXISTS idx_leftout_report_retention_states_due ON leftout_report_retention_states(legal_hold, retain_until)',
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_deletion_authorizations_request ON leftout_report_deletion_authorizations(request_id)',
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_deletion_tombstones_request ON leftout_report_deletion_tombstones(request_id)',
+  'CREATE INDEX IF NOT EXISTS idx_leftout_report_deletion_tombstones_deleted ON leftout_report_deletion_tombstones(deleted_at, tombstone_id)',
   `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_event_snapshot
     BEFORE INSERT ON leftout_report_events
     WHEN NOT EXISTS (
@@ -208,6 +263,10 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     END`,
   `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_events_no_delete
     BEFORE DELETE ON leftout_report_events
+    WHEN NOT EXISTS (
+      SELECT 1 FROM leftout_report_deletion_authorizations
+      WHERE report_id = OLD.report_id
+    )
     BEGIN
       SELECT RAISE(ABORT, 'leftout_report_events_append_only');
     END`,
@@ -218,11 +277,19 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     END`,
   `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_idempotency_no_delete
     BEFORE DELETE ON leftout_report_intake_idempotency
+    WHEN NOT EXISTS (
+      SELECT 1 FROM leftout_report_deletion_authorizations
+      WHERE report_id = OLD.report_id
+    )
     BEGIN
       SELECT RAISE(ABORT, 'leftout_report_idempotency_append_only');
     END`,
   `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_records_no_delete
     BEFORE DELETE ON leftout_report_records
+    WHEN NOT EXISTS (
+      SELECT 1 FROM leftout_report_deletion_authorizations
+      WHERE report_id = OLD.id
+    )
     BEGIN
       SELECT RAISE(ABORT, 'leftout_report_records_require_retention_workflow');
     END`,
@@ -244,23 +311,26 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     BEGIN
       SELECT RAISE(ABORT, 'leftout_reporting_quota_exhausted');
     END`,
-  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_publication_snapshot
-    BEFORE INSERT ON leftout_report_publications
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_publication_link_snapshot
+    BEFORE INSERT ON leftout_report_publication_links
     WHEN NOT EXISTS (
       SELECT 1
       FROM leftout_report_records AS record
       JOIN leftout_report_events AS event
         ON event.report_id = record.id
        AND event.revision = record.revision
+      JOIN leftout_report_publications AS publication
+        ON publication.public_id = NEW.public_id
       WHERE record.id = NEW.report_id
         AND record.state = 'published'
-        AND record.revision = NEW.source_revision
+        AND record.revision = publication.source_revision
         AND event.to_state = 'published'
         AND event.actor_role = 'publisher'
-        AND event.actor_id = NEW.publisher_id
+        AND event.actor_id = publication.publisher_id
+        AND event.event_id = publication.public_id
     )
     BEGIN
-      SELECT RAISE(ABORT, 'leftout_report_publication_snapshot_mismatch');
+      SELECT RAISE(ABORT, 'leftout_report_publication_link_snapshot_mismatch');
     END`,
   `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_publications_no_update
     BEFORE UPDATE ON leftout_report_publications
@@ -271,6 +341,20 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     BEFORE DELETE ON leftout_report_publications
     BEGIN
       SELECT RAISE(ABORT, 'leftout_report_publications_immutable');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_publication_links_no_update
+    BEFORE UPDATE ON leftout_report_publication_links
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_publication_links_immutable');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_publication_links_no_delete
+    BEFORE DELETE ON leftout_report_publication_links
+    WHEN NOT EXISTS (
+      SELECT 1 FROM leftout_report_deletion_authorizations
+      WHERE report_id = OLD.report_id
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_publication_links_require_retention_workflow');
     END`,
   `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_retention_event_snapshot
     BEFORE INSERT ON leftout_report_retention_events
@@ -302,6 +386,10 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     END`,
   `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_retention_events_no_delete
     BEFORE DELETE ON leftout_report_retention_events
+    WHEN NOT EXISTS (
+      SELECT 1 FROM leftout_report_deletion_authorizations
+      WHERE report_id = OLD.report_id
+    )
     BEGIN
       SELECT RAISE(ABORT, 'leftout_report_retention_events_append_only');
     END`,
@@ -320,8 +408,38 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     END`,
   `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_retention_states_no_delete
     BEFORE DELETE ON leftout_report_retention_states
+    WHEN NOT EXISTS (
+      SELECT 1 FROM leftout_report_deletion_authorizations
+      WHERE report_id = OLD.report_id
+    )
     BEGIN
       SELECT RAISE(ABORT, 'leftout_report_retention_states_require_retention_workflow');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_deletion_authorization_snapshot
+    BEFORE INSERT ON leftout_report_deletion_authorizations
+    WHEN NOT EXISTS (
+      SELECT 1 FROM leftout_report_retention_states
+      WHERE report_id = NEW.report_id
+        AND revision = NEW.expected_retention_revision
+        AND legal_hold = 0
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_deletion_authorization_snapshot_mismatch');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_deletion_authorizations_no_update
+    BEFORE UPDATE ON leftout_report_deletion_authorizations
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_deletion_authorizations_immutable');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_deletion_tombstones_no_update
+    BEFORE UPDATE ON leftout_report_deletion_tombstones
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_deletion_tombstones_immutable');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_deletion_tombstones_no_delete
+    BEFORE DELETE ON leftout_report_deletion_tombstones
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_deletion_tombstones_immutable');
     END`,
 ]);
 
@@ -338,6 +456,20 @@ function digest(value: unknown, label: string) {
 
 function sha256(value: string) {
   return createHash('sha256').update(value, 'utf8').digest('hex');
+}
+
+export function reportingDeletionRequestSha256(input: {
+  reportId: string;
+  expectedRetentionRevision: number;
+  reason: ReportingDeletionReason;
+}) {
+  return sha256(
+    JSON.stringify({
+      reportId: input.reportId,
+      expectedRetentionRevision: input.expectedRetentionRevision,
+      reason: input.reason,
+    }),
+  );
 }
 
 function intakeIdempotency(
@@ -628,7 +760,7 @@ function publicationRecord(
 
 interface ReportingPublicationRow {
   publicId: string;
-  reportId: string;
+  reportId: string | null;
   schemaVersion: string;
   publishedAt: string;
   publisherId: string;
@@ -657,7 +789,7 @@ function parsePublicationRow(
     );
     if (
       !UUID_PATTERN.test(row.publicId) ||
-      !UUID_PATTERN.test(row.reportId) ||
+      (row.reportId !== null && !UUID_PATTERN.test(row.reportId)) ||
       row.schemaVersion !== record.schemaVersion ||
       !Number.isSafeInteger(row.sourceRevision) ||
       row.sourceRevision < 2 ||
@@ -686,25 +818,126 @@ function parsePublicationRow(
   }
 }
 
-function publicationStatement(
+function publicationStatements(
   database: D1Database,
   publication: Readonly<ReportingPublicationRecord>,
 ) {
-  return database
-    .prepare(
-      `INSERT INTO leftout_report_publications (
-        report_id, schema_version, published_at, publisher_id,
+  if (!publication.reportId) {
+    throw new ReportingStoreIntegrityError(
+      'A new reporting publication requires a private source link.',
+    );
+  }
+  return [
+    database
+      .prepare(
+        `INSERT INTO leftout_report_publications (
+        public_id, schema_version, published_at, publisher_id,
         source_revision, record_sha256, record_json
       ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        publication.publicId,
+        publication.record.schemaVersion,
+        publication.publishedAt,
+        publication.publisherId,
+        publication.sourceRevision,
+        publication.recordSha256,
+        JSON.stringify(publication.record),
+      ),
+    database
+      .prepare(
+        `INSERT INTO leftout_report_publication_links (report_id, public_id)
+         VALUES (?, ?)`,
+      )
+      .bind(publication.reportId, publication.publicId),
+  ];
+}
+
+interface ReportingDeletionTombstoneRow {
+  tombstoneJson: string;
+  tombstoneId: string;
+  schemaVersion: string;
+  deletedAt: string;
+  reason: string;
+  policyVersion: string;
+  publicId: string | null;
+  publicationSurvives: number;
+  moderationEventCount: number;
+  retentionEventCount: number;
+  lastModerationEventSha256: string;
+  lastRetentionEventSha256: string;
+  custodianId: string;
+  requestId: string;
+  requestSha256: string;
+  tombstoneSha256: string;
+}
+
+function parseDeletionTombstoneRow(
+  row: Readonly<ReportingDeletionTombstoneRow>,
+) {
+  try {
+    const tombstone = parseReportingDeletionTombstone(
+      JSON.parse(row.tombstoneJson) as unknown,
+    );
+    if (
+      tombstone.tombstoneId !== row.tombstoneId ||
+      tombstone.schemaVersion !== row.schemaVersion ||
+      tombstone.deletedAt !== row.deletedAt ||
+      tombstone.reason !== row.reason ||
+      tombstone.policyVersion !== row.policyVersion ||
+      tombstone.publicId !== row.publicId ||
+      ![0, 1].includes(row.publicationSurvives) ||
+      tombstone.publicationSurvives !== (row.publicationSurvives === 1) ||
+      tombstone.moderationEventCount !== row.moderationEventCount ||
+      tombstone.retentionEventCount !== row.retentionEventCount ||
+      tombstone.lastModerationEventSha256 !== row.lastModerationEventSha256 ||
+      tombstone.lastRetentionEventSha256 !== row.lastRetentionEventSha256 ||
+      tombstone.custodianId !== row.custodianId ||
+      tombstone.requestId !== row.requestId ||
+      tombstone.requestSha256 !== row.requestSha256 ||
+      tombstone.tombstoneSha256 !== row.tombstoneSha256
+    ) {
+      throw new Error('deletion tombstone metadata mismatch');
+    }
+    return tombstone;
+  } catch {
+    throw new ReportingStoreIntegrityError(
+      'Stored reporting deletion tombstone failed integrity validation.',
+    );
+  }
+}
+
+function deletionTombstoneStatement(
+  database: D1Database,
+  tombstone: Readonly<ReportingDeletionTombstone>,
+) {
+  return database
+    .prepare(
+      `INSERT INTO leftout_report_deletion_tombstones (
+        tombstone_id, schema_version, deleted_at, reason, policy_version,
+        public_id, publication_survives, moderation_event_count,
+        retention_event_count, last_moderation_event_sha256,
+        last_retention_event_sha256, custodian_id, request_id,
+        request_sha256, tombstone_sha256, tombstone_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
-      publication.reportId,
-      publication.record.schemaVersion,
-      publication.publishedAt,
-      publication.publisherId,
-      publication.sourceRevision,
-      publication.recordSha256,
-      JSON.stringify(publication.record),
+      tombstone.tombstoneId,
+      tombstone.schemaVersion,
+      tombstone.deletedAt,
+      tombstone.reason,
+      tombstone.policyVersion,
+      tombstone.publicId,
+      tombstone.publicationSurvives ? 1 : 0,
+      tombstone.moderationEventCount,
+      tombstone.retentionEventCount,
+      tombstone.lastModerationEventSha256,
+      tombstone.lastRetentionEventSha256,
+      tombstone.custodianId,
+      tombstone.requestId,
+      tombstone.requestSha256,
+      tombstone.tombstoneSha256,
+      JSON.stringify(tombstone),
     );
 }
 
@@ -715,8 +948,8 @@ export async function loadReportingPublication(
   await ensureReportingStoreSchema(database);
   const row = await database
     .prepare(
-      `SELECT event.event_id AS publicId,
-              publication.report_id AS reportId,
+      `SELECT publication.public_id AS publicId,
+              link.report_id AS reportId,
               publication.schema_version AS schemaVersion,
               publication.published_at AS publishedAt,
               publication.publisher_id AS publisherId,
@@ -724,12 +957,9 @@ export async function loadReportingPublication(
               publication.record_sha256 AS recordSha256,
               publication.record_json AS recordJson
        FROM leftout_report_publications AS publication
-       JOIN leftout_report_events AS event
-         ON event.report_id = publication.report_id
-        AND event.revision = publication.source_revision
-        AND event.to_state = 'published'
-        AND event.actor_role = 'publisher'
-       WHERE publication.report_id = ?`,
+       JOIN leftout_report_publication_links AS link
+         ON link.public_id = publication.public_id
+       WHERE link.report_id = ?`,
     )
     .bind(reportId)
     .first<ReportingPublicationRow>();
@@ -775,8 +1005,8 @@ export async function listReportingPublications(
   }
   const rows = await database
     .prepare(
-      `SELECT event.event_id AS publicId,
-              publication.report_id AS reportId,
+      `SELECT publication.public_id AS publicId,
+              NULL AS reportId,
               publication.schema_version AS schemaVersion,
               publication.published_at AS publishedAt,
               publication.publisher_id AS publisherId,
@@ -784,21 +1014,16 @@ export async function listReportingPublications(
               publication.record_sha256 AS recordSha256,
               publication.record_json AS recordJson
        FROM leftout_report_publications AS publication
-       JOIN leftout_report_events AS event
-         ON event.report_id = publication.report_id
-        AND event.revision = publication.source_revision
-        AND event.to_state = 'published'
-        AND event.actor_role = 'publisher'
        WHERE publication.published_at <= ?
          AND (
            ? IS NULL
            OR publication.published_at > ?
            OR (
              publication.published_at = ?
-             AND event.event_id > ?
+             AND publication.public_id > ?
            )
          )
-       ORDER BY publication.published_at ASC, event.event_id ASC
+       ORDER BY publication.published_at ASC, publication.public_id ASC
        LIMIT ?`,
     )
     .bind(
@@ -1047,6 +1272,258 @@ export async function loadReportingRetention(
       'Stored reporting retention failed integrity validation.',
     );
   }
+}
+
+export async function loadReportingDeletionTombstone(
+  database: D1Database,
+  requestId: string,
+) {
+  await ensureReportingStoreSchema(database);
+  if (!UUID_PATTERN.test(requestId)) {
+    throw new ReportingStoreIntegrityError(
+      'Reporting deletion request identifier is invalid.',
+    );
+  }
+  const row = await database
+    .prepare(
+      `SELECT tombstone_json AS tombstoneJson,
+              tombstone_id AS tombstoneId, schema_version AS schemaVersion,
+              deleted_at AS deletedAt, reason, policy_version AS policyVersion,
+              public_id AS publicId, publication_survives AS publicationSurvives,
+              moderation_event_count AS moderationEventCount,
+              retention_event_count AS retentionEventCount,
+              last_moderation_event_sha256 AS lastModerationEventSha256,
+              last_retention_event_sha256 AS lastRetentionEventSha256,
+              custodian_id AS custodianId, request_id AS requestId,
+              request_sha256 AS requestSha256,
+              tombstone_sha256 AS tombstoneSha256
+       FROM leftout_report_deletion_tombstones WHERE request_id = ?`,
+    )
+    .bind(requestId)
+    .first<ReportingDeletionTombstoneRow>();
+  return row ? parseDeletionTombstoneRow(row) : null;
+}
+
+function deletionRequest(
+  value: Readonly<ReportingDeletionRequest>,
+): Readonly<ReportingDeletionRequest> {
+  if (
+    !UUID_PATTERN.test(value.reportId) ||
+    !UUID_PATTERN.test(value.requestId) ||
+    !Number.isSafeInteger(value.expectedRetentionRevision) ||
+    value.expectedRetentionRevision < 1 ||
+    !REPORTING_DELETION_REASONS.includes(value.reason) ||
+    typeof value.custodianId !== 'string' ||
+    value.custodianId.length < 3 ||
+    value.custodianId.length > 64 ||
+    !ACTOR_ID_PATTERN.test(value.custodianId) ||
+    !Number.isSafeInteger(value.now) ||
+    value.now < 0 ||
+    !Number.isFinite(new Date(value.now).valueOf()) ||
+    digest(value.requestSha256, 'Reporting deletion request digest') !==
+      reportingDeletionRequestSha256(value) ||
+    (value.tombstoneId !== undefined && typeof value.tombstoneId !== 'function')
+  ) {
+    throw new ReportingStoreIntegrityError(
+      'Reporting deletion request failed integrity validation.',
+    );
+  }
+  return Object.freeze({ ...value });
+}
+
+function sameDeletionRequest(
+  tombstone: Readonly<ReportingDeletionTombstone>,
+  request: Readonly<ReportingDeletionRequest>,
+) {
+  return (
+    tombstone.requestId === request.requestId &&
+    tombstone.requestSha256 === request.requestSha256 &&
+    tombstone.custodianId === request.custodianId &&
+    tombstone.reason === request.reason
+  );
+}
+
+export async function deleteReportingRecord(
+  database: D1Database,
+  requestValue: Readonly<ReportingDeletionRequest>,
+) {
+  const request = deletionRequest(requestValue);
+  await ensureReportingStoreSchema(database);
+  const existing = await loadReportingDeletionTombstone(
+    database,
+    request.requestId,
+  );
+  if (existing) {
+    if (!sameDeletionRequest(existing, request)) {
+      throw new ReportingStoreConflictError(
+        'Reporting deletion request ID was reused for a different deletion.',
+      );
+    }
+    return Object.freeze({
+      disposition: 'existing' as const,
+      tombstone: existing,
+    });
+  }
+
+  const [ledger, retention, publication] = await Promise.all([
+    loadReportingLedger(database, request.reportId),
+    loadReportingRetention(database, request.reportId),
+    loadReportingPublication(database, request.reportId),
+  ]);
+  if (!ledger || !retention) {
+    throw new ReportingStoreConflictError(
+      'Reporting record or retention state was not found.',
+    );
+  }
+  if (
+    (ledger.record.moderation.state === 'published') !==
+    Boolean(publication)
+  ) {
+    throw new ReportingStoreIntegrityError(
+      'Reporting publication link did not match private state.',
+    );
+  }
+  if (retention.state.legalHold) {
+    throw new ReportingStoreConflictError(
+      'Reporting record is protected by legal hold.',
+    );
+  }
+  if (retention.state.revision !== request.expectedRetentionRevision) {
+    throw new ReportingStoreConflictError(
+      'Reporting retention revision is stale.',
+    );
+  }
+  const deletedAt = new Date(request.now).toISOString();
+  if (
+    request.reason === 'retention_expired' &&
+    Date.parse(deletedAt) < Date.parse(retention.state.retainUntil)
+  ) {
+    throw new ReportingStoreConflictError(
+      'Reporting retention deadline has not elapsed.',
+    );
+  }
+  const tombstone = createReportingDeletionTombstone(
+    {
+      deletedAt,
+      reason: request.reason,
+      policyVersion: retention.state.policyVersion,
+      publicId: publication?.publicId ?? null,
+      publicationSurvives: Boolean(publication),
+      moderationEventCount: ledger.events.length,
+      retentionEventCount: retention.events.length,
+      lastModerationEventSha256: ledger.record.lastEventSha256,
+      lastRetentionEventSha256: retention.state.lastEventSha256,
+      custodianId: request.custodianId,
+      requestId: request.requestId,
+      requestSha256: request.requestSha256,
+    },
+    { tombstoneId: request.tombstoneId },
+  );
+
+  try {
+    await database.batch([
+      database
+        .prepare(
+          `INSERT INTO leftout_report_deletion_authorizations (
+            report_id, request_id, request_sha256, custodian_id,
+            expected_retention_revision, authorized_at
+          ) VALUES (?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          request.reportId,
+          request.requestId,
+          request.requestSha256,
+          request.custodianId,
+          request.expectedRetentionRevision,
+          deletedAt,
+        ),
+      deletionTombstoneStatement(database, tombstone),
+      database
+        .prepare(
+          'DELETE FROM leftout_report_publication_links WHERE report_id = ?',
+        )
+        .bind(request.reportId),
+      database
+        .prepare(
+          'DELETE FROM leftout_report_intake_idempotency WHERE report_id = ?',
+        )
+        .bind(request.reportId),
+      database
+        .prepare('DELETE FROM leftout_report_events WHERE report_id = ?')
+        .bind(request.reportId),
+      database
+        .prepare(
+          'DELETE FROM leftout_report_retention_events WHERE report_id = ?',
+        )
+        .bind(request.reportId),
+      database
+        .prepare(
+          'DELETE FROM leftout_report_retention_states WHERE report_id = ?',
+        )
+        .bind(request.reportId),
+      database
+        .prepare('DELETE FROM leftout_report_records WHERE id = ?')
+        .bind(request.reportId),
+      database
+        .prepare(
+          'DELETE FROM leftout_report_deletion_authorizations WHERE report_id = ?',
+        )
+        .bind(request.reportId),
+    ]);
+  } catch {
+    const raced = await loadReportingDeletionTombstone(
+      database,
+      request.requestId,
+    );
+    if (raced && sameDeletionRequest(raced, request)) {
+      return Object.freeze({
+        disposition: 'existing' as const,
+        tombstone: raced,
+      });
+    }
+    throw new ReportingStoreConflictError(
+      'Reporting deletion could not be committed.',
+    );
+  }
+
+  const [retainedLedger, retainedLifecycle, retainedLink, retainedTombstone] =
+    await Promise.all([
+      loadReportingLedger(database, request.reportId),
+      loadReportingRetention(database, request.reportId),
+      loadReportingPublication(database, request.reportId),
+      loadReportingDeletionTombstone(database, request.requestId),
+    ]);
+  const authorization = await database
+    .prepare(
+      'SELECT count(*) AS count FROM leftout_report_deletion_authorizations WHERE report_id = ?',
+    )
+    .bind(request.reportId)
+    .first<{ count: number }>();
+  const publicProjection = tombstone.publicId
+    ? await database
+        .prepare(
+          'SELECT count(*) AS count FROM leftout_report_publications WHERE public_id = ?',
+        )
+        .bind(tombstone.publicId)
+        .first<{ count: number }>()
+    : null;
+  if (
+    retainedLedger ||
+    retainedLifecycle ||
+    retainedLink ||
+    !retainedTombstone ||
+    retainedTombstone.tombstoneSha256 !== tombstone.tombstoneSha256 ||
+    (authorization?.count ?? 0) !== 0 ||
+    (tombstone.publicationSurvives && publicProjection?.count !== 1)
+  ) {
+    throw new ReportingStoreIntegrityError(
+      'Committed reporting deletion failed postcondition verification.',
+    );
+  }
+  return Object.freeze({
+    disposition: 'deleted' as const,
+    tombstone: retainedTombstone,
+  });
 }
 
 export interface ReportingReviewCursor {
@@ -1541,7 +2018,7 @@ export async function saveReportingTransition(
           current.record.lastEventSha256,
         ),
       eventStatement(database, next.event),
-      ...(publication ? [publicationStatement(database, publication)] : []),
+      ...(publication ? publicationStatements(database, publication) : []),
     ]);
   } catch {
     const racedRequest = await loadReportingRequestEvent(

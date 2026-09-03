@@ -190,9 +190,7 @@ export const reportIntakeQuotas = sqliteTable(
 export const reportPublications = sqliteTable(
   'leftout_report_publications',
   {
-    reportId: text('report_id')
-      .primaryKey()
-      .references(() => reportRecords.id),
+    publicId: text('public_id').primaryKey(),
     schemaVersion: text('schema_version').notNull(),
     publishedAt: text('published_at').notNull(),
     publisherId: text('publisher_id').notNull(),
@@ -211,7 +209,24 @@ export const reportPublications = sqliteTable(
     ),
     index('idx_leftout_report_publications_published').on(
       table.publishedAt,
-      table.reportId,
+      table.publicId,
+    ),
+  ],
+);
+
+export const reportPublicationLinks = sqliteTable(
+  'leftout_report_publication_links',
+  {
+    reportId: text('report_id')
+      .primaryKey()
+      .references(() => reportRecords.id),
+    publicId: text('public_id')
+      .notNull()
+      .references(() => reportPublications.publicId),
+  },
+  (table) => [
+    uniqueIndex('idx_leftout_report_publication_links_public').on(
+      table.publicId,
     ),
   ],
 );
@@ -303,6 +318,96 @@ export const reportRetentionEvents = sqliteTable(
     uniqueIndex('idx_leftout_report_retention_events_report_request').on(
       table.reportId,
       table.requestId,
+    ),
+  ],
+);
+
+export const reportDeletionAuthorizations = sqliteTable(
+  'leftout_report_deletion_authorizations',
+  {
+    reportId: text('report_id').primaryKey(),
+    requestId: text('request_id').notNull(),
+    requestSha256: text('request_sha256').notNull(),
+    custodianId: text('custodian_id').notNull(),
+    expectedRetentionRevision: integer('expected_retention_revision').notNull(),
+    authorizedAt: text('authorized_at').notNull(),
+  },
+  (table) => [
+    check(
+      'chk_leftout_report_deletion_authorizations_request_sha256',
+      sql`length(${table.requestSha256}) = 64`,
+    ),
+    check(
+      'chk_leftout_report_deletion_authorizations_revision',
+      sql`${table.expectedRetentionRevision} >= 1`,
+    ),
+    check(
+      'chk_leftout_report_deletion_authorizations_custodian',
+      sql`length(${table.custodianId}) BETWEEN 3 AND 64`,
+    ),
+    uniqueIndex('idx_leftout_report_deletion_authorizations_request').on(
+      table.requestId,
+    ),
+  ],
+);
+
+export const reportDeletionTombstones = sqliteTable(
+  'leftout_report_deletion_tombstones',
+  {
+    tombstoneId: text('tombstone_id').primaryKey(),
+    schemaVersion: text('schema_version').notNull(),
+    deletedAt: text('deleted_at').notNull(),
+    reason: text('reason').notNull(),
+    policyVersion: text('policy_version').notNull(),
+    publicId: text('public_id'),
+    publicationSurvives: integer('publication_survives', {
+      mode: 'boolean',
+    }).notNull(),
+    moderationEventCount: integer('moderation_event_count').notNull(),
+    retentionEventCount: integer('retention_event_count').notNull(),
+    lastModerationEventSha256: text('last_moderation_event_sha256').notNull(),
+    lastRetentionEventSha256: text('last_retention_event_sha256').notNull(),
+    custodianId: text('custodian_id').notNull(),
+    requestId: text('request_id').notNull(),
+    requestSha256: text('request_sha256').notNull(),
+    tombstoneSha256: text('tombstone_sha256').notNull(),
+    tombstoneJson: text('tombstone_json').notNull(),
+  },
+  (table) => [
+    check(
+      'chk_leftout_report_deletion_tombstones_reason',
+      sql`${table.reason} IN ('retention_expired','data_subject_request')`,
+    ),
+    check(
+      'chk_leftout_report_deletion_tombstones_publication',
+      sql`(${table.publicationSurvives} = 0 AND ${table.publicId} IS NULL) OR (${table.publicationSurvives} = 1 AND ${table.publicId} IS NOT NULL)`,
+    ),
+    check(
+      'chk_leftout_report_deletion_tombstones_counts',
+      sql`${table.moderationEventCount} >= 1 AND ${table.retentionEventCount} >= 1`,
+    ),
+    check(
+      'chk_leftout_report_deletion_tombstones_moderation_sha256',
+      sql`length(${table.lastModerationEventSha256}) = 64`,
+    ),
+    check(
+      'chk_leftout_report_deletion_tombstones_retention_sha256',
+      sql`length(${table.lastRetentionEventSha256}) = 64`,
+    ),
+    check(
+      'chk_leftout_report_deletion_tombstones_request_sha256',
+      sql`length(${table.requestSha256}) = 64`,
+    ),
+    check(
+      'chk_leftout_report_deletion_tombstones_tombstone_sha256',
+      sql`length(${table.tombstoneSha256}) = 64`,
+    ),
+    uniqueIndex('idx_leftout_report_deletion_tombstones_request').on(
+      table.requestId,
+    ),
+    index('idx_leftout_report_deletion_tombstones_deleted').on(
+      table.deletedAt,
+      table.tombstoneId,
     ),
   ],
 );

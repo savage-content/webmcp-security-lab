@@ -102,7 +102,7 @@ pretending that a green badge or a reassuring annotation is enforcement.
 
 ## Verification
 
-The current working tree passed 407 automated tests across 47 files on Node.js
+The current working tree passed 415 automated tests across 49 files on Node.js
 24, typecheck, lint, production build, deterministic Local Guard packaging, and a
 live non-invoking walkthrough/accessibility regression. Earlier bounded browser
 runs produced passing receipts for all five synthetic lessons through the
@@ -134,10 +134,11 @@ freedom to operate.
 - The Local Guard remains an unsigned developer preview with a loopback
   companion.
 - Reporting remains locally implemented and publicly disabled. Invited HTTP
-  intake, atomic quotas, reviewer routes, and a separately authorized publisher
-  route and signed feed route exist, but production identity/key custody,
-  independently published trust metadata, retention/deletion, operator
-  recovery, correction, and privacy approval do not.
+  intake, atomic quotas, reviewer routes, a separately authorized publisher,
+  signed feed, retention/legal hold, and controlled private deletion exist, but
+  production identity/key custody, independently published trust metadata,
+  provider-backup purge, operator recovery, public correction, and privacy
+  approval do not.
 - Android is a conformance prototype, not a device-validated product.
 - Real first-time-human, screen-reader, and 200% zoom acceptance remain pending.
 

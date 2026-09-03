@@ -43,6 +43,13 @@
       "when": 1788392495661,
       "tag": "0005_fine_toad",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1788394061071,
+      "tag": "0006_silly_talkback",
+      "breakpoints": true
     }
   ]
 }

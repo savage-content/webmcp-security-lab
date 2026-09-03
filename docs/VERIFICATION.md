@@ -55,11 +55,14 @@ public deployment. An independently authenticated JSON/NDJSON feed now emits
 bounded snapshot pages containing only minimized publication entries and signs
 their exact bytes with externally configured Ed25519 material. Verification
 requires a separately trusted fingerprint; the response fingerprint is not
-self-authenticating. Atomic retention assignment and custodian-only legal-hold
-transitions now exist in source. No controlled deletion, backup purge,
-tombstone, correction, or production key/fingerprint distribution exists. The
-current suite passes 407 tests across 47 files; the exact full verification
-gate is recorded with the release commit.
+self-authenticating. Atomic retention assignment, custodian-only legal-hold
+transitions, and controlled private deletion now exist in source. Deletion
+blocks legal holds and premature retention-expiry requests, is idempotent,
+removes private rows and lookup state atomically, preserves a separately
+minimized public projection, and retains a non-identifying immutable tombstone.
+No provider-backup purge, public correction, or production key/fingerprint
+distribution exists. The exact full verification gate is recorded with the
+release commit.
 
 ## Official Site Tools conformance track
 
@@ -107,16 +110,16 @@ cross-client evidence.
 
 ## Verification snapshots
 
-| Snapshot                          | Result               | Evidence                                                                                                                                                                                                                                                                                                   |
-| --------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Runtime                           | Pass                 | Node.js 24.19.0                                                                                                                                                                                                                                                                                            |
-| Current productization candidate  | Pass                 | 407 tests across 47 Vitest files passed; typecheck, lint, production build, deterministic package generation, trusted-key attestation verification, reporting-role separation, real D1 migration enforcement, and disabled-first intake/review/publication/signed-feed/retention/legal-hold checks passed. |
-| Earlier five-lesson working tree  | Pass                 | 285 tests across 26 Vitest files, typecheck, lint, production build, and diff-integrity check passed before the fresh Chrome 152 technical acceptance run.                                                                                                                                                 |
-| Earlier clean `f7290d9` candidate | Pass                 | Clean-copy `npm ci`, 121 tests, typecheck, lint, production build, and the separate Android gate passed.                                                                                                                                                                                                   |
-| Post-fix working-tree source      | Pass                 | After the cross-realm inspection and approval-dialog fixes, 123 tests across 13 Vitest files, typecheck, lint, and a production build passed. This was not yet the final clean commit.                                                                                                                     |
-| Scenario catalog                  | Pass                 | Five unique declarations; vulnerable and secure defaults validate.                                                                                                                                                                                                                                         |
-| Receipt compatibility             | Pass                 | Older receipts default missing WebMCP invocation state to `not-observed`.                                                                                                                                                                                                                                  |
-| Capability slice                  | Pass (deterministic) | Exact proposal validation, unique full-contract hashing, one-use lease, early-invocation settlement, mocked legacy-Chromium retirement, binding checks, state-only verification, receipt links, and tamper rejection.                                                                                      |
+| Snapshot                          | Result               | Evidence                                                                                                                                                                                                                                                                                                            |
+| --------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime                           | Pass                 | Node.js 24.19.0                                                                                                                                                                                                                                                                                                     |
+| Current productization candidate  | Pass                 | 415 tests across 49 Vitest files passed; typecheck, lint, production build, deterministic package generation, trusted-key attestation verification, reporting-role separation, real D1 migration enforcement, and disabled-first intake/review/publication/signed-feed/retention/legal-hold/deletion checks passed. |
+| Earlier five-lesson working tree  | Pass                 | 285 tests across 26 Vitest files, typecheck, lint, production build, and diff-integrity check passed before the fresh Chrome 152 technical acceptance run.                                                                                                                                                          |
+| Earlier clean `f7290d9` candidate | Pass                 | Clean-copy `npm ci`, 121 tests, typecheck, lint, production build, and the separate Android gate passed.                                                                                                                                                                                                            |
+| Post-fix working-tree source      | Pass                 | After the cross-realm inspection and approval-dialog fixes, 123 tests across 13 Vitest files, typecheck, lint, and a production build passed. This was not yet the final clean commit.                                                                                                                              |
+| Scenario catalog                  | Pass                 | Five unique declarations; vulnerable and secure defaults validate.                                                                                                                                                                                                                                                  |
+| Receipt compatibility             | Pass                 | Older receipts default missing WebMCP invocation state to `not-observed`.                                                                                                                                                                                                                                           |
+| Capability slice                  | Pass (deterministic) | Exact proposal validation, unique full-contract hashing, one-use lease, early-invocation settlement, mocked legacy-Chromium retirement, binding checks, state-only verification, receipt links, and tamper rejection.                                                                                               |
 
 These are distinct snapshots, not one unified clean live-tested commit. They
 do not broaden the later single-session connector success or authorize
@@ -294,6 +297,7 @@ lab relies only on its explicitly page-local approval event.
   Web Store review, upgrade path, or distribution validation has occurred.
 - The Android directory is a process-local conformance prototype. It is not a
   discoverable or device-invokable AppFunction and is not part of the web MVP.
-- The current MVP working tree has not been publicly deployed.
+- The novice learning MVP is publicly deployed; the Local Guard and reporting
+  productization candidate remains local and disabled.
 
 This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
