@@ -115,7 +115,7 @@ pretending that a green badge or a reassuring annotation is enforcement.
 
 ## Verification
 
-On September 3, the final truth/brand candidate passed 533 automated tests
+On September 3, the final truth/brand candidate passed 534 automated tests
 with two intentional Windows-only skips across 75 files on Node.js 24. The complete gate also passes
 typecheck, the Local Guard and reporting release-readiness
 assessments, the standalone reporting-Worker dry run, lint, production build,
