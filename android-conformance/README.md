@@ -52,6 +52,12 @@ The script uses an installed Kotlin compiler and Java runtime. If Android API 36
 is installed, it also compiles the boundary adapter against `android.jar` and
 validates its manifest with `aapt2`.
 
+The latest local run on 2026-09-03 passed all eight Kotlin/JVM conformance
+groups and the Android API-36 adapter compile/manifest check. Immediately before
+that run, `adb devices -l` started the local ADB daemon and returned an empty
+device list. This proves repeatable source conformance in this workstation, not
+device registration, discovery, invocation, or receipt behavior.
+
 ## Android adapter boundary
 
 `CapabilityAppFunctionService` directly extends the API-36 platform
@@ -76,7 +82,7 @@ deliberately omits AppFunction metadata. Therefore the APK shell is not
 discoverable or invokable as an AppFunction and must not be represented as a
 working Android integration.
 
-The exact local blocker observed on 2026-09-01 is:
+The exact local blocker, reconfirmed on 2026-09-03, is:
 
 - Android platform SDK 36 and 36.1 are installed and sufficient to type-check
   `AppFunctionService`;
