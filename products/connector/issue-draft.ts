@@ -38,7 +38,7 @@ export const ISSUE_DRAFT_SEVERITIES = [
 ] as const;
 
 export const ISSUE_DRAFT_ASSURANCE_LIMITATION =
-  'This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.';
+  'This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.';
 
 export type IssueDraftContext = (typeof ISSUE_DRAFT_CONTEXTS)[number];
 export type IssueDraftCategory = (typeof ISSUE_DRAFT_CATEGORIES)[number];
