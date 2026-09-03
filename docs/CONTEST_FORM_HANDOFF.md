@@ -1,8 +1,12 @@
 # Devpost form handoff
 
 **Status:** ready to paste after the entrant signs in and joins the challenge.
-Do not submit until the video URL, final public-source SHA, native live run, and personal
-attestations at the end of this file are complete.
+Do not submit until the video URL, final public-source SHA, working public URL,
+and personal attestations at the end of this file are complete. The official
+submission requirements do not create a separate exact-candidate native-
+invocation attestation; do not mislabel historical invocation evidence, and
+make the public app function exactly as the final video and testing instructions
+describe.
 
 ## Identity and links
 
