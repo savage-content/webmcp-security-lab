@@ -96,7 +96,7 @@ export function createDashboardDocument({
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Capability receipt reports · LeftOut Security</title>
+  <title>Capability receipt reports · Left Out Security</title>
   <style>
     :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #07100d; color: #f0f6f2; }
     * { box-sizing: border-box; }
