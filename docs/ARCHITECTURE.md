@@ -259,14 +259,19 @@ and retention chains plus their lookup state, and removes its transient
 authorization. Public publication rows are keyed by a public event ID in a
 separate table; deleting private data removes only the private mapping, so the
 minimized public projection remains available without a private report ID.
-Provider-backup purge and public correction workflows do not yet exist. An
-independently authenticated feed handler reads only the
-immutable publication table through a bounded, stable snapshot cursor; its JSON
-and NDJSON forms omit private report IDs, reviewer/publisher identities, source
-revisions, and private origins. Exact response bytes carry an Ed25519 detached
-signature, content digest, key ID, public key, and fingerprint. The signing key
-is supplied outside source, and consumers must pin the public-key fingerprint
-through a separately trusted channel rather than trust the response header.
+A separately gated custodian-only route can append one immutable `withdraw`
+correction against the exact digest of a public publication. Its action and
+reason vocabularies are closed, idempotent replay is exact, a second withdrawal
+is rejected, and neither the publication nor its correction can be updated or
+deleted. Provider-backup purge does not yet exist, and correction operations
+have not been rehearsed. An independently authenticated feed handler reads the
+immutable publication and correction tables as a bounded, stable version 2
+timeline; its JSON and NDJSON forms omit private report IDs, operator identities,
+source revisions, and private origins. Exact response bytes carry an Ed25519
+detached signature, content digest, key ID, public key, and fingerprint. The
+signing key is supplied outside source, and consumers must pin the public-key
+fingerprint through a separately trusted channel rather than trust the response
+header.
 
 Indexes match the actual read patterns:
 

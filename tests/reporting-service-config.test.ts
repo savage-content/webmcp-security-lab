@@ -100,6 +100,32 @@ function lifecycleEnvironment(
   });
 }
 
+function correctionEnvironment(
+  overrides: Readonly<Record<string, string>> = {},
+): Record<string, string> {
+  return invitedEnvironment({
+    LEFTOUT_REPORTING_CORRECTION: 'true',
+    LEFTOUT_REPORTING_ACTORS_JSON: JSON.stringify([
+      {
+        id: 'reviewer-alpha',
+        role: 'reviewer',
+        tokenSha256: digest(reviewerToken),
+      },
+      {
+        id: 'publisher-alpha',
+        role: 'publisher',
+        tokenSha256: digest(publisherToken),
+      },
+      {
+        id: 'custodian-alpha',
+        role: 'custodian',
+        tokenSha256: digest(custodianToken),
+      },
+    ]),
+    ...overrides,
+  });
+}
+
 function request(token?: string) {
   return new Request('https://reports.example.test/action', {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -110,7 +136,7 @@ describe('reporting service configuration', () => {
   it('is fully disabled when reporting configuration is absent', () => {
     const configuration = loadReportingServiceConfiguration({});
     expect(configuration).toEqual({
-      schemaVersion: 'leftout.reporting-service-config/4',
+      schemaVersion: 'leftout.reporting-service-config/5',
       mode: 'disabled',
       gates: {
         intake: false,
@@ -118,6 +144,7 @@ describe('reporting service configuration', () => {
         publication: false,
         feed: false,
         lifecycle: false,
+        correction: false,
       },
       actors: [],
     });
@@ -149,6 +176,7 @@ describe('reporting service configuration', () => {
       publication: true,
       feed: false,
       lifecycle: false,
+      correction: false,
     });
     expect(configuration.intakeInvitationId).toBe('invitation.cohort-alpha');
     expect(configuration.intakeHourlyLimit).toBe(20);
@@ -203,6 +231,30 @@ describe('reporting service configuration', () => {
     expect(
       configuration.actors.find((actor) => actor.role === 'custodian'),
     ).toMatchObject({ id: 'custodian-alpha', role: 'custodian' });
+  });
+
+  it('loads correction as a separate, custodian-only publication gate', () => {
+    const configuration = loadReportingServiceConfiguration(
+      correctionEnvironment(),
+    );
+    expect(configuration.gates).toMatchObject({
+      publication: true,
+      correction: true,
+      lifecycle: false,
+    });
+    expect(
+      configuration.actors.find((actor) => actor.role === 'custodian'),
+    ).toMatchObject({ id: 'custodian-alpha', role: 'custodian' });
+    expect(() =>
+      loadReportingServiceConfiguration(
+        invitedEnvironment({ LEFTOUT_REPORTING_CORRECTION: 'true' }),
+      ),
+    ).toThrow('separate custodian');
+    expect(() =>
+      loadReportingServiceConfiguration(
+        correctionEnvironment({ LEFTOUT_REPORTING_PUBLICATION: 'false' }),
+      ),
+    ).toThrow('correction requires publication');
   });
 
   it('rejects retention settings without lifecycle and invalid policy bounds', () => {
@@ -404,6 +456,20 @@ describe('reporting service authentication', () => {
         'publisher',
       ),
     ).toBeNull();
+  });
+
+  it('grants custodian authority for correction without enabling lifecycle', () => {
+    const correctionConfiguration = loadReportingServiceConfiguration(
+      correctionEnvironment(),
+    );
+    expect(
+      authenticateReportingActor(
+        request(custodianToken),
+        correctionConfiguration,
+        'custodian',
+      ),
+    ).toMatchObject({ id: 'custodian-alpha', role: 'custodian' });
+    expect(correctionConfiguration.gates.lifecycle).toBe(false);
   });
 
   it('rejects malformed, short, whitespace-bearing, and unknown credentials', () => {

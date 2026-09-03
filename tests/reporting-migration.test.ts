@@ -10,6 +10,7 @@ const migrationUrls = [
   new URL('../drizzle/0004_colossal_tenebrous.sql', import.meta.url),
   new URL('../drizzle/0005_fine_toad.sql', import.meta.url),
   new URL('../drizzle/0006_silly_talkback.sql', import.meta.url),
+  new URL('../drizzle/0007_swift_hitman.sql', import.meta.url),
 ];
 
 async function applyReportingMigration(
@@ -88,6 +89,18 @@ describe('reporting database migration', () => {
       },
       {
         name: 'trg_leftout_report_intake_quota_integrity',
+        type: 'trigger',
+      },
+      {
+        name: 'trg_leftout_report_publication_correction_snapshot',
+        type: 'trigger',
+      },
+      {
+        name: 'trg_leftout_report_publication_corrections_no_delete',
+        type: 'trigger',
+      },
+      {
+        name: 'trg_leftout_report_publication_corrections_no_update',
         type: 'trigger',
       },
       {
@@ -461,6 +474,75 @@ describe('reporting database migration', () => {
         .bind(reportId, publicId)
         .run(),
     ).rejects.toThrow('publication_link_snapshot_mismatch');
+
+    await expect(
+      database
+        .prepare(
+          `INSERT INTO leftout_report_publication_corrections (
+            correction_id, schema_version, public_id, corrected_at, action,
+            reason, publication_record_sha256, custodian_id, request_id,
+            request_sha256, correction_sha256, correction_json
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          randomUUID(),
+          'leftout.public-issue-correction/1',
+          publicId,
+          '2026-09-02T19:02:00.000Z',
+          'withdraw',
+          'erroneous_publication',
+          '0'.repeat(64),
+          'custodian-alpha',
+          randomUUID(),
+          '1'.repeat(64),
+          '2'.repeat(64),
+          '{}',
+        )
+        .run(),
+    ).rejects.toThrow('publication_correction_snapshot_mismatch');
+
+    const correctionId = randomUUID();
+    await database
+      .prepare(
+        `INSERT INTO leftout_report_publication_corrections (
+          correction_id, schema_version, public_id, corrected_at, action,
+          reason, publication_record_sha256, custodian_id, request_id,
+          request_sha256, correction_sha256, correction_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        correctionId,
+        'leftout.public-issue-correction/1',
+        publicId,
+        '2026-09-02T19:02:00.000Z',
+        'withdraw',
+        'erroneous_publication',
+        'f'.repeat(64),
+        'custodian-alpha',
+        randomUUID(),
+        '1'.repeat(64),
+        '2'.repeat(64),
+        '{}',
+      )
+      .run();
+    await expect(
+      database
+        .prepare(
+          `UPDATE leftout_report_publication_corrections
+           SET reason = ? WHERE correction_id = ?`,
+        )
+        .bind('duplicate', correctionId)
+        .run(),
+    ).rejects.toThrow('publication_corrections_immutable');
+    await expect(
+      database
+        .prepare(
+          `DELETE FROM leftout_report_publication_corrections
+           WHERE correction_id = ?`,
+        )
+        .bind(correctionId)
+        .run(),
+    ).rejects.toThrow('publication_corrections_immutable');
   }, 15_000);
 
   it('migrates existing publications to public IDs without losing private links', async () => {
@@ -475,7 +557,7 @@ describe('reporting database migration', () => {
       const legacyDatabase = (await legacyMiniflare.getD1Database(
         'REPORTS',
       )) as unknown as D1Database;
-      await applyReportingMigration(legacyDatabase, migrationUrls.slice(0, -1));
+      await applyReportingMigration(legacyDatabase, migrationUrls.slice(0, 4));
       const reportId = randomUUID();
       const firstEventId = randomUUID();
       const publicId = randomUUID();
@@ -575,7 +657,7 @@ describe('reporting database migration', () => {
         )
         .run();
 
-      await applyReportingMigration(legacyDatabase, migrationUrls.slice(-1));
+      await applyReportingMigration(legacyDatabase, migrationUrls.slice(4));
       expect(
         await legacyDatabase
           .prepare(

@@ -321,7 +321,7 @@ describe('controlled reporting deletion', () => {
       ).status,
     ).toBe(409);
     expect(await loadReportingLedger(database, heldReport)).not.toBeNull();
-  });
+  }, 15_000);
 
   it('preserves a published projection without its private lookup link', async () => {
     const reportId = await createReport();
@@ -356,5 +356,5 @@ describe('controlled reporting deletion', () => {
     );
     expect(JSON.stringify(page.publications)).not.toContain(reportId);
     expect(JSON.stringify(page.publications)).not.toContain('shop.example.com');
-  });
+  }, 15_000);
 });

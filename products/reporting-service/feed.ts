@@ -3,14 +3,14 @@ import { authenticateReportingFeed } from './auth';
 import { loadReportingServiceConfiguration } from './config';
 import { signReportingFeedBytes } from './feed-signing';
 import {
-  listReportingPublications,
+  listReportingPublicFeedEntries,
   ReportingStoreIntegrityError,
-  type ReportingPublicationCursor,
-  type ReportingPublicationRecord,
+  type ReportingPublicFeedCursor,
+  type ReportingPublicFeedEntry,
 } from './store';
 
 export const REPORTING_FEED_PAGE_SCHEMA_VERSION =
-  'leftout.reporting-feed-page/1' as const;
+  'leftout.reporting-feed-page/2' as const;
 
 export const REPORTING_FEED_FORMATS = ['json', 'ndjson'] as const;
 export type ReportingFeedFormat = (typeof REPORTING_FEED_FORMATS)[number];
@@ -54,9 +54,7 @@ function authority(
 ): FeedAuthority {
   let configuration;
   try {
-    configuration = loadReportingServiceConfiguration(
-      dependencies.environment,
-    );
+    configuration = loadReportingServiceConfiguration(dependencies.environment);
   } catch {
     return {
       response: jsonError('Reporting service unavailable.', 503),
@@ -104,7 +102,7 @@ function exactTime(value: unknown) {
   return value;
 }
 
-interface FeedCursor extends ReportingPublicationCursor {
+interface FeedCursor extends ReportingPublicFeedCursor {
   snapshotAt: string;
 }
 
@@ -135,24 +133,28 @@ function decodeCursor(value: string): Readonly<FeedCursor> {
   if (!isRecord(parsed)) throw new ReportingFeedInputError();
   const keys = Reflect.ownKeys(parsed);
   if (
-    keys.length !== 3 ||
+    keys.length !== 4 ||
     keys.some((key) => typeof key !== 'string') ||
-    !Object.hasOwn(parsed, 'publicId') ||
-    !Object.hasOwn(parsed, 'publishedAt') ||
+    !Object.hasOwn(parsed, 'entryType') ||
+    !Object.hasOwn(parsed, 'entryId') ||
+    !Object.hasOwn(parsed, 'occurredAt') ||
     !Object.hasOwn(parsed, 'snapshotAt') ||
-    typeof parsed.publicId !== 'string' ||
-    !UUID_PATTERN.test(parsed.publicId)
+    typeof parsed.entryType !== 'string' ||
+    !['correction', 'publication'].includes(parsed.entryType) ||
+    typeof parsed.entryId !== 'string' ||
+    !UUID_PATTERN.test(parsed.entryId)
   ) {
     throw new ReportingFeedInputError();
   }
-  const publishedAt = exactTime(parsed.publishedAt);
+  const occurredAt = exactTime(parsed.occurredAt);
   const snapshotAt = exactTime(parsed.snapshotAt);
-  if (Date.parse(publishedAt) > Date.parse(snapshotAt)) {
+  if (Date.parse(occurredAt) > Date.parse(snapshotAt)) {
     throw new ReportingFeedInputError();
   }
   return Object.freeze({
-    publicId: parsed.publicId,
-    publishedAt,
+    entryType: parsed.entryType as 'correction' | 'publication',
+    entryId: parsed.entryId,
+    occurredAt,
     snapshotAt,
   });
 }
@@ -186,20 +188,33 @@ function parseQuery(request: Request, now: number) {
     ...(cursor
       ? {
           cursor: Object.freeze({
-            publicId: cursor.publicId,
-            publishedAt: cursor.publishedAt,
+            entryType: cursor.entryType,
+            entryId: cursor.entryId,
+            occurredAt: cursor.occurredAt,
           }),
         }
       : {}),
   });
 }
 
-function publicEntry(publication: Readonly<ReportingPublicationRecord>) {
+function publicEntry(entry: Readonly<ReportingPublicFeedEntry>) {
+  if (entry.entryType === 'publication') {
+    return Object.freeze({
+      type: 'publication' as const,
+      entryId: entry.entryId,
+      occurredAt: entry.occurredAt,
+      publicId: entry.publication.publicId,
+      recordSha256: entry.publication.recordSha256,
+      record: entry.publication.record,
+    });
+  }
   return Object.freeze({
-    publicId: publication.publicId,
-    publishedAt: publication.publishedAt,
-    recordSha256: publication.recordSha256,
-    record: publication.record,
+    type: 'correction' as const,
+    entryId: entry.entryId,
+    occurredAt: entry.occurredAt,
+    publicId: entry.correction.publicId,
+    correctionSha256: entry.correction.correctionSha256,
+    correction: entry.correction,
   });
 }
 
@@ -237,9 +252,7 @@ function ndjsonBytes(input: {
       snapshotAt: input.snapshotAt,
       assuranceLimitation: ISSUE_DRAFT_ASSURANCE_LIMITATION,
     }),
-    ...input.entries.map((entry) =>
-      JSON.stringify({ type: 'entry', ...entry }),
-    ),
+    ...input.entries.map((entry) => JSON.stringify(entry)),
     JSON.stringify({ type: 'page', nextCursor: input.nextCursor }),
   ];
   return new TextEncoder().encode(`${lines.join('\n')}\n`);
@@ -254,18 +267,16 @@ export async function handleReportingFeed(
   try {
     const now = (dependencies.now ?? Date.now)();
     if (!Number.isSafeInteger(now) || now < 0) {
-      throw new ReportingStoreIntegrityError(
-        'Reporting feed time is invalid.',
-      );
+      throw new ReportingStoreIntegrityError('Reporting feed time is invalid.');
     }
     const query = parseQuery(request, now);
-    const page = await listReportingPublications(authorized.database, {
+    const page = await listReportingPublicFeedEntries(authorized.database, {
       limit: query.limit,
       through: query.snapshotAt,
       ...(query.cursor ? { cursor: query.cursor } : {}),
     });
     const generatedAt = new Date(now).toISOString();
-    const entries = Object.freeze(page.publications.map(publicEntry));
+    const entries = Object.freeze(page.entries.map(publicEntry));
     const nextCursor = page.nextCursor
       ? encodeCursor({ ...page.nextCursor, snapshotAt: query.snapshotAt })
       : null;
@@ -297,10 +308,7 @@ export async function handleReportingFeed(
         ? 'application/json; charset=utf-8'
         : 'application/x-ndjson; charset=utf-8',
     );
-    headers.set(
-      'Content-Digest',
-      `sha-256=:${signature.bodySha256Base64}:`,
-    );
+    headers.set('Content-Digest', `sha-256=:${signature.bodySha256Base64}:`);
     headers.set('X-LeftOut-Feed-Schema', REPORTING_FEED_PAGE_SCHEMA_VERSION);
     headers.set('X-LeftOut-Feed-Signature-Algorithm', signature.algorithm);
     headers.set('X-LeftOut-Feed-Signature', signature.signatureBase64);

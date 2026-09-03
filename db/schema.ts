@@ -231,6 +231,63 @@ export const reportPublicationLinks = sqliteTable(
   ],
 );
 
+export const reportPublicationCorrections = sqliteTable(
+  'leftout_report_publication_corrections',
+  {
+    correctionId: text('correction_id').primaryKey(),
+    schemaVersion: text('schema_version').notNull(),
+    publicId: text('public_id')
+      .notNull()
+      .references(() => reportPublications.publicId),
+    correctedAt: text('corrected_at').notNull(),
+    action: text('action').notNull(),
+    reason: text('reason').notNull(),
+    publicationRecordSha256: text('publication_record_sha256').notNull(),
+    custodianId: text('custodian_id').notNull(),
+    requestId: text('request_id').notNull(),
+    requestSha256: text('request_sha256').notNull(),
+    correctionSha256: text('correction_sha256').notNull(),
+    correctionJson: text('correction_json').notNull(),
+  },
+  (table) => [
+    check(
+      'chk_leftout_report_publication_corrections_action',
+      sql`${table.action} IN ('withdraw')`,
+    ),
+    check(
+      'chk_leftout_report_publication_corrections_reason',
+      sql`${table.reason} IN ('consent_withdrawn','duplicate','erroneous_publication','evidence_invalidated')`,
+    ),
+    check(
+      'chk_leftout_report_publication_corrections_record_sha256',
+      sql`length(${table.publicationRecordSha256}) = 64`,
+    ),
+    check(
+      'chk_leftout_report_publication_corrections_custodian',
+      sql`length(${table.custodianId}) BETWEEN 3 AND 64`,
+    ),
+    check(
+      'chk_leftout_report_publication_corrections_request_sha256',
+      sql`length(${table.requestSha256}) = 64`,
+    ),
+    check(
+      'chk_leftout_report_publication_corrections_correction_sha256',
+      sql`length(${table.correctionSha256}) = 64`,
+    ),
+    uniqueIndex('idx_leftout_report_publication_corrections_request').on(
+      table.requestId,
+    ),
+    uniqueIndex('idx_leftout_report_publication_corrections_action').on(
+      table.publicId,
+      table.action,
+    ),
+    index('idx_leftout_report_publication_corrections_time').on(
+      table.correctedAt,
+      table.correctionId,
+    ),
+  ],
+);
+
 export const reportRetentionStates = sqliteTable(
   'leftout_report_retention_states',
   {

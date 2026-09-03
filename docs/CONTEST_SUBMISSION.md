@@ -96,13 +96,15 @@ pretending that a green badge or a reassuring annotation is enforcement.
   optimistic concurrency; authenticated reviewer reads/transitions and a
   distinct publisher action can atomically create an immutable minimized
   publication record. A separately authenticated JSON/NDJSON feed signs exact,
-  bounded snapshot pages with an externally supplied Ed25519 key and requires
-  an independently pinned public-key fingerprint. None is configured or
-  enabled on the public site.
+  bounded publication-and-correction timeline pages with an externally supplied
+  Ed25519 key and requires an independently pinned public-key fingerprint. A
+  separately gated custodian can append one digest-bound public withdrawal
+  without rewriting publication history. None is configured or enabled on the
+  public site.
 
 ## Verification
 
-The current working tree passed 415 automated tests across 49 files on Node.js
+The current working tree passed 425 automated tests across 51 files on Node.js
 24, typecheck, lint, production build, deterministic Local Guard packaging, and a
 live non-invoking walkthrough/accessibility regression. Earlier bounded browser
 runs produced passing receipts for all five synthetic lessons through the
@@ -137,8 +139,9 @@ freedom to operate.
   intake, atomic quotas, reviewer routes, a separately authorized publisher,
   signed feed, retention/legal hold, and controlled private deletion exist, but
   production identity/key custody, independently published trust metadata,
-  provider-backup purge, operator recovery, public correction, and privacy
-  approval do not.
+  provider-backup purge, operator recovery, correction rehearsal, and privacy
+  approval do not. Immutable public withdrawal exists only as disabled,
+  source-tested code.
 - Android is a conformance prototype, not a device-validated product.
 - Real first-time-human, screen-reader, and 200% zoom acceptance remain pending.
 

@@ -4,7 +4,7 @@ import {
 } from './feed-signing';
 
 export const REPORTING_CONFIG_SCHEMA_VERSION =
-  'leftout.reporting-service-config/4' as const;
+  'leftout.reporting-service-config/5' as const;
 
 export const REPORTING_ACTOR_ROLES = [
   'reviewer',
@@ -29,6 +29,7 @@ export interface ReportingServiceConfiguration {
     publication: boolean;
     feed: boolean;
     lifecycle: boolean;
+    correction: boolean;
   }>;
   intakeInvitationId?: string;
   intakeTokenSha256?: string;
@@ -48,6 +49,7 @@ const ENVIRONMENT_FIELDS = Object.freeze({
   publication: 'LEFTOUT_REPORTING_PUBLICATION',
   feed: 'LEFTOUT_REPORTING_FEED',
   lifecycle: 'LEFTOUT_REPORTING_LIFECYCLE',
+  correction: 'LEFTOUT_REPORTING_CORRECTION',
   intakeInvitationId: 'LEFTOUT_REPORTING_INVITATION_ID',
   intakeTokenSha256: 'LEFTOUT_REPORTING_INTAKE_TOKEN_SHA256',
   intakeHourlyLimit: 'LEFTOUT_REPORTING_INVITATION_HOURLY_LIMIT',
@@ -229,6 +231,7 @@ function disabledConfiguration(): Readonly<ReportingServiceConfiguration> {
       publication: false,
       feed: false,
       lifecycle: false,
+      correction: false,
     }),
     actors: Object.freeze([]),
   });
@@ -263,12 +266,19 @@ export function loadReportingServiceConfiguration(
     publication: exactBoolean(environment, ENVIRONMENT_FIELDS.publication),
     feed: exactBoolean(environment, ENVIRONMENT_FIELDS.feed),
     lifecycle: exactBoolean(environment, ENVIRONMENT_FIELDS.lifecycle),
+    correction:
+      definedString(environment, ENVIRONMENT_FIELDS.correction) === undefined
+        ? false
+        : exactBoolean(environment, ENVIRONMENT_FIELDS.correction),
   });
   if (gates.publication && !gates.moderation) {
     throw new Error('Reporting publication requires moderation to be enabled.');
   }
   if (gates.feed && !gates.publication) {
     throw new Error('Reporting feed requires publication to be enabled.');
+  }
+  if (gates.correction && !gates.publication) {
+    throw new Error('Reporting correction requires publication to be enabled.');
   }
 
   const intakeTokenValue = definedString(
@@ -324,9 +334,14 @@ export function loadReportingServiceConfiguration(
 
   const actorsValue = definedString(environment, ENVIRONMENT_FIELDS.actors);
   const actors = parseActors(actorsValue);
-  if (!gates.moderation && !gates.lifecycle && actors.length > 0) {
+  if (
+    !gates.moderation &&
+    !gates.lifecycle &&
+    !gates.correction &&
+    actors.length > 0
+  ) {
     throw new Error(
-      'Reporting actor credentials require moderation or lifecycle authority.',
+      'Reporting actor credentials require moderation, lifecycle, or correction authority.',
     );
   }
   if (
@@ -339,8 +354,14 @@ export function loadReportingServiceConfiguration(
       'Reviewer and publisher credentials require moderation authority.',
     );
   }
-  if (!gates.lifecycle && actors.some((actor) => actor.role === 'custodian')) {
-    throw new Error('Custodian credentials require lifecycle authority.');
+  if (
+    !gates.lifecycle &&
+    !gates.correction &&
+    actors.some((actor) => actor.role === 'custodian')
+  ) {
+    throw new Error(
+      'Custodian credentials require lifecycle or correction authority.',
+    );
   }
   if (gates.moderation && !actors.some((actor) => actor.role === 'reviewer')) {
     throw new Error(
@@ -355,9 +376,12 @@ export function loadReportingServiceConfiguration(
       'Enabled reporting publication requires at least one separate publisher.',
     );
   }
-  if (gates.lifecycle && !actors.some((actor) => actor.role === 'custodian')) {
+  if (
+    (gates.lifecycle || gates.correction) &&
+    !actors.some((actor) => actor.role === 'custodian')
+  ) {
     throw new Error(
-      'Enabled reporting lifecycle requires at least one separate custodian.',
+      'Enabled reporting lifecycle or correction requires at least one separate custodian.',
     );
   }
   if (

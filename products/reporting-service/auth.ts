@@ -71,7 +71,9 @@ export function authenticateReportingActor(
     configuration.mode !== 'invited' ||
     (requiredRole === 'reviewer' && !configuration.gates.moderation) ||
     (requiredRole === 'publisher' && !configuration.gates.publication) ||
-    (requiredRole === 'custodian' && !configuration.gates.lifecycle)
+    (requiredRole === 'custodian' &&
+      !configuration.gates.lifecycle &&
+      !configuration.gates.correction)
   ) {
     return null;
   }

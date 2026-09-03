@@ -5,8 +5,8 @@
 The reporting service is implemented as a **disabled-by-default, invited
 private pipeline preview**. It is not enabled on the public learning site. The
 public lab continues to work when every reporting setting is absent; in that
-state intake, review, publication, feed, and lifecycle routes return the same `404`
-response as unavailable routes.
+state intake, review, publication, feed, lifecycle, and correction routes return
+the same `404` response as unavailable routes.
 
 The local implementation currently provides:
 
@@ -38,14 +38,19 @@ The local implementation currently provides:
   expiry from a data-subject request, removes private records and lookup links,
   preserves any immutable public projection, and emits an immutable,
   non-identifying tombstone; and
+- a separately gated custodian correction action that can append one immutable
+  withdrawal to an exact public publication digest without rewriting that
+  publication or recovering a deleted private report; and
 - database constraints and triggers that reject state/hash drift, event or
   idempotency mutation, deletion outside the controlled retention workflow,
   stale or held deletion authorization, retention-chain mutation, tombstone
-  mutation, quota substitution, quota overflow, or publication mutation.
+  mutation, quota substitution, quota overflow, publication mutation,
+  correction/publication mismatch, or correction mutation.
 
-No backup purge, public-correction operation, browser submission UI, production
-identity integration, production signing-key custodian, independent fingerprint
-publication, or production operations runbook exists yet. Source code for a
+No backup purge, browser submission UI, production identity integration,
+production signing-key custodian, independent fingerprint publication, or
+production operations runbook exists yet. The correction operation is
+source-tested only and has not passed an operator rehearsal. Source code for a
 route is not evidence that the service is enabled.
 
 ## Configuration contract
@@ -57,7 +62,9 @@ artifacts, or client-side code. Public signing material is not secret, but its
 fingerprint must also be distributed through a separately trusted channel.
 
 With no `LEFTOUT_REPORTING_*` settings, the service is fully disabled. An
-invited-intake deployment requires all of these explicit values:
+invited-intake deployment requires the applicable explicit values below. The
+correction gate safely defaults to `false` only to permit an existing disabled
+deployment to upgrade; an operator must set it explicitly before enablement.
 
 | Setting                                                   | Required value or boundary                                                                |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
@@ -67,6 +74,7 @@ invited-intake deployment requires all of these explicit values:
 | `LEFTOUT_REPORTING_PUBLICATION`                           | `false` until publisher identity and operations are approved                              |
 | `LEFTOUT_REPORTING_FEED`                                  | `false` until feed identity, key custody, and operations are approved                     |
 | `LEFTOUT_REPORTING_LIFECYCLE`                             | `true` only with approved retention policy and custodian operations                       |
+| `LEFTOUT_REPORTING_CORRECTION`                            | `true` only with approved publication-correction policy and custodian operations          |
 | `LEFTOUT_REPORTING_INVITATION_ID`                         | Opaque normalized identifier beginning with `invitation.`                                 |
 | `LEFTOUT_REPORTING_INTAKE_TOKEN_SHA256`                   | Lowercase SHA-256 of a randomly generated 32–512 character token                          |
 | `LEFTOUT_REPORTING_INVITATION_HOURLY_LIMIT`               | Explicit positive integer, at most 1,000                                                  |
@@ -118,10 +126,13 @@ the existing publication; conflicting reuse is rejected.
 
 The independent feed bearer can call
 `GET /api/reports/feed?format=json|ndjson&limit=1..100`. The opaque cursor
-continues a time-bounded snapshot. Feed entries contain only a public event ID,
-publication time, record digest, and the already minimized public record. They
-never contain the private report ID, private origin, reviewer or publisher
-identity, source revision, raw evidence, receipts, or free text.
+continues a time-bounded snapshot. The version 2 timeline distinguishes
+`publication` and `correction` entries. Publication entries contain only a
+public event ID, publication time, record digest, and the already minimized
+public record. Correction entries contain a correction ID, public ID, time,
+closed action and reason, publication-record digest, and correction digest.
+They never contain the private report ID, private origin, reviewer, publisher,
+or custodian identity, source revision, raw evidence, receipts, or free text.
 
 The response includes `Content-Digest`, Ed25519 signature, key ID, public SPKI,
 and SPKI SHA-256 headers. The signature covers the exact response bytes. A
@@ -129,6 +140,22 @@ consumer must verify the signature against a fingerprint obtained through a
 different trusted channel; the fingerprint returned beside the feed is
 diagnostic metadata, not a trust root. Browser-origin requests and unknown
 query authority are rejected.
+
+## Public correction request
+
+When correction is explicitly enabled, an authenticated custodian can call
+`POST /api/reports/corrections/:publicId` with exact `application/json`, a
+lowercase UUID idempotency key, no browser origin, and exactly `action` and
+`reason`. The only action is `withdraw`; the closed reasons are
+`consent_withdrawn`, `duplicate`, `erroneous_publication`, and
+`evidence_invalidated`.
+
+The handler binds the correction to the immutable publication's exact record
+SHA-256, appends one self-hashed correction, and never updates or deletes the
+publication. Exact request replay returns the same correction. Conflicting key
+reuse and a second withdrawal are rejected. The correction remains public even
+if the separately controlled private report is later deleted. Neither the
+response nor feed exposes custodian identity or private linkage.
 
 ## Retention and legal-hold requests
 
@@ -158,9 +185,11 @@ free text. It records only lifecycle proof fields and, when applicable, the
 already-public publication ID. Exact request replay returns the same tombstone;
 conflicting reuse is rejected.
 
-This workflow does not purge provider backups or correct an erroneous public
-record. Those remain separate release blockers, and the route remains disabled
-and unconfigured on the public learning deployment.
+This workflow does not purge provider backups or rewrite an erroneous public
+record. The separately gated correction route can append a withdrawal to the
+public timeline; it cannot erase history. Backup lifecycle and correction
+operations rehearsal remain release blockers, and every reporting route
+remains disabled and unconfigured on the public learning deployment.
 
 ## Required enablement evidence
 
@@ -175,7 +204,8 @@ and retained rehearsal evidence:
    support contact;
 4. production reviewer/publisher identity, authorization, revocation, and
    role-separation rehearsal;
-5. correction and erroneous-publication workflows; and
+5. correction ownership, erroneous-publication response, and retained
+   end-to-end rehearsal evidence; and
 6. feed-key custody, rotation, revocation, independent fingerprint publication,
    consumer verification, and emergency correction rehearsal, if a feed is
    still justified.

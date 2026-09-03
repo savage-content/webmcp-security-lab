@@ -27,8 +27,17 @@ import {
   type ReportingRetentionEvent,
   type ReportingRetentionState,
 } from './retention-core';
+import {
+  createReportingPublicCorrection,
+  parseReportingPublicCorrection,
+  REPORTING_PUBLIC_CORRECTION_ACTIONS,
+  REPORTING_PUBLIC_CORRECTION_REASONS,
+  type ReportingPublicCorrection,
+  type ReportingPublicCorrectionAction,
+  type ReportingPublicCorrectionReason,
+} from './correction-core';
 
-export const REPORTING_STORE_SCHEMA_VERSION = 4 as const;
+export const REPORTING_STORE_SCHEMA_VERSION = 5 as const;
 
 export class ReportingStoreConflictError extends Error {
   override readonly name = 'ReportingStoreConflictError';
@@ -61,6 +70,17 @@ export interface ReportingDeletionRequest {
   requestSha256: string;
   now: number;
   tombstoneId?: () => string;
+}
+
+export interface ReportingCorrectionRequest {
+  publicId: string;
+  action: ReportingPublicCorrectionAction;
+  reason: ReportingPublicCorrectionReason;
+  custodianId: string;
+  requestId: string;
+  requestSha256: string;
+  now: number;
+  correctionId?: () => string;
 }
 
 export interface ReportingIntakeIdempotency {
@@ -96,6 +116,32 @@ export interface ReportingPublicationQuery {
   limit?: number;
   through: string;
 }
+
+export interface ReportingPublicFeedCursor {
+  entryType: 'correction' | 'publication';
+  entryId: string;
+  occurredAt: string;
+}
+
+export interface ReportingPublicFeedQuery {
+  cursor?: Readonly<ReportingPublicFeedCursor>;
+  limit?: number;
+  through: string;
+}
+
+export type ReportingPublicFeedEntry =
+  | Readonly<{
+      entryType: 'publication';
+      entryId: string;
+      occurredAt: string;
+      publication: Readonly<ReportingPublicationRecord>;
+    }>
+  | Readonly<{
+      entryType: 'correction';
+      entryId: string;
+      occurredAt: string;
+      correction: Readonly<ReportingPublicCorrection>;
+    }>;
 
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const UUID_PATTERN =
@@ -164,6 +210,21 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     FOREIGN KEY (report_id) REFERENCES leftout_report_records(id),
     FOREIGN KEY (public_id) REFERENCES leftout_report_publications(public_id)
   )`,
+  `CREATE TABLE IF NOT EXISTS leftout_report_publication_corrections (
+    correction_id TEXT PRIMARY KEY NOT NULL,
+    schema_version TEXT NOT NULL,
+    public_id TEXT NOT NULL,
+    corrected_at TEXT NOT NULL,
+    action TEXT NOT NULL CHECK (action IN ('withdraw')),
+    reason TEXT NOT NULL CHECK (reason IN ('consent_withdrawn','duplicate','erroneous_publication','evidence_invalidated')),
+    publication_record_sha256 TEXT NOT NULL CHECK (length(publication_record_sha256) = 64),
+    custodian_id TEXT NOT NULL CHECK (length(custodian_id) BETWEEN 3 AND 64),
+    request_id TEXT NOT NULL,
+    request_sha256 TEXT NOT NULL CHECK (length(request_sha256) = 64),
+    correction_sha256 TEXT NOT NULL CHECK (length(correction_sha256) = 64),
+    correction_json TEXT NOT NULL,
+    FOREIGN KEY (public_id) REFERENCES leftout_report_publications(public_id)
+  )`,
   `CREATE TABLE IF NOT EXISTS leftout_report_retention_states (
     report_id TEXT PRIMARY KEY NOT NULL,
     schema_version TEXT NOT NULL,
@@ -227,6 +288,9 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
   'CREATE INDEX IF NOT EXISTS idx_leftout_report_intake_quotas_expiry ON leftout_report_intake_quotas(expires_at)',
   'CREATE INDEX IF NOT EXISTS idx_leftout_report_publications_published ON leftout_report_publications(published_at, public_id)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_publication_links_public ON leftout_report_publication_links(public_id)',
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_publication_corrections_request ON leftout_report_publication_corrections(request_id)',
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_publication_corrections_action ON leftout_report_publication_corrections(public_id, action)',
+  'CREATE INDEX IF NOT EXISTS idx_leftout_report_publication_corrections_time ON leftout_report_publication_corrections(corrected_at, correction_id)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_retention_events_report_revision ON leftout_report_retention_events(report_id, revision)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_leftout_report_retention_events_report_request ON leftout_report_retention_events(report_id, request_id)',
   'CREATE INDEX IF NOT EXISTS idx_leftout_report_retention_states_due ON leftout_report_retention_states(legal_hold, retain_until)',
@@ -356,6 +420,26 @@ export const REPORTING_STORE_SCHEMA_STATEMENTS = Object.freeze([
     BEGIN
       SELECT RAISE(ABORT, 'leftout_report_publication_links_require_retention_workflow');
     END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_publication_correction_snapshot
+    BEFORE INSERT ON leftout_report_publication_corrections
+    WHEN NOT EXISTS (
+      SELECT 1 FROM leftout_report_publications
+      WHERE public_id = NEW.public_id
+        AND record_sha256 = NEW.publication_record_sha256
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_publication_correction_snapshot_mismatch');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_publication_corrections_no_update
+    BEFORE UPDATE ON leftout_report_publication_corrections
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_publication_corrections_immutable');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_publication_corrections_no_delete
+    BEFORE DELETE ON leftout_report_publication_corrections
+    BEGIN
+      SELECT RAISE(ABORT, 'leftout_report_publication_corrections_immutable');
+    END`,
   `CREATE TRIGGER IF NOT EXISTS trg_leftout_report_retention_event_snapshot
     BEFORE INSERT ON leftout_report_retention_events
     WHEN NOT EXISTS (
@@ -467,6 +551,20 @@ export function reportingDeletionRequestSha256(input: {
     JSON.stringify({
       reportId: input.reportId,
       expectedRetentionRevision: input.expectedRetentionRevision,
+      reason: input.reason,
+    }),
+  );
+}
+
+export function reportingCorrectionRequestSha256(input: {
+  publicId: string;
+  action: ReportingPublicCorrectionAction;
+  reason: ReportingPublicCorrectionReason;
+}) {
+  return sha256(
+    JSON.stringify({
+      publicId: input.publicId,
+      action: input.action,
       reason: input.reason,
     }),
   );
@@ -818,6 +916,54 @@ function parsePublicationRow(
   }
 }
 
+interface ReportingCorrectionRow {
+  correctionId: string;
+  schemaVersion: string;
+  publicId: string;
+  correctedAt: string;
+  action: string;
+  reason: string;
+  publicationRecordSha256: string;
+  custodianId: string;
+  requestId: string;
+  requestSha256: string;
+  correctionSha256: string;
+  correctionJson: string;
+}
+
+function parseCorrectionRow(row: Readonly<ReportingCorrectionRow>) {
+  try {
+    const correction = parseReportingPublicCorrection(
+      JSON.parse(row.correctionJson) as unknown,
+    );
+    if (
+      correction.correctionId !== row.correctionId ||
+      correction.schemaVersion !== row.schemaVersion ||
+      correction.publicId !== row.publicId ||
+      correction.correctedAt !== row.correctedAt ||
+      correction.action !== row.action ||
+      correction.reason !== row.reason ||
+      correction.publicationRecordSha256 !== row.publicationRecordSha256 ||
+      correction.correctionSha256 !== row.correctionSha256 ||
+      !ACTOR_ID_PATTERN.test(row.custodianId) ||
+      !UUID_PATTERN.test(row.requestId) ||
+      !SHA256_PATTERN.test(row.requestSha256)
+    ) {
+      throw new Error('correction metadata mismatch');
+    }
+    return Object.freeze({
+      correction,
+      custodianId: row.custodianId,
+      requestId: row.requestId,
+      requestSha256: row.requestSha256,
+    });
+  } catch {
+    throw new ReportingStoreIntegrityError(
+      'Stored reporting correction failed integrity validation.',
+    );
+  }
+}
+
 function publicationStatements(
   database: D1Database,
   publication: Readonly<ReportingPublicationRecord>,
@@ -973,6 +1119,219 @@ export async function loadReportingPublication(
   return publication;
 }
 
+export async function loadReportingPublicationByPublicId(
+  database: D1Database,
+  publicId: string,
+): Promise<Readonly<ReportingPublicationRecord> | null> {
+  await ensureReportingStoreSchema(database);
+  if (!UUID_PATTERN.test(publicId)) {
+    throw new ReportingStoreIntegrityError(
+      'Reporting public identifier is invalid.',
+    );
+  }
+  const row = await database
+    .prepare(
+      `SELECT publication.public_id AS publicId,
+              NULL AS reportId,
+              publication.schema_version AS schemaVersion,
+              publication.published_at AS publishedAt,
+              publication.publisher_id AS publisherId,
+              publication.source_revision AS sourceRevision,
+              publication.record_sha256 AS recordSha256,
+              publication.record_json AS recordJson
+       FROM leftout_report_publications AS publication
+       WHERE publication.public_id = ?`,
+    )
+    .bind(publicId)
+    .first<ReportingPublicationRow>();
+  if (!row) return null;
+  const publication = parsePublicationRow(row);
+  if (publication.publicId !== publicId || publication.reportId !== null) {
+    throw new ReportingStoreIntegrityError(
+      'Stored public reporting publication identifier did not match.',
+    );
+  }
+  return publication;
+}
+
+export async function loadReportingCorrectionByRequestId(
+  database: D1Database,
+  requestId: string,
+) {
+  await ensureReportingStoreSchema(database);
+  if (!UUID_PATTERN.test(requestId)) {
+    throw new ReportingStoreIntegrityError(
+      'Reporting correction request identifier is invalid.',
+    );
+  }
+  const row = await database
+    .prepare(
+      `SELECT correction_id AS correctionId, schema_version AS schemaVersion,
+              public_id AS publicId, corrected_at AS correctedAt,
+              action, reason,
+              publication_record_sha256 AS publicationRecordSha256,
+              custodian_id AS custodianId, request_id AS requestId,
+              request_sha256 AS requestSha256,
+              correction_sha256 AS correctionSha256,
+              correction_json AS correctionJson
+       FROM leftout_report_publication_corrections WHERE request_id = ?`,
+    )
+    .bind(requestId)
+    .first<ReportingCorrectionRow>();
+  return row ? parseCorrectionRow(row) : null;
+}
+
+function correctionRequest(
+  value: Readonly<ReportingCorrectionRequest>,
+): Readonly<ReportingCorrectionRequest> {
+  if (
+    !UUID_PATTERN.test(value.publicId) ||
+    !UUID_PATTERN.test(value.requestId) ||
+    !REPORTING_PUBLIC_CORRECTION_ACTIONS.includes(value.action) ||
+    !REPORTING_PUBLIC_CORRECTION_REASONS.includes(value.reason) ||
+    typeof value.custodianId !== 'string' ||
+    value.custodianId.length < 3 ||
+    value.custodianId.length > 64 ||
+    !ACTOR_ID_PATTERN.test(value.custodianId) ||
+    !Number.isSafeInteger(value.now) ||
+    value.now < 0 ||
+    !Number.isFinite(new Date(value.now).valueOf()) ||
+    digest(value.requestSha256, 'Reporting correction request digest') !==
+      reportingCorrectionRequestSha256(value) ||
+    (value.correctionId !== undefined &&
+      typeof value.correctionId !== 'function')
+  ) {
+    throw new ReportingStoreIntegrityError(
+      'Reporting correction request failed integrity validation.',
+    );
+  }
+  return Object.freeze({ ...value });
+}
+
+function sameCorrectionRequest(
+  stored: Readonly<{
+    correction: Readonly<ReportingPublicCorrection>;
+    custodianId: string;
+    requestId: string;
+    requestSha256: string;
+  }>,
+  request: Readonly<ReportingCorrectionRequest>,
+) {
+  return (
+    stored.requestId === request.requestId &&
+    stored.requestSha256 === request.requestSha256 &&
+    stored.custodianId === request.custodianId &&
+    stored.correction.publicId === request.publicId &&
+    stored.correction.action === request.action &&
+    stored.correction.reason === request.reason
+  );
+}
+
+export async function saveReportingCorrection(
+  database: D1Database,
+  requestValue: Readonly<ReportingCorrectionRequest>,
+) {
+  const request = correctionRequest(requestValue);
+  await ensureReportingStoreSchema(database);
+  const existing = await loadReportingCorrectionByRequestId(
+    database,
+    request.requestId,
+  );
+  if (existing) {
+    if (!sameCorrectionRequest(existing, request)) {
+      throw new ReportingStoreConflictError(
+        'Reporting correction request ID was reused for a different correction.',
+      );
+    }
+    return Object.freeze({
+      disposition: 'existing' as const,
+      correction: existing.correction,
+    });
+  }
+
+  const publication = await loadReportingPublicationByPublicId(
+    database,
+    request.publicId,
+  );
+  if (!publication) {
+    throw new ReportingStoreConflictError(
+      'Reporting publication was not found.',
+    );
+  }
+  const correctedAt = new Date(request.now).toISOString();
+  if (Date.parse(correctedAt) < Date.parse(publication.publishedAt)) {
+    throw new ReportingStoreIntegrityError(
+      'Reporting correction time precedes its publication.',
+    );
+  }
+  const correction = createReportingPublicCorrection(
+    {
+      publicId: publication.publicId,
+      correctedAt,
+      action: request.action,
+      reason: request.reason,
+      publicationRecordSha256: publication.recordSha256,
+    },
+    { correctionId: request.correctionId },
+  );
+
+  try {
+    await database
+      .prepare(
+        `INSERT INTO leftout_report_publication_corrections (
+          correction_id, schema_version, public_id, corrected_at,
+          action, reason, publication_record_sha256, custodian_id,
+          request_id, request_sha256, correction_sha256, correction_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        correction.correctionId,
+        correction.schemaVersion,
+        correction.publicId,
+        correction.correctedAt,
+        correction.action,
+        correction.reason,
+        correction.publicationRecordSha256,
+        request.custodianId,
+        request.requestId,
+        request.requestSha256,
+        correction.correctionSha256,
+        JSON.stringify(correction),
+      )
+      .run();
+  } catch {
+    const raced = await loadReportingCorrectionByRequestId(
+      database,
+      request.requestId,
+    );
+    if (raced && sameCorrectionRequest(raced, request)) {
+      return Object.freeze({
+        disposition: 'existing' as const,
+        correction: raced.correction,
+      });
+    }
+    throw new ReportingStoreConflictError(
+      'Reporting correction could not be committed.',
+    );
+  }
+  const retained = await loadReportingCorrectionByRequestId(
+    database,
+    request.requestId,
+  );
+  if (
+    !retained ||
+    retained.correction.correctionSha256 !== correction.correctionSha256
+  ) {
+    throw new ReportingStoreIntegrityError(
+      'Committed reporting correction failed postcondition verification.',
+    );
+  }
+  return Object.freeze({
+    disposition: 'created' as const,
+    correction: retained.correction,
+  });
+}
+
 export async function listReportingPublications(
   database: D1Database,
   query: Readonly<ReportingPublicationQuery>,
@@ -1045,6 +1404,195 @@ export async function listReportingPublications(
         ? Object.freeze({
             publicId: last.publicId,
             publishedAt: last.publishedAt,
+          })
+        : null,
+  });
+}
+
+interface ReportingPublicFeedRow {
+  entryType: string;
+  entryId: string;
+  occurredAt: string;
+  publicId: string;
+  schemaVersion: string;
+  publisherId: string | null;
+  sourceRevision: number | null;
+  recordSha256: string;
+  payloadSha256: string;
+  payloadJson: string;
+}
+
+function parsePublicFeedRow(
+  row: Readonly<ReportingPublicFeedRow>,
+): Readonly<ReportingPublicFeedEntry> {
+  if (
+    !UUID_PATTERN.test(row.entryId) ||
+    !UUID_PATTERN.test(row.publicId) ||
+    exactTime(row.occurredAt, 'Reporting public feed entry time') !==
+      row.occurredAt ||
+    !SHA256_PATTERN.test(row.payloadSha256)
+  ) {
+    throw new ReportingStoreIntegrityError(
+      'Stored reporting public feed entry failed integrity validation.',
+    );
+  }
+  if (row.entryType === 'publication') {
+    if (
+      row.entryId !== row.publicId ||
+      row.publisherId === null ||
+      row.sourceRevision === null ||
+      row.payloadSha256 !== row.recordSha256
+    ) {
+      throw new ReportingStoreIntegrityError(
+        'Stored reporting publication feed entry failed integrity validation.',
+      );
+    }
+    const publication = parsePublicationRow({
+      publicId: row.publicId,
+      reportId: null,
+      schemaVersion: row.schemaVersion,
+      publishedAt: row.occurredAt,
+      publisherId: row.publisherId,
+      sourceRevision: row.sourceRevision,
+      recordSha256: row.recordSha256,
+      recordJson: row.payloadJson,
+    });
+    return Object.freeze({
+      entryType: 'publication' as const,
+      entryId: row.entryId,
+      occurredAt: row.occurredAt,
+      publication,
+    });
+  }
+  if (row.entryType === 'correction') {
+    try {
+      const correction = parseReportingPublicCorrection(
+        JSON.parse(row.payloadJson) as unknown,
+      );
+      if (
+        row.publisherId !== null ||
+        row.sourceRevision !== null ||
+        correction.correctionId !== row.entryId ||
+        correction.publicId !== row.publicId ||
+        correction.correctedAt !== row.occurredAt ||
+        correction.schemaVersion !== row.schemaVersion ||
+        correction.publicationRecordSha256 !== row.recordSha256 ||
+        correction.correctionSha256 !== row.payloadSha256
+      ) {
+        throw new Error('correction feed metadata mismatch');
+      }
+      return Object.freeze({
+        entryType: 'correction' as const,
+        entryId: row.entryId,
+        occurredAt: row.occurredAt,
+        correction,
+      });
+    } catch {
+      throw new ReportingStoreIntegrityError(
+        'Stored reporting correction feed entry failed integrity validation.',
+      );
+    }
+  }
+  throw new ReportingStoreIntegrityError(
+    'Stored reporting public feed entry type is invalid.',
+  );
+}
+
+export async function listReportingPublicFeedEntries(
+  database: D1Database,
+  query: Readonly<ReportingPublicFeedQuery>,
+) {
+  await ensureReportingStoreSchema(database);
+  const limit = query.limit ?? 50;
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+    throw new ReportingStoreIntegrityError(
+      'Reporting public feed limit must be between 1 and 100.',
+    );
+  }
+  const through = exactTime(query.through, 'Reporting public feed boundary');
+  let cursor: Readonly<ReportingPublicFeedCursor> | undefined;
+  if (query.cursor) {
+    cursor = Object.freeze({
+      entryType: query.cursor.entryType,
+      entryId: query.cursor.entryId,
+      occurredAt: exactTime(
+        query.cursor.occurredAt,
+        'Reporting public feed cursor time',
+      ),
+    });
+    if (
+      !['correction', 'publication'].includes(cursor.entryType) ||
+      !UUID_PATTERN.test(cursor.entryId) ||
+      Date.parse(cursor.occurredAt) > Date.parse(through)
+    ) {
+      throw new ReportingStoreIntegrityError(
+        'Reporting public feed cursor is invalid.',
+      );
+    }
+  }
+  const cursorRank = cursor?.entryType === 'correction' ? 1 : 0;
+  const rows = await database
+    .prepare(
+      `SELECT entry_type AS entryType, entry_id AS entryId,
+              occurred_at AS occurredAt, public_id AS publicId,
+              schema_version AS schemaVersion, publisher_id AS publisherId,
+              source_revision AS sourceRevision,
+              record_sha256 AS recordSha256,
+              payload_sha256 AS payloadSha256, payload_json AS payloadJson
+       FROM (
+         SELECT 0 AS entry_rank, 'publication' AS entry_type,
+                public_id AS entry_id,
+                published_at AS occurred_at, public_id, schema_version,
+                publisher_id, source_revision, record_sha256,
+                record_sha256 AS payload_sha256, record_json AS payload_json
+         FROM leftout_report_publications
+         UNION ALL
+         SELECT 1 AS entry_rank, 'correction' AS entry_type,
+                correction_id AS entry_id,
+                corrected_at AS occurred_at, public_id, schema_version,
+                NULL AS publisher_id, NULL AS source_revision,
+                publication_record_sha256 AS record_sha256,
+                correction_sha256 AS payload_sha256,
+                correction_json AS payload_json
+         FROM leftout_report_publication_corrections
+       ) AS entry
+       WHERE occurred_at <= ?
+         AND (
+           ? IS NULL
+           OR occurred_at > ?
+           OR (
+             occurred_at = ?
+             AND (
+               entry_rank > ?
+               OR (entry_rank = ? AND entry_id > ?)
+             )
+           )
+         )
+       ORDER BY occurred_at ASC, entry_rank ASC, entry_id ASC
+       LIMIT ?`,
+    )
+    .bind(
+      through,
+      cursor?.occurredAt ?? null,
+      cursor?.occurredAt ?? '',
+      cursor?.occurredAt ?? '',
+      cursorRank,
+      cursorRank,
+      cursor?.entryId ?? '',
+      limit + 1,
+    )
+    .all<ReportingPublicFeedRow>();
+  const selected = rows.results.slice(0, limit);
+  const entries = Object.freeze(selected.map(parsePublicFeedRow));
+  const last = selected.at(-1);
+  return Object.freeze({
+    entries,
+    nextCursor:
+      rows.results.length > limit && last
+        ? Object.freeze({
+            entryType: last.entryType as 'correction' | 'publication',
+            entryId: last.entryId,
+            occurredAt: last.occurredAt,
           })
         : null,
   });

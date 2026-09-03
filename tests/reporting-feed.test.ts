@@ -1,13 +1,10 @@
-import {
-  createHash,
-  generateKeyPairSync,
-  randomUUID,
-} from 'node:crypto';
+import { createHash, generateKeyPairSync, randomUUID } from 'node:crypto';
 
 import { convertV4MiniflareOptions, Miniflare } from 'miniflare';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { ISSUE_DRAFT_ASSURANCE_LIMITATION } from '../products/connector/issue-draft';
+import { handleReportingCorrection } from '../products/reporting-service/correct';
 import {
   handleReportingFeed,
   handleReportingFeedUnsupportedMethod,
@@ -16,10 +13,12 @@ import { verifyReportingFeedBytes } from '../products/reporting-service/feed-sig
 import { handleReportingIntake } from '../products/reporting-service/intake';
 import { handleReportingPublication } from '../products/reporting-service/publish';
 import { handleReportingReviewTransition } from '../products/reporting-service/review';
+import { loadReportingPublication } from '../products/reporting-service/store';
 
 const invitationToken = 'invitation-token-with-at-least-32-characters';
 const reviewerToken = 'reviewer-token-with-at-least-32-characters-long';
 const publisherToken = 'publisher-token-with-at-least-32-characters';
+const custodianToken = 'custodian-token-with-at-least-32-characters';
 const feedToken = 'feed-reader-token-with-at-least-32-characters-long';
 const signingKeyPair = generateKeyPairSync('ed25519');
 const privateDer = Buffer.from(
@@ -28,9 +27,7 @@ const privateDer = Buffer.from(
 const publicDer = Buffer.from(
   signingKeyPair.publicKey.export({ format: 'der', type: 'spki' }),
 );
-const trustedFingerprint = createHash('sha256')
-  .update(publicDer)
-  .digest('hex');
+const trustedFingerprint = createHash('sha256').update(publicDer).digest('hex');
 
 function digest(value: string) {
   return createHash('sha256').update(value, 'utf8').digest('hex');
@@ -44,6 +41,7 @@ function environment() {
     LEFTOUT_REPORTING_PUBLICATION: 'true',
     LEFTOUT_REPORTING_FEED: 'true',
     LEFTOUT_REPORTING_LIFECYCLE: 'false',
+    LEFTOUT_REPORTING_CORRECTION: 'true',
     LEFTOUT_REPORTING_INVITATION_ID: 'invitation.feed-test',
     LEFTOUT_REPORTING_INTAKE_TOKEN_SHA256: digest(invitationToken),
     LEFTOUT_REPORTING_INVITATION_HOURLY_LIMIT: '50',
@@ -58,6 +56,11 @@ function environment() {
         id: 'publisher-alpha',
         role: 'publisher',
         tokenSha256: digest(publisherToken),
+      },
+      {
+        id: 'custodian-alpha',
+        role: 'custodian',
+        tokenSha256: digest(custodianToken),
       },
     ]),
     LEFTOUT_REPORTING_FEED_TOKEN_SHA256: digest(feedToken),
@@ -76,10 +79,9 @@ function feedRequest(
 ) {
   const headers = new Headers(options.headers);
   headers.set('Authorization', `Bearer ${options.token ?? feedToken}`);
-  return new Request(
-    `https://reports.example.test/api/reports/feed${query}`,
-    { headers },
-  );
+  return new Request(`https://reports.example.test/api/reports/feed${query}`, {
+    headers,
+  });
 }
 
 function reviewRequest(reportId: string, expectedRevision: number, to: string) {
@@ -165,8 +167,7 @@ async function publishReport(
     {
       environment: reportingEnvironment,
       database,
-      now: () =>
-        Date.parse(options.publishedAt ?? '2026-09-02T18:03:00.000Z'),
+      now: () => Date.parse(options.publishedAt ?? '2026-09-02T18:03:00.000Z'),
     },
   );
   expect(publication.status).toBe(200);
@@ -227,10 +228,10 @@ describe('signed minimized reporting feed', () => {
     ).toBe(404);
     expect(
       (
-        await handleReportingFeed(
-          feedRequest('', { token: publisherToken }),
-          { environment: environment(), database },
-        )
+        await handleReportingFeed(feedRequest('', { token: publisherToken }), {
+          environment: environment(),
+          database,
+        })
       ).status,
     ).toBe(401);
   });
@@ -259,7 +260,7 @@ describe('signed minimized reporting feed', () => {
     const text = new TextDecoder().decode(bytes);
     const body = JSON.parse(text) as Record<string, unknown>;
     expect(body).toMatchObject({
-      schemaVersion: 'leftout.reporting-feed-page/1',
+      schemaVersion: 'leftout.reporting-feed-page/2',
       format: 'json',
       generatedAt: '2026-09-02T19:00:00.000Z',
       snapshotAt: '2026-09-02T19:00:00.000Z',
@@ -267,8 +268,9 @@ describe('signed minimized reporting feed', () => {
     });
     expect(body.entries).toEqual([
       expect.objectContaining({
+        type: 'publication',
         publicId: expect.any(String),
-        publishedAt: '2026-09-02T18:03:00.000Z',
+        occurredAt: '2026-09-02T18:03:00.000Z',
         recordSha256: expect.stringMatching(/^[0-9a-f]{64}$/u),
         record: expect.objectContaining({
           moderationState: 'published',
@@ -318,7 +320,7 @@ describe('signed minimized reporting feed', () => {
       .map((line) => JSON.parse(line) as Record<string, unknown>);
     expect(firstLines.map((line) => line.type)).toEqual([
       'metadata',
-      'entry',
+      'publication',
       'page',
     ]);
     const nextCursor = firstLines.at(-1)?.nextCursor;
@@ -343,7 +345,8 @@ describe('signed minimized reporting feed', () => {
         ...responseSignature(second, secondBytes),
       }),
     ).toBe(true);
-    const combined = new TextDecoder().decode(firstBytes) +
+    const combined =
+      new TextDecoder().decode(firstBytes) +
       new TextDecoder().decode(secondBytes);
     expect(combined).not.toContain(firstReportId);
     expect(combined).not.toContain(secondReportId);
@@ -354,6 +357,74 @@ describe('signed minimized reporting feed', () => {
       .split('\n')
       .map((line) => JSON.parse(line) as Record<string, unknown>);
     expect(secondLines.at(-1)?.nextCursor).toBeNull();
+  }, 15_000);
+
+  it('signs an immutable correction after the unchanged publication entry', async () => {
+    const reportingEnvironment = environment();
+    const reportId = await publishReport(database, reportingEnvironment);
+    const publication = await loadReportingPublication(database, reportId);
+    expect(publication).not.toBeNull();
+    const correction = await handleReportingCorrection(
+      new Request(
+        `https://reports.example.test/api/reports/corrections/${publication?.publicId}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${custodianToken}`,
+            'Content-Type': 'application/json',
+            'Idempotency-Key': randomUUID(),
+          },
+          body: JSON.stringify({
+            action: 'withdraw',
+            reason: 'evidence_invalidated',
+          }),
+        },
+      ),
+      {
+        environment: reportingEnvironment,
+        database,
+        // A correction can share the publication millisecond. The public
+        // timeline must still place the publication first.
+        now: () => Date.parse('2026-09-02T18:03:00.000Z'),
+      },
+    );
+    expect(correction.status).toBe(201);
+    const response = await handleReportingFeed(feedRequest(), {
+      environment: reportingEnvironment,
+      database,
+      now: () => Date.parse('2026-09-02T19:00:00.000Z'),
+    });
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    expect(
+      verifyReportingFeedBytes({
+        bytes,
+        expectedPublicKeySpkiSha256: trustedFingerprint,
+        ...responseSignature(response, bytes),
+      }),
+    ).toBe(true);
+    const text = new TextDecoder().decode(bytes);
+    const body = JSON.parse(text) as {
+      entries: Array<Record<string, unknown>>;
+    };
+    expect(body.entries.map((entry) => entry.type)).toEqual([
+      'publication',
+      'correction',
+    ]);
+    expect(body.entries[0]).toMatchObject({
+      publicId: publication?.publicId,
+      recordSha256: publication?.recordSha256,
+    });
+    expect(body.entries[1]).toMatchObject({
+      publicId: publication?.publicId,
+      correction: {
+        action: 'withdraw',
+        reason: 'evidence_invalidated',
+        publicationRecordSha256: publication?.recordSha256,
+      },
+    });
+    expect(text).not.toContain(reportId);
+    expect(text).not.toContain('private-origin.example');
+    expect(text).not.toContain('custodian-alpha');
   }, 15_000);
 
   it('rejects browser origins, malformed queries, and unsupported methods', async () => {
