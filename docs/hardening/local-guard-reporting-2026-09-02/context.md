@@ -7,8 +7,8 @@ preparing this review. The target tree was clean at `5ba6e97`; the added files
 are implementation evidence, not evidence that a signed extension or hosted
 intake exists.
 
-Current collection: 120 artifacts at
-`sha256:215b607ca66f1a127571c448f0359d78ff3b74a3221b012a31c6e150e371bf45`.
+Current collection: 122 artifacts at
+`sha256:6650ca15ed6357619768a03f89a820f1bb9d86b7c66692e3f978281e464252bb`.
 
 The digest is SHA-256 over newline-terminated, repository-relative
 `path<TAB>sha256` records in the exact order enforced by
@@ -16,13 +16,14 @@ The digest is SHA-256 over newline-terminated, repository-relative
 decoded as UTF-8 and normalized to LF before its per-file hash is computed, so
 an equivalent Windows checkout does not create false source drift. The table
 below preserves the original review's core evidence snapshot; the executable
-117-artifact list and `hardening.json` are the current collection authority.
+122-artifact list and `hardening.json` are the current collection authority.
 
 The current collection additionally binds the lifecycle, store-asset,
 platform/incident, explicit external-report relay, private reviewer workbench,
 authenticated native IPC implementation, and separately packaged native-only
 extension candidate, standalone disabled reporting Worker, privacy decision
-packet, release assessor, and tests added during the same hardening run.
+packet, release assessor, public deployment allowlist verifier, and tests added
+during the same hardening run.
 
 | Evidence  | Reader-facing title                         | Path                                                   | SHA-256                                                            |
 | --------- | ------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------ |

@@ -140,6 +140,8 @@ const evidencePaths = [
   'docs/LOCAL_GUARD_PRIVACY_REVIEW.md',
   'docs/REPORTING_SERVICE.md',
   'docs/REPORTING_PRIVACY_REVIEW.md',
+  'scripts/verify-public-dist.mts',
+  'tests/public-dist-allowlist.test.ts',
 ];
 
 describe('Local Guard and reporting hardening portfolio', () => {

@@ -24,6 +24,7 @@
     "reporting:worker:check": "tsx scripts/check-reporting-worker.mts",
     "reporting:candidate": "tsx scripts/build-reporting-disabled-candidate.mts",
     "build": "vinext build",
+    "public-dist:verify": "tsx scripts/verify-public-dist.mts",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",
     "format": "oxfmt",
@@ -35,7 +36,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify": "npm run typecheck && npm run local-guard:readiness && npm run reporting:readiness && npm run reporting:worker:check && npm test && npm run lint && npm run build"
+    "verify": "npm run typecheck && npm run local-guard:readiness && npm run reporting:readiness && npm run reporting:worker:check && npm test && npm run lint && npm run build && npm run public-dist:verify"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

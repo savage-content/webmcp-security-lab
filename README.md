@@ -355,13 +355,17 @@ The automated suite covers:
   desktop-alpha launcher lifecycle; and
 - unpacked-extension manifest authority, document binding, bounded transport,
   exact permit validation and consume-before-execute enforcement, retry
-  behavior, revocation, and failure handling.
+  behavior, revocation, and failure handling; and
+- a fail-closed post-build public `dist/` allowlist that rejects raw source,
+  source maps, repository-only paths, unexpected artifact types, known
+  credential forms, unreviewed deployment inputs, and extra Worker authority.
 
 `npm run verify` does not claim live connector success and does not run the
-separate Android conformance script. The current automated suite passes 525/525
-tests across 73 files, typecheck, the Local Guard and reporting release-readiness
+separate Android conformance script. The current automated suite passes 530/530
+tests across 74 files, typecheck, the Local Guard and reporting release-readiness
 assessments, a disabled standalone reporting-Worker dry run, lint, and a
-production build on Node.js 24. Source-ready native transport, a
+production build plus its public-artifact boundary check on Node.js 24.
+Source-ready native transport, a
 separately packaged no-host-permission extension candidate, authenticated
 replay-resistant named-pipe IPC with a native-only connector mode,
 lifecycle, platform-matrix, incident-response, default-off external-report
