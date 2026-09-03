@@ -11,11 +11,12 @@ const presentationRoots = [
 ];
 const publicSource = /\.(?:ts|tsx|js|jsx)$/;
 const joinedBrand = /\bLeftOut\b/;
-const numericPrice = /(?:[$€£]\s*\d[\d,]*(?:\.\d{1,2})?|\b(?:USD|EUR|GBP)\s*\d[\d,]*(?:\.\d{1,2})?|\b\d[\d,]*(?:\.\d{1,2})?\s*(?:USD|EUR|GBP|dollars?|euros?|pounds?)\b|\bper\s+(?:month|year)\b)/i;
+const numericPrice = /(?:[$€£]\s*\d[\d,]*(?:\.\d{1,2})?|\b(?:USD|EUR|GBP)\s*\d[\d,]*(?:\.\d{1,2})?|\b\d[\d,]*(?:\.\d{1,2})?\s*[$€£](?!\{)|\b\d[\d,]*(?:\.\d{1,2})?\s*(?:USD|EUR|GBP|dollars?|euros?|pounds?)\b|\bper\s+(?:month|year)\b)/i;
 
 function renderedTextProjection(source: string): string {
   return source
-    .replace(/<[^>]*>/g, ' ')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\{\s*(['"])([\s\S]*?)\1\s*\}/g, '$2')
     .replace(/\s+/g, ' ');
 }
 
@@ -31,6 +32,14 @@ async function filesUnder(directory: string): Promise<string[]> {
 }
 
 describe('public copy policy', () => {
+  it('preserves adjacent JSX text and catches currency in either order', () => {
+    expect(renderedTextProjection('<span>Left</span><span>Out</span>')).toMatch(joinedBrand);
+    expect(renderedTextProjection("<span>{'Left'}</span>Out")).toMatch(joinedBrand);
+    expect(renderedTextProjection('<span>$</span><strong>5,000</strong>')).toMatch(numericPrice);
+    expect(renderedTextProjection('<span>5,000</span><strong> USD</strong>')).toMatch(numericPrice);
+    expect(renderedTextProjection('<span>10</span><strong>€</strong>')).toMatch(numericPrice);
+  });
+
   it('uses the exact public brand and publishes no numeric prices', async () => {
     for (const root of presentationRoots) {
       for (const file of await filesUnder(root)) {
