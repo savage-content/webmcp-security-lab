@@ -46,7 +46,9 @@ but does not change the pending real-human, screen-reader, 200% zoom, or Local
 Guard popup gates.
 
 The same working tree then passed a clean `npm ci` followed by the complete
-Node.js 24 verification gate. The later local productization candidate passes
+Node.js 24 verification gate. Committed candidate `fd30afa` subsequently passed
+a fresh `npm ci` followed immediately by all 530 tests. The later local
+productization candidate passes
 typecheck, Local Guard and reporting disclosure/readiness assessments, an inert
 standalone reporting-Worker dry run, 530 tests across 74 files, lint, the
 production build, and a fail-closed inspection of the generated deployment
