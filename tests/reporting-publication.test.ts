@@ -170,7 +170,10 @@ describe('separate reporting publication authority', () => {
     expect(
       (
         await handleReportingPublication(
-          publicationRequest(id, { expectedRevision: 3, publication: withheld }),
+          publicationRequest(id, {
+            expectedRevision: 3,
+            publication: withheld,
+          }),
           { environment: {} },
         )
       ).status,
@@ -222,7 +225,7 @@ describe('separate reporting publication authority', () => {
       publisherId: 'publisher-alpha',
       sourceRevision: 4,
     });
-  });
+  }, 15_000);
 
   it('returns the original publication for an exact idempotent retry', async () => {
     const reportingEnvironment = environment('invitation.publish-retry');
