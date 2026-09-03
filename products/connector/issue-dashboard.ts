@@ -119,7 +119,7 @@ export function createIssueDashboardDocument(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Review a WebMCP safety concern · LeftOut Security</title>
+  <title>Review a WebMCP safety concern · Left Out Security</title>
   <style>${sharedStyles()}</style>
 </head>
 <body>
@@ -159,7 +159,7 @@ export function createIssueDashboardDocument(
   <div class="actions">
     ${saveMarkup}
     <a class="button secondary" href="/issues/review">Open local review list</a>
-    <p class="helper">Saving stays inside this loopback connector. It does not contact LeftOut Security, the site, or any feed.</p>
+    <p class="helper">Saving stays inside this loopback connector. It does not contact Left Out Security, the site, or any feed.</p>
   </div>
   <footer>This workbench has no external submission or publication endpoint. The issue draft and detailed receipt remain separate.</footer>
 </main>
@@ -207,7 +207,7 @@ export function createIssueReviewListDocument(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Local WebMCP review list · LeftOut Security</title>
+  <title>Local WebMCP review list · Left Out Security</title>
   <style>${sharedStyles()}</style>
 </head>
 <body>
@@ -215,7 +215,7 @@ export function createIssueReviewListDocument(
   <header>
     <p class="eyebrow">Local reporting workbench</p>
     <h1>Local review list</h1>
-    <p class="lede">This is a temporary list inside your loopback connector, not LeftOut Security's inbox. Nothing has been sent to a person, site, or security feed.</p>
+    <p class="lede">This is a temporary list inside your loopback connector, not Left Out Security's inbox. Nothing has been sent to a person, site, or security feed.</p>
     <span class="status">${items.length} locally saved · 0 feed eligible</span>
   </header>
   <section class="grid" aria-label="Review and feed status">
