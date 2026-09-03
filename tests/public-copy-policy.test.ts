@@ -16,6 +16,7 @@ const numericPrice = /(?:[$€£]\s*\d[\d,]*(?:\.\d{1,2})?|\b(?:USD|EUR|GBP)\s*\
 
 function renderedTextProjection(source: string): string {
   return source
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
     // JSX discards indentation-only newlines at structural seams. Collapse those
     // seams before removing tags so formatted adjacent nodes cannot hide joined
     // public copy such as <span>Left</span>\n<span>Out</span>.
@@ -50,6 +51,7 @@ describe('public copy policy', () => {
     expect(renderedTextProjection("{'Left'}\n  Out")).toMatch(joinedBrand);
     expect(renderedTextProjection('Left\n  <span>Out</span>')).toMatch(joinedBrand);
     expect(renderedTextProjection("Left\n  {'Out'}")).toMatch(joinedBrand);
+    expect(renderedTextProjection('<span>Left</span>{/* formatting */}<span>Out</span>')).toMatch(joinedBrand);
     expect(renderedTextProjection('<span>$</span><strong>5,000</strong>')).toMatch(numericPrice);
     expect(renderedTextProjection('<span>5,000</span><strong> USD</strong>')).toMatch(numericPrice);
     expect(renderedTextProjection('<span>10</span><strong>€</strong>')).toMatch(numericPrice);
