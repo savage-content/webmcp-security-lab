@@ -47,7 +47,7 @@ Guard popup gates.
 
 The same working tree then passed a clean `npm ci` followed by the complete
 Node.js 24 verification gate: typecheck, Local Guard disclosure/readiness
-assessment, 482 tests across 62 files, lint, and the production build. The
+assessment, 497 tests across 66 files, lint, and the production build. The
 strict ordinary-user Local Guard gate remains intentionally unsatisfied and
 lists the external signing, identity, secure-transport, distribution,
 acceptance, public-policy, platform, and incident-response evidence still
@@ -67,8 +67,13 @@ and invitation quotas. A strict invited HTTP intake route now exists in source
 alongside authenticated reviewer read/transition routes and a separate
 publisher route. Publication requires the exact `accepted_private` revision,
 re-runs the hostname/evidence projection gate, and atomically writes an
-immutable minimized record. All routes are disabled and unconfigured on the
-public deployment. An independently authenticated JSON/NDJSON feed now emits
+immutable minimized record. A separate scriptless reviewer workbench now binds
+one loopback-only local session to opaque one-use queue, detail, and transition
+actions; keeps the reviewer bearer server-side; revalidates the complete ledger
+before a decision; and rejects publication or automatic retry. This is
+source-level evidence only and has no production identity or real operator
+acceptance. All routes are disabled and unconfigured on the public deployment.
+An independently authenticated JSON/NDJSON feed now emits
 bounded version 2 timeline pages containing only minimized publications and
 immutable correction entries, and signs their exact bytes with externally
 configured Ed25519 material. Verification requires a separately trusted
@@ -133,7 +138,7 @@ cross-client evidence.
 | Snapshot                          | Result               | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | --------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Runtime                           | Pass                 | Node.js 24.19.0                                                                                                                                                                                                                                                                                                                                                                                                               |
-| Current productization candidate  | Pass                 | 482 tests across 62 Vitest files passed; typecheck, Local Guard release-readiness assessment, lint, production build, deterministic package generation, reproducible store-asset verification, trusted-key attestation verification, source-ready identity-bound native transport, lifecycle, platform-matrix, incident-response, and default-off four-field report-relay checks, reporting-role separation, real D1 migration enforcement, and disabled-first intake/review/publication/correction/signed-feed/retention/legal-hold/deletion checks passed. |
+| Current productization candidate  | Pass                 | 497 tests across 66 Vitest files passed; typecheck, Local Guard release-readiness assessment, lint, production build, deterministic package generation, reproducible store-asset verification, trusted-key attestation verification, source-ready identity-bound native transport, lifecycle, platform-matrix, incident-response, default-off four-field report-relay checks, loopback reviewer authority/accessibility-contract checks, reporting-role separation, real D1 migration enforcement, and disabled-first intake/review/publication/correction/signed-feed/retention/legal-hold/deletion checks passed. |
 | Earlier five-lesson working tree  | Pass                 | 285 tests across 26 Vitest files, typecheck, lint, production build, and diff-integrity check passed before the fresh Chrome 152 technical acceptance run.                                                                                                                                                                                                                                                                    |
 | Earlier clean `f7290d9` candidate | Pass                 | Clean-copy `npm ci`, 121 tests, typecheck, lint, production build, and the separate Android gate passed.                                                                                                                                                                                                                                                                                                                      |
 | Post-fix working-tree source      | Pass                 | After the cross-realm inspection and approval-dialog fixes, 123 tests across 13 Vitest files, typecheck, lint, and a production build passed. This was not yet the final clean commit.                                                                                                                                                                                                                                        |

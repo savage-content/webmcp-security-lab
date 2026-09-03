@@ -5,8 +5,8 @@
   "sourceEvidence": {
     "kind": "source_document_collection",
     "label": "Local Guard and reporting source evidence",
-    "collectionSha256": "03fa60ba4cf792f599ccfaf8ff29683fdc9044091a044a668f08a3d6f950c896",
-    "artifactCount": 83,
+    "collectionSha256": "b98e461faf4145d1434c86dbf11cc04285378af8398010dd3bee00b5dd7fec9a",
+    "artifactCount": 92,
     "targetRevision": "5ba6e97095918d8877e1e12c98faabb3b81a869f",
     "sourceDrift": "present"
   },
@@ -332,6 +332,13 @@
           "claim": "The disabled-first service enforces strict intake, quarantine, role-separated review and publication, retention, correction, and minimized signed-feed boundaries."
         },
         {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E-RP-8",
+          "path": "products/reporting-operator/reviewer-server.ts",
+          "claim": "The source-ready loopback reviewer keeps its bearer server-side, hides private identifiers behind one-use local tokens, revalidates ledgers, and cannot publish or retry automatically."
+        },
+        {
           "claimType": "inferred",
           "sourceKind": "document",
           "evidenceId": "E-DOC-1",
@@ -485,6 +492,12 @@
               "rationale": "The service source separates intake, moderation, publication, correction, lifecycle, and feed authority."
             },
             {
+              "evidenceId": "E-RP-8",
+              "effect": "addresses",
+              "tacticalFixRequired": true,
+              "rationale": "The reviewer workbench turns closed API transitions into explicit one-use human actions without placing the reviewer credential in browser state."
+            },
+            {
               "evidenceId": "E-DOC-1",
               "effect": "unknown",
               "tacticalFixRequired": true,
@@ -550,12 +563,13 @@
             "affectedComponents": [
               "products/connector/reporting-relay.ts",
               "products/connector/reporting-workbench.ts",
+              "products/reporting-operator",
               "products/reporting-service"
             ],
             "workPackages": [
               "Approve privacy, retention, abuse, correction, and incident policy.",
               "Provision production identity, durable store, key custody, and backup ownership.",
-              "Build and accessibility-test the operator review surface.",
+              "Complete real keyboard, screen-reader, and first-time operator acceptance for the source-ready reviewer surface.",
               "Rehearse submission, review, publication, correction, deletion, restore, and rollback.",
               "Enable only a tiny isolated invited cohort after approval."
             ],

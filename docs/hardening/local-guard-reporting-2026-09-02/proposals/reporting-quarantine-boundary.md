@@ -56,7 +56,10 @@ server-held action can make exactly one server-to-server intake request with no
 automatic retry. The public learning deployment has no such configuration.
 
 The reporting service source has strict intake, durable quarantine, reviewer,
-publisher, feed, lifecycle, deletion, and correction routes. Every route is
+publisher, feed, lifecycle, deletion, and correction routes. A separate
+loopback-only reviewer workbench keeps the reviewer bearer server-side,
+revalidates each full ledger, and turns only current, allowed transitions into
+opaque one-use buttons. It cannot publish. Every public service route is
 indistinguishable from absent while disabled. No production identity, key,
 owner, backup, or rehearsal evidence exists.
 
@@ -212,8 +215,9 @@ The pure state machine and tests are described in
 The selected disabled-first service work is tracked in
 [the quarantined reviewed-service implementation plan](../implementation/quarantined-reviewed-service.md).
 Its configuration and credential-separation package is implemented; network
-intake, storage, reviewer UI, and feed serving remain intentionally disabled
-until their named gates pass.
+intake, storage, feed serving, and the source-ready local reviewer UI remain
+intentionally disabled or unconfigured until their named gates pass. The local
+UI still requires real operator, keyboard, and screen-reader acceptance.
 
 ## Open Questions
 

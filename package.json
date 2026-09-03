@@ -24,6 +24,7 @@
     "format": "oxfmt",
     "db:generate": "drizzle-kit generate",
     "connector": "tsx products/connector/server.ts",
+    "reporting:reviewer": "tsx products/reporting-operator/reviewer-server.ts",
     "mcp:list-tools": "tsx scripts/live-mcp-call.mts list-tools",
     "mcp:call": "tsx scripts/live-mcp-call.mts call",
     "typecheck": "tsc --noEmit",

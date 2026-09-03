@@ -30,6 +30,10 @@ The local implementation currently provides:
   versioned snapshots, hash-chained events, and optimistic revisions;
 - authenticated reviewer keyset reads and closed-graph transitions that reject
   caller-supplied actor, timestamp, state, and publication authority;
+- a separate scriptless, loopback-only reviewer workbench that keeps the
+  reviewer bearer server-side, hides private report IDs behind opaque one-use
+  local links, revalidates the full ledger before offering a transition, and
+  consumes exact revision-bound actions before one no-retry request;
 - a distinct publisher action that accepts only the exact
   `accepted_private` revision, re-runs the hostname/evidence projection gate,
   and atomically creates an immutable minimized publication record;
@@ -54,15 +58,17 @@ The local implementation currently provides:
   mutation, quota substitution, quota overflow, publication mutation,
   correction/publication mismatch, or correction mutation.
 
-No hosted learning-site submission UI, backup purge, production identity
-integration, production signing-key custodian, or independent fingerprint
-publication exists yet. The local composer is available only through an
+No hosted learning-site submission UI, hosted operator console, backup purge,
+production identity integration, production signing-key custodian, or
+independent fingerprint publication exists yet. The local composer is available only through an
 authenticated, pairing-bound loopback report session; it is not an Internet
-form. A source-only incident runbook now records fail-closed containment, but
-every accountable owner is null and no operator rehearsal or response-time
-commitment exists. The relay, correction operation, and full submission path
-are source-tested only and have not passed an operator rehearsal. Source code
-for a route is not evidence that the service is enabled.
+form. The local reviewer workbench is a separate source-only process; it is not
+served by the public application and cannot publish. A source-only incident
+runbook now records fail-closed containment, but every accountable owner is
+null and no operator rehearsal or response-time commitment exists. The relay,
+reviewer workbench, correction operation, and full submission path are
+source-tested only and have not passed an operator rehearsal. Source code for a
+route or interface is not evidence that the service is enabled.
 
 ## Configuration contract
 
@@ -123,6 +129,28 @@ must match the exact response schema, quarantine state, first revision, and
 mandatory assurance limitation. The loopback page shows only the bounded
 receipt metadata and deliberately does not echo the reported origin.
 
+### Loopback reviewer workbench configuration
+
+The reviewer workbench is a different local process and authority from both
+the submitter connector and the publisher. It remains disabled unless all
+three settings are present. The public learning origin, local/private names,
+IP literals, ports, paths, queries, fragments, and partial configuration are
+rejected.
+
+| Setting                                     | Required value or boundary                                |
+| ------------------------------------------- | --------------------------------------------------------- |
+| `LEFTOUT_REPORTING_REVIEWER_MODE`           | `invited`; otherwise absent or `disabled`                 |
+| `LEFTOUT_REPORTING_REVIEWER_SERVICE_ORIGIN` | Separate credential-free public HTTPS origin              |
+| `LEFTOUT_REPORTING_REVIEWER_TOKEN`          | Header-safe 32–512 character reviewer bearer, server-side |
+
+`npm run reporting:reviewer` binds only to loopback and prints one
+short-lived launch URL. That launch exchanges for an HttpOnly,
+SameSite=Strict session. Private report IDs and queue cursors stay behind
+session-scoped opaque links; the browser never receives the remote reviewer
+bearer. A reviewer can reach `accepted_private`, but publication still
+requires the distinct publisher API and credential. See
+`products/reporting-operator/README.md` for the exact source-only boundary.
+
 ## Intake request
 
 An invited non-browser client sends one `POST /api/reports/intake` request with:
@@ -145,6 +173,13 @@ An authenticated reviewer can page `GET /api/reports/review`, read one
 revision and lowercase UUID idempotency key. Callers cannot supply actor
 identity, timestamps, publication data, or undeclared fields, and reviewers
 cannot publish.
+
+The loopback reviewer workbench makes those same reviewer operations usable
+without placing a bearer in browser storage or asking a human to construct
+JSON. List responses are strictly parsed; each detail ledger is fully
+revalidated before state-change buttons appear. Every button binds one report,
+current revision, and allowed target state. Network failure consumes the local
+action and requires a fresh queue reload; there is no automatic retry.
 
 The separate publisher credential can call only
 `POST /api/reports/publish/:reportId`. It requires the exact

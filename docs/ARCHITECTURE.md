@@ -245,6 +245,14 @@ route exists in source and always writes to quarantine, but its configuration
 is absent on the public site so it returns `404`. Authenticated reviewer
 routes use keyset pagination and permit only the closed transition graph;
 caller-supplied actor, timestamp, publication, or state authority is rejected.
+A separate loopback-only reviewer process calls those routes server-side. Its
+scriptless browser surface receives only an HttpOnly local session plus opaque,
+short-lived view, pagination, and revision-bound action tokens. The reviewer
+bearer and private report IDs never enter browser URLs; complete ledger detail
+is revalidated before actions are offered. Each transition action is consumed
+before one no-retry request, and the client rejects publication authority.
+This source-ready workbench is not served by the public application and is not
+evidence of production identity or operator rehearsal.
 A separately authenticated publisher can act only on the exact
 `accepted_private` revision, re-run the hostname/evidence gate, and atomically
 write an immutable minimized publication row. Stored or caller-supplied state

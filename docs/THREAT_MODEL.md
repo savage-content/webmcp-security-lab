@@ -78,6 +78,7 @@ There are intentionally no credentials, real identities, production accounts, or
 | Android conformance mislabeled integration                   | JVM tests are represented as device/AppFunction support                                     | No generated metadata or device discovery claim; Android remains isolated and conformance-only                                                                                                                                                           |
 | Release package widens extension authority                   | A preview artifact contains unreviewed code or permissions                                  | Deterministic runtime allowlist; exact MV3 permission/host checks; symlink, remote-reference, and dynamic-code rejection; per-file and archive SHA-256 metadata                                                                                          |
 | Caller asserts that a report was human-reviewed              | Untrusted intake reaches a public feed without real review                                  | Invited intake can only create quarantine records; authenticated reviewers follow closed transitions; only a separate publisher can act on the exact `accepted_private` revision and write an immutable minimized record; the feed reads only that table |
+| Reviewer bearer or private report IDs enter browser state    | Local browser history, scripts, or a cross-origin request exposes private review authority  | Separate loopback server holds the remote bearer; HttpOnly SameSite session, exact Host/Origin checks, script-free CSP, opaque one-use links, escaped data, full-ledger validation, revision-bound consume-before-request actions, and no automatic retry |
 | Feed or signing metadata is substituted                      | Tooling consumes changed records or trusts an attacker key                                  | Sign exact bounded JSON/NDJSON bytes with externally supplied Ed25519 material; verify content digest and signature against a fingerprint pinned through a separate trusted channel; never treat the response fingerprint as self-authenticating         |
 
 ## Deliberate vulnerabilities versus platform vulnerabilities
@@ -125,7 +126,10 @@ The fixture mismatches are intentional application-design failures. The lab does
 - The reporting modules provide role-separated credential checks, atomic
   intake quotas, a durable hash-chained moderation ledger, authenticated
   reviewer transitions, and a separately authorized immutable publication
-  record. A separate feed credential and Ed25519 signer protect minimized
+  record. A source-ready loopback reviewer workbench keeps its bearer
+  server-side, revalidates complete ledgers, hides private IDs behind one-use
+  local tokens, and cannot publish or retry automatically; it has not passed a
+  real operator or accessibility rehearsal. A separate feed credential and Ed25519 signer protect minimized
   snapshot pages, with tamper and wrong-trust-root tests. All routes remain
   disabled and unconfigured publicly. Production operator identity, signing-key
   custody, independently published trust metadata, backup purge and recovery,

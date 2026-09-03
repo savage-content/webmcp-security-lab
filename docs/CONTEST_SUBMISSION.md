@@ -101,11 +101,14 @@ pretending that a green badge or a reassuring annotation is enforcement.
   Ed25519 key and requires an independently pinned public-key fingerprint. A
   separately gated custodian can append one digest-bound public withdrawal
   without rewriting publication history. None is configured or enabled on the
-  public site.
+  public site. A separate source-only reviewer workbench can page and validate
+  the private queue through a loopback browser surface without exposing its
+  bearer or gaining publication authority; it has not passed production
+  identity or human-operator rehearsal.
 
 ## Verification
 
-The current local candidate passed 482 automated tests across 62 files on
+The current local candidate passed 497 automated tests across 66 files on
 Node.js 24, typecheck, the Local Guard release-readiness assessment, lint,
 production build, deterministic Local Guard packaging, and a live non-invoking
 walkthrough/accessibility regression. Earlier bounded browser

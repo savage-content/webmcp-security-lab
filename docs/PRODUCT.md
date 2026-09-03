@@ -160,7 +160,13 @@ scriptless public-report composer and a server-to-server invited relay. The
 relay credential never enters browser HTML or storage, partial configuration
 fails startup, remote responses are treated as bounded untrusted data, and a
 failed send consumes its one-use action instead of retrying. This does not mean
-the public service or learning-site reporting is enabled.
+the public service or learning-site reporting is enabled. A separate
+loopback-only reviewer workbench now turns the private queue API into a
+scriptless human workflow. It keeps its reviewer credential server-side,
+revalidates the full ledger before a decision, hides private identifiers behind
+opaque one-use local links, and can move an exact current revision only through
+the reviewer state graph. It cannot publish and has not passed production
+identity or human-operator rehearsal.
 
 ## Agent behavior
 
@@ -217,7 +223,8 @@ An agent using this product should:
    first-time users against that same candidate.
 4. Complete novice acceptance of the HUD-to-receipt-to-local-review-list handoff.
 5. Conduct privacy/security review for the implemented loopback report
-   composer, server-to-server relay, intake, review, and publication boundary.
+   composer, server-to-server relay, intake, loopback reviewer workbench,
+   review, and publication boundary.
 6. Complete production identity, abuse handling, backup purge, and lifecycle
    operations; rehearse the explicit one-use submission, private deletion, and
    immutable public correction against an isolated service hostname.

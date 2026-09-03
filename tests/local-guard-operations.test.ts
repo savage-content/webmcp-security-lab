@@ -115,6 +115,16 @@ describe('Local Guard platform and incident operations', () => {
         status: 'source_ready',
       });
     }
+    expect(
+      evidence.gates.find(
+        (gate: { id: string }) => gate.id === 'external_reporting_operations',
+      ).evidence,
+    ).toEqual(
+      expect.arrayContaining([
+        'products/reporting-operator/reviewer-server.ts',
+        'tests/reporting-reviewer-server.test.ts',
+      ]),
+    );
     const { report } = await assessLocalGuardRelease({ outputPath: null });
     expect(report.blockers).toEqual(
       expect.arrayContaining([
