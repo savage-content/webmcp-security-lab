@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { LocalGuardPublicShell } from '@/components/local-guard/public-shell';
 
 export const metadata: Metadata = {
-  title: 'Local Guard support | LeftOut Security',
+  title: 'Local Guard support | Left Out Security',
   description:
     'Installation, connection, privacy, and safe issue-reporting guidance for the Local Guard developer preview.',
 };

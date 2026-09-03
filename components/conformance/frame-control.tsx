@@ -31,7 +31,7 @@ export function FrameControl() {
       modelContext.registerTool(
         {
           name: `los_iframe_control_${registrationId}`,
-          title: 'LeftOut iframe control',
+          title: 'Left Out iframe control',
           description:
             'Synthetic iframe registration used only to test client discovery boundaries.',
           inputSchema: {

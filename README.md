@@ -7,7 +7,7 @@
 > issue report.
 
 ChatGPT now calls this built-in-browser surface **Site Tools**. The beginner
-experience supports a direct ChatGPT Work/Codex path that needs no LeftOut
+experience supports a direct ChatGPT Work/Codex path that needs no Left Out
 extension or connector, plus a separate advanced Local Guard path for ordinary
 Chromium monitoring and local receipt enforcement. The external OpenAI browser
 extension is a third, computer-use surface and is not counted as Site Tools.
@@ -21,10 +21,14 @@ and the local [conformance family](docs/SITE_TOOLS_CONFORMANCE.md).
 
 **License:** [MIT](LICENSE)
 
-> **Working status (September 2, 2026): commit `8568a5f` is explicitly deployed
-> as Sites version 11 at the public URL. It includes the required setup gate,
-> six-step first-visit walkthrough, five-lesson beginner page, and reduced-motion support. The Local
-> Guard, connector, and reporting workbench remain local development software.** A
+> **Working status (September 3, 2026): Sites version 12 was saved from commit
+> `d0c1676`, and that exact commit is public on GitHub. The live site's three
+> version-12-only Local Guard disclosure routes and normalized application bundle
+> strongly match that candidate. The Sites API does not expose the live version
+> identifier, so this is strong content identity rather than cryptographic
+> deployment binding.** Historical version 11 acceptance established the setup
+> gate, six-step first-visit walkthrough, five-lesson beginner page, and
+> reduced-motion support. A
 > fresh Chrome 152 run completed all five lessons
 > through the unpacked extension and loopback connector with one zero-input
 > call per lesson and no retries. All five receipts returned `PASS`, the HUD
@@ -45,7 +49,7 @@ Site Tools support, or another client.
 
 | Current component                                    | Status                                                                                                                                                              |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public learning range                                | Commit `8568a5f`, Sites version 11, is live with the setup gate, first-visit walkthrough, and five lessons                                                          |
+| Public learning range                                | Live content strongly matches commit `d0c1676`, Sites version 12; the core setup gate, walkthrough, and five lessons are byte-identical to the historically tested version 11 source                    |
 | Five guided page capabilities                        | `PASS` in one fresh Chrome 152 sequence; one exact call per lesson and no retries                                                                                   |
 | Connector receipt and report path                    | `PASS` for five validated receipts, the hash chain, local redacted draft, zero feed-eligible synthetic records, and a source-tested default-off public-report relay |
 | Browser extension                                    | Manifest V3 development preview; deterministic package, integrity manifest, and detached release-attestation gate now available; still unsigned by Chrome           |
@@ -362,7 +366,7 @@ The automated suite covers:
 
 `npm run verify` does not claim live connector success and does not run the
 separate Android conformance script. The tree committed as `73634a8` passes
-534/534 tests across 74 files, typecheck, the Local Guard and reporting
+533 passing tests plus two Windows-only skips across 75 files, typecheck, the Local Guard and reporting
 release-readiness assessments, a disabled standalone reporting-Worker dry run,
 lint, and a production build plus its public-artifact boundary check on Node.js 24.
 Source-ready native transport, a
@@ -405,13 +409,14 @@ Receipts can be downloaded as JSON. There are no update or delete endpoints. Req
 
 ## Deployment
 
-The public URL currently hosts commit `8568a5f` as Sites version 11. Repository
-and later working-tree changes are not live merely because they exist, are
-committed, or are pushed. That deployment contains the beginner page and
-synthetic Site Tools fixtures.
-It does not host or distribute the Local Guard extension, loopback connector,
-private reporting workbench or its default-off server-to-server relay, public
-intake, moderation service, security-tooling feed, or Android client.
+The public URL strongly matches the build saved from commit `d0c1676` as Sites
+version 12. Unique routes and a normalized application-bundle comparison support
+that conclusion; the hosting API does not expose a cryptographic live-version
+binding. The public build contains the beginner page, synthetic Site Tools
+fixtures, and Local Guard overview, privacy, and support disclosures. It does
+not host or distribute the Local Guard extension, loopback connector, private
+reporting workbench or operations, moderation service, security-tooling feed,
+or Android client. Public reporting endpoints remain fail-closed with 404s.
 
 The repository includes `.openai/hosting.json` with a logical `DB` binding and
 generated Drizzle migrations for a possible future web deployment.
@@ -446,4 +451,4 @@ Read [SECURITY.md](SECURITY.md) before extending a fixture.
 
 Copyright © 2026 Left Out Security. Released under the [MIT License](LICENSE).
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

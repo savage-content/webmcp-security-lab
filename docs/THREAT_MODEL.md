@@ -10,7 +10,7 @@ Security conclusions are partitioned before any test is interpreted:
 - **Agent Browser Context Surface:** navigation, clicking, typing, forms,
   downloads, uploads, and other browser control performed by an agent or
   external browser extension.
-- **LeftOut Membrane Surface:** selected-tab binding, drift alerts, permit
+- **Left Out Membrane Surface:** selected-tab binding, drift alerts, permit
   validation, one-use relay, connector acknowledgement, and local evidence.
 
 An observation on one surface never upgrades a state on another. In particular,
@@ -22,11 +22,13 @@ them. See [SITE_TOOLS_CONFORMANCE.md](SITE_TOOLS_CONFORMANCE.md).
 ## Scope
 
 This model covers the public web application, including the deployed
-`5ba6e97` setup gate, first-visit walkthrough, page-scoped Site Tool
-registrations, synthetic scenario state, evidence API, and D1 ledger. It also
+version 12 setup gate, first-visit walkthrough, page-scoped Site Tool
+registrations, synthetic scenario state, evidence API, D1 ledger, and Local
+Guard disclosure pages. It also
 covers the local capability connector, unpacked extension, deterministic
-preview package, and moderation core. The Local Guard, connector, reporting
-service, and Android directory are not part of the public runtime.
+preview package, and moderation core. Public reporting routes fail closed; the
+Local Guard extension, connector, reporting operations, and Android directory
+are not part of the public runtime.
 
 ## Assets
 
@@ -173,4 +175,4 @@ The fixture mismatches are intentional application-design failures. The lab does
 - hosted connector authentication or multi-user isolation; and
 - Android device discovery, policy allowance, and AppFunction invocation.
 
-This report reflects self-reported evidence readiness. LeftOut Security has not inspected, tested, or independently validated the described system.
+This report reflects self-reported evidence readiness. Left Out Security has not inspected, tested, or independently validated the described system.

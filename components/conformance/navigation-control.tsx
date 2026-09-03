@@ -74,7 +74,7 @@ export function NavigationControl() {
           The old document is gone.
         </h1>
         <p className="mt-4 text-base leading-7 text-muted-foreground">
-          Ask the same agent whether the previous LeftOut conformance ping is
+          Ask the same agent whether the previous Left Out conformance ping is
           still available. Do not ask it to invoke anything else.
         </p>
 

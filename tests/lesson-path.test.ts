@@ -77,10 +77,10 @@ describe('beginner WebMCP lesson path', () => {
     expect(guidedLessonSource).toContain(
       'this observation is not a universal-support claim',
     );
-    expect(guidedLessonSource).toContain('LeftOut Local Guard');
+    expect(guidedLessonSource).toContain('Left Out Local Guard');
     expect(guidedLessonSource).toContain('Use the local relay');
     expect(normalizedGuide).toContain(
-      'No LeftOut extension or local relay is required for the native Site Tools path',
+      'No Left Out extension or local relay is required for the native Site Tools path',
     );
     expect(guidedLessonSource).toContain(
       'separate from native ChatGPT Site Tools',
@@ -103,7 +103,7 @@ describe('beginner WebMCP lesson path', () => {
     );
     expect(capabilityLessonSource).toContain('Invoke through WebMCP');
     expect(capabilityLessonSource).toContain('Continue to Lesson 2');
-    expect(capabilityLessonSource).toContain('In LeftOut Local Guard, confirm');
+    expect(capabilityLessonSource).toContain('In Left Out Local Guard, confirm');
     expect(capabilityLessonSource).not.toContain(
       'Run local practice check once',
     );
@@ -115,7 +115,7 @@ describe('beginner WebMCP lesson path', () => {
       'Run the one approved eligibility check for TRAINING-1042 once. Do not invoke another Site Tool and do not retry.',
     );
     expect(normalizedCapability).toContain(
-      'Using the LeftOut local relay, run the one protected eligibility check for TRAINING-1042 once. Do not retry.',
+      'Using the Left Out local relay, run the one protected eligibility check for TRAINING-1042 once. Do not retry.',
     );
     expect(capabilityLessonSource).toContain('Copy request for my agent');
     expect(capabilityLessonSource).toContain("['3', 'Ask agent']");
@@ -252,7 +252,7 @@ describe('beginner WebMCP lesson path', () => {
       'Run the one approved profile-banner update once. Do not invoke any other Site Tool and do not retry.',
     );
     expect(normalizedGuide).toContain(
-      'Using the LeftOut local relay, run the one protected profile-banner update once. Do not retry.',
+      'Using the Left Out local relay, run the one protected profile-banner update once. Do not retry.',
     );
     expect(guidedLessonSource).toContain('Copy request for my agent');
     expect(guidedLessonSource).toContain(

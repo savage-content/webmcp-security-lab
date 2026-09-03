@@ -224,7 +224,7 @@ export function CapabilityNegotiator({
   const agentRequest =
     experienceMode === 'site-tools'
       ? 'Run the one approved eligibility check for TRAINING-1042 once. Do not invoke another Site Tool and do not retry.'
-      : 'Using the LeftOut local relay, run the one protected eligibility check for TRAINING-1042 once. Do not retry.';
+      : 'Using the Left Out local relay, run the one protected eligibility check for TRAINING-1042 once. Do not retry.';
   const agentRequestCopyState =
     agentRequestCopyResult?.request === agentRequest
       ? agentRequestCopyResult.status
@@ -1507,7 +1507,7 @@ export function CapabilityNegotiator({
                       <>
                         <li>1. Leave this lesson open.</li>
                         <li>
-                          2. In LeftOut Local Guard, confirm “Protected: 1 exact
+                          2. In Left Out Local Guard, confirm “Protected: 1 exact
                           action.”
                         </li>
                         <li>

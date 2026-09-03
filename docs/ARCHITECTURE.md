@@ -4,10 +4,12 @@
 
 The product teaches a first-time human and agent what WebMCP offers, protects
 one exact approved action through a browser-owned Membrane, and turns verified
-local evidence into a privacy-minimized issue preview. Public commit `5ba6e97`
-adds the required setup gate and first-visit walkthrough to the five synthetic
-fixtures. The Local Guard, connector, moderation core, reporting workbench, and
-isolated Android conformance prototype remain local and undeployed.
+local evidence into a privacy-minimized issue preview. The live application
+strongly content-matches version 12 source at `d0c1676`: the setup gate,
+walkthrough, five fixtures, and Local Guard disclosure pages are public, while
+reporting APIs remain fail-closed. The Local Guard extension, connector,
+moderation operations, reporting workbench, and isolated Android conformance
+prototype remain undeployed.
 
 ## Three client surfaces
 
@@ -16,12 +18,12 @@ The product keeps three execution surfaces explicit:
 1. **ChatGPT Site Tools** — the built-in browser in ChatGPT Work or Codex
    discovers top-level JavaScript registrations and invokes them under the
    client's normal safety review. Model, workspace, page registration,
-   discovery, and invocation are captured separately. No LeftOut extension or
+   discovery, and invocation are captured separately. No Left Out extension or
    connector is required for this native path.
 2. **Agent browser context** — OpenAI's external browser extension performs
    ordinary browser interaction. Its browser actions are not Site Tools
    discovery or invocation.
-3. **LeftOut Local Guard** — the `0.3.0` unpacked extension and loopback
+3. **Left Out Local Guard** — the `0.3.0` unpacked extension and loopback
    connector are an independent Membrane prototype for one selected Chromium
    document. A separate deterministic `0.4.0` source candidate replaces
    browser loopback authority with Chrome native messaging and authenticated

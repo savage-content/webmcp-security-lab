@@ -2,7 +2,7 @@
 
 ## Current decision
 
-**Technical novice path: PASS on the deployed version 11 release.**
+**Technical novice path: PASS on the historically tested version 11 release.**
 
 **Real first-time human acceptance: NOT YET RUN.** No independent first-time
 participant or screen-reader operator was available inside this development
@@ -18,6 +18,10 @@ relabeled as a human study. The September 3 run moved from a stale, unconfirmed
 Local Guard selection to the API-detected built-in path, completed all six tour
 steps, opened and cancelled Lesson 1 approval, and left no generated approval
 or invocation.
+
+Sites version 12 was later saved from `d0c1676` and strongly matches the live
+site. Its core novice source is byte-identical to version 11, but the version 11
+browser run is not relabeled as a version 12 native invocation.
 
 ## Deployed technical novice run
 
